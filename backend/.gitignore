@@ -1,0 +1,28 @@
+# Build results
+bin/
+obj/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Visual Studio cache/options
+.vs/
+
+# Logs
+logs/
+*.log
+
+# Dotnet tools
+/.config/dotnet-tools.json
+
+# Rider
+.idea/
+
+# Environment
+.env
+
+
+

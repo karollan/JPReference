@@ -1,0 +1,49 @@
+/**
+ * src/styles/settings.scss
+ *
+ * Configures SASS variables and Vuetify overwrites
+ */
+
+// https://vuetifyjs.com/features/sass-variables/`
+// @use 'vuetify/settings' with (
+//   $color-pack: false
+// );
+
+@use 'vuetify/settings' with (
+    $body-font-family: ('Noto Sans JP', 'Roboto', sans-serif),
+    $field-border-radius: 0.5rem
+);
+
+body {
+    font-family: 'Noto Sans JP', sans-serif !important;
+}
+
+.main-container-layout {
+    height: 100%;
+    max-width: 56rem !important;
+    justify-content: center;
+    padding: 2rem !important;
+}
+
+.v-toolbar {
+    font-weight: 500;
+    border-bottom: 1px solid #000;
+
+    &__content > .v-btn:last-child {
+        margin-inline-end: 20px;
+    }
+}
+
+.v-field__outline {
+    --v-field-border-opacity: 0.1
+}
+
+.v-field:hover .v-field__outline {
+    --v-field-border-opacity: 0.3
+}
+
+.v-card--variant-outlined {
+    border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+    border-radius: 0.5rem;
+    box-shadow: 0 0 4px 0 rgba(0, 0, 0, 0.1);
+}

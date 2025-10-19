@@ -1,0 +1,24 @@
+# Environment files
+.env
+.env.local
+.env.production
+
+# Docker volumes
+postgres_data/
+pgadmin_data/
+
+# Logs
+*.log
+
+# Backup files
+*.sql
+*.dump
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
