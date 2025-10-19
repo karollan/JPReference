@@ -48,10 +48,37 @@
         </v-col>
       </v-row>
 
-      <!-- Stroke Count -->
-      <div v-if="kanji.strokeCount" class="stroke-count mt-3">
-        <v-icon size="16" class="mr-1">mdi-pencil</v-icon>
-        <span class="text-caption">{{ kanji.strokeCount }} strokes</span>
+      <!-- Additional Info -->
+      <div class="additional-info mt-3">
+        <!-- Stroke Count -->
+        <div v-if="kanji.strokeCount" class="stroke-count mb-1">
+          <v-icon size="16" class="mr-1">mdi-pencil</v-icon>
+          <span class="text-caption">{{ kanji.strokeCount }} strokes</span>
+        </div>
+        
+        <!-- Grade -->
+        <div v-if="kanji.grade" class="grade mb-1">
+          <v-icon size="16" class="mr-1">mdi-school</v-icon>
+          <span class="text-caption">Grade {{ kanji.grade }}</span>
+        </div>
+        
+        <!-- Frequency -->
+        <div v-if="kanji.frequency" class="frequency mb-1">
+          <v-icon size="16" class="mr-1">mdi-chart-line</v-icon>
+          <span class="text-caption">Freq: {{ kanji.frequency }}</span>
+        </div>
+        
+        <!-- Radicals -->
+        <div v-if="kanji.radicals && kanji.radicals.length" class="radicals mb-1">
+          <v-icon size="16" class="mr-1">mdi-puzzle</v-icon>
+          <span class="text-caption">{{ kanji.radicals.slice(0, 3).join(', ') }}{{ kanji.radicals.length > 3 ? '...' : '' }}</span>
+        </div>
+        
+        <!-- Nanori -->
+        <div v-if="kanji.nanori && kanji.nanori.length" class="nanori mb-1">
+          <v-icon size="16" class="mr-1">mdi-account</v-icon>
+          <span class="text-caption">{{ kanji.nanori.slice(0, 2).join(', ') }}{{ kanji.nanori.length > 2 ? '...' : '' }}</span>
+        </div>
       </div>
     </v-card-text>
   </v-card>
@@ -118,7 +145,18 @@ const onCardClick = () => {
   min-height: 48px;
 }
 
-.stroke-count {
+.additional-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.stroke-count,
+.grade,
+.frequency,
+.radicals,
+.nanori {
   display: flex;
   align-items: center;
   justify-content: center;

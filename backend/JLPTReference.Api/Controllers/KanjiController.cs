@@ -76,7 +76,9 @@ public class KanjiController : ControllerBase
             // Apply JLPT level filter if specified
             if (jlptLevel != null && jlptLevel.Any())
             {
-                filteredKanjis = filteredKanjis.Where(k => jlptLevel.Contains(0) ? k.JlptNew == null : k.JlptNew.HasValue && jlptLevel.Contains(k.JlptNew.Value));
+                filteredKanjis = filteredKanjis.Where(k => 
+                    (jlptLevel.Contains(0) && k.JlptNew == null) || 
+                    (k.JlptNew.HasValue && jlptLevel.Contains(k.JlptNew.Value)));
             }
             
             var searchTotalCount = filteredKanjis.Count();
@@ -86,15 +88,12 @@ public class KanjiController : ControllerBase
                 .Take(pageSize)
                 .ToList();
 
-            var searchResult = new
-            {
-                items = searchKanjis,
-                totalCount = searchTotalCount,
-                page = page,
-                pageSize = pageSize
-            };
+            // Add pagination headers
+            Response.Headers["X-Total-Count"] = searchTotalCount.ToString();
+            Response.Headers["X-Page"] = page.ToString();
+            Response.Headers["X-Page-Size"] = pageSize.ToString();
 
-            return Ok(searchResult);
+            return Ok(searchKanjis);
         }
 
         // No search - use efficient database query
@@ -102,7 +101,9 @@ public class KanjiController : ControllerBase
         
         if (jlptLevel != null && jlptLevel.Any())
         {
-            query = query.Where(k => jlptLevel.Contains(0) ? k.JlptNew == null : k.JlptNew.HasValue && jlptLevel.Contains(k.JlptNew.Value));
+            query = query.Where(k => 
+                (jlptLevel.Contains(0) && k.JlptNew == null) || 
+                (k.JlptNew.HasValue && jlptLevel.Contains(k.JlptNew.Value)));
         }
 
         var totalCount = await query.CountAsync();
@@ -113,23 +114,77 @@ public class KanjiController : ControllerBase
             .Take(pageSize)
             .ToListAsync();
 
-        var result = new
-        {
-            items = kanjis,
-            totalCount = totalCount,
-            page = page,
-            pageSize = pageSize
-        };
+        // Add pagination headers
+        Response.Headers["X-Total-Count"] = totalCount.ToString();
+        Response.Headers["X-Page"] = page.ToString();
+        Response.Headers["X-Page-Size"] = pageSize.ToString();
 
-        return Ok(result);
+        return Ok(kanjis);
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<Kanji>> GetKanji(Guid id)
+    public async Task<ActionResult<KanjiDto>> GetKanji(Guid id)
     {
-        var kanji = await _context.Kanji.FindAsync(id);
+        var kanji = await _context.Kanji
+            .Include(k => k.KanjiRadicals)
+            .Include(k => k.KanjiDecompositions)
+            .FirstOrDefaultAsync(k => k.Id == id);
+        
         if (kanji == null) return NotFound();
 
-        return kanji;
+        var kanjiDto = new KanjiDto
+        {
+            Character = kanji.Character,
+            Meanings = kanji.Meanings,
+            ReadingsOn = kanji.ReadingsOn,
+            ReadingsKun = kanji.ReadingsKun,
+            StrokeCount = kanji.StrokeCount,
+            Grade = kanji.Grade,
+            Frequency = kanji.Frequency,
+            JlptOld = kanji.JlptOld,
+            JlptNew = kanji.JlptNew,
+            Codepoints = kanji.Codepoints,
+            Radicals = kanji.Radicals,
+            Variants = kanji.Variants,
+            RadicalNames = kanji.RadicalNames,
+            DictionaryReferences = kanji.DictionaryReferences,
+            QueryCodes = kanji.QueryCodes,
+            Nanori = kanji.Nanori
+        };
+
+        return kanjiDto;
+    }
+
+    [HttpGet("character/{character}")]
+    public async Task<ActionResult<KanjiDto>> GetKanjiByCharacter(string character)
+    {
+        var kanji = await _context.Kanji
+            .Include(k => k.KanjiRadicals)
+            .Include(k => k.KanjiDecompositions)
+            .FirstOrDefaultAsync(k => k.Character == character);
+        
+        if (kanji == null) return NotFound();
+
+        var kanjiDto = new KanjiDto
+        {
+            Character = kanji.Character,
+            Meanings = kanji.Meanings,
+            ReadingsOn = kanji.ReadingsOn,
+            ReadingsKun = kanji.ReadingsKun,
+            StrokeCount = kanji.StrokeCount,
+            Grade = kanji.Grade,
+            Frequency = kanji.Frequency,
+            JlptOld = kanji.JlptOld,
+            JlptNew = kanji.JlptNew,
+            Codepoints = kanji.Codepoints,
+            Radicals = kanji.Radicals,
+            Variants = kanji.Variants,
+            RadicalNames = kanji.RadicalNames,
+            DictionaryReferences = kanji.DictionaryReferences,
+            QueryCodes = kanji.QueryCodes,
+            Nanori = kanji.Nanori
+        };
+
+        return kanjiDto;
     }
 }

@@ -1,152 +1,180 @@
 # JLPT Reference Database
 
-This folder contains all the necessary files to run a PostgreSQL database for the JLPT Reference application using Docker.
+This directory contains the database setup and data processing scripts for the JLPT Reference application.
 
-## Quick Start
+## Data Sources
 
-1. **Copy the environment file:**
-   ```bash
-   cp env.example .env
-   ```
+The database is populated with data from multiple sources:
 
-2. **Start the database:**
-   ```bash
-   docker-compose up -d
-   ```
+### 1. Kanji Data (kanjidic2)
+- **Source**: `database/source/kanji/source.json`
+- **Reference**: `database/source/kanji/reference.json`
+- **Description**: Comprehensive kanji data including readings, meanings, stroke counts, JLPT levels, and more
 
-3. **Access the database:**
-   - **PostgreSQL:** `localhost:5432`
-   - **PgAdmin:** `http://localhost:8080`
+### 2. Vocabulary Data (JMdict)
+- **Source**: `database/source/vocabulary/source.json`
+- **Reference**: `database/source/vocabulary/reference.json`
+- **Description**: Multi-language vocabulary with detailed grammatical information
 
-## Services
+### 3. Vocabulary with Examples
+- **Source**: `database/source/vocabulary/vocabularyWithExamples/source.json`
+- **Description**: English vocabulary entries with example sentences from Tatoeba
 
-### PostgreSQL Database
-- **Container:** `jlpt-reference-db`
-- **Port:** 5432 (configurable via `POSTGRES_PORT`)
-- **Database:** `jlptreference`
-- **Username:** `jlptuser`
-- **Password:** `jlptpassword`
+### 4. Radical Data
+- **Radfile**: `database/source/radfile/source.json`
+- **Kradfile**: `database/source/kradfile/source.json`
+- **Description**: Radical information and kanji decomposition data
 
-### PgAdmin (Database Management)
-- **Container:** `jlpt-reference-pgadmin`
-- **Port:** 8080 (configurable via `PGADMIN_PORT`)
-- **Email:** `admin@jlptreference.com`
-- **Password:** `admin123`
+### 5. Names Data
+- **Source**: `database/source/names/source.json`
+- **Description**: Japanese names data
 
 ## Database Schema
 
-The database includes the following table:
+### Tables
 
-- **kanji** - Kanji characters with readings, meanings, JLPT levels, and metadata from kanji-jouyou.json
-  - Fields: character, meanings, readings_on, readings_kun, stroke_count, grade, frequency, jlpt_old, jlpt_new
-  - Automatically populated with data from kanji-jouyou.json (WaniKani fields removed)
+1. **kanji** - Main kanji table with comprehensive information
+2. **kanji_radicals** - Radical relationships for kanji
+3. **kanji_decompositions** - Component decomposition for kanji
+4. **vocabulary** - Vocabulary entries with multiple languages
+5. **vocabulary_examples** - Example sentences for vocabulary
+6. **radicals** - Radical information
 
-## Configuration
+### Key Features
 
-Edit the `.env` file to customize:
+- **JLPT Level Mapping**: Both old and new JLPT levels are supported
+- **Cross-references**: Vocabulary entries are linked with examples
+- **Multi-language Support**: Vocabulary supports multiple languages
+- **Comprehensive Kanji Data**: Includes readings, meanings, stroke counts, and more
+
+## Data Processing
+
+### Comprehensive Processor
+
+The `process_all_data.py` script processes all data sources:
 
 ```bash
-# Database settings
-POSTGRES_DB=jlptreference
-POSTGRES_USER=jlptuser
-POSTGRES_PASSWORD=jlptpassword
-POSTGRES_PORT=5432
-
-# PgAdmin settings
-PGADMIN_EMAIL=admin@jlptreference.com
-PGADMIN_PASSWORD=admin123
-PGADMIN_PORT=8080
+# Run the comprehensive processor
+python database/scripts/process_all_data.py
 ```
 
-## Connection String for .NET
+### Features
 
-Use this connection string in your `appsettings.json`:
+1. **JLPT Level Mapping**: Automatically maps JLPT levels from reference files
+2. **Cross-reference Processing**: Links vocabulary with examples
+3. **Data Validation**: Ensures data integrity during processing
+4. **Batch Processing**: Efficiently processes large datasets
+
+### Processing Steps
+
+1. Load JLPT level mappings from reference files
+2. Process kanji data from kanjidic2
+3. Process vocabulary data from JMdict
+4. Process vocabulary examples
+5. Process radical and decomposition data
+6. Update database with all processed data
+
+## Usage
+
+### Docker Compose
+
+The comprehensive processor runs automatically when using Docker Compose:
+
+```bash
+# Start all services including data processing
+docker-compose up
+```
+
+### Local Development
+
+For local development, you can run the processor manually:
+
+```bash
+# Install dependencies
+pip install -r database/scripts/requirements.txt
+
+# Run the comprehensive processor
+python database/scripts/run_local_processor.py
+```
+
+## Data Structure
+
+### Kanji Data Structure
 
 ```json
 {
-  "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;Port=5432;Database=jlptreference;Username=jlptuser;Password=jlptpassword"
+  "literal": "一",
+  "codepoints": [...],
+  "radicals": [...],
+  "misc": {
+    "grade": 1,
+    "strokeCounts": [1],
+    "jlptLevel": 5
+  },
+  "readingMeaning": {
+    "groups": [...],
+    "nanori": [...]
   }
 }
 ```
 
-## Commands
+### Vocabulary Data Structure
 
-### Start services
-```bash
-docker-compose up -d
+```json
+{
+  "id": "1000000",
+  "kanji": [...],
+  "kana": [...],
+  "sense": [
+    {
+      "partOfSpeech": [...],
+      "gloss": [...],
+      "examples": [...]
+    }
+  ]
+}
 ```
 
-### Stop services
-```bash
-docker-compose down
-```
+## API Endpoints
 
-### View logs
-```bash
-docker-compose logs -f postgres
-```
+### Kanji Endpoints
 
-### Reset database (removes all data)
-```bash
-docker-compose down -v
-docker-compose up -d
-```
+- `GET /api/kanji` - List kanji with filtering
+- `GET /api/kanji/{id}` - Get specific kanji by ID
+- `GET /api/kanji/character/{character}` - Get kanji by character
 
-### Access PostgreSQL directly
-```bash
-docker exec -it jlpt-reference-db psql -U jlptuser -d jlptreference
-```
+### Vocabulary Endpoints
 
-### Backup database
-```bash
-docker exec jlpt-reference-db pg_dump -U jlptuser jlptreference > backup.sql
-```
+- `GET /api/vocabulary` - List vocabulary with filtering
+- `GET /api/vocabulary/{jmdictId}` - Get specific vocabulary entry
+- `GET /api/vocabulary/jlpt/{level}` - Get vocabulary by JLPT level
+- `GET /api/vocabulary/common` - Get common vocabulary
 
-### Restore database
-```bash
-docker exec -i jlpt-reference-db psql -U jlptuser -d jlptreference < backup.sql
-```
+## Environment Variables
 
-## Sample Data
-
-The database is automatically populated with kanji data from the `kanji-jouyou.json` file. The Python processor:
-- Removes WaniKani-specific fields (starting with `wk_`)
-- Inserts all kanji data into the database
-- Handles conflicts with ON CONFLICT DO UPDATE
-
-You can run the processor locally for development:
-```bash
-cd database/scripts
-python run_local_processor.py
-```
+- `POSTGRES_HOST` - Database host (default: postgres)
+- `POSTGRES_PORT` - Database port (default: 5432)
+- `POSTGRES_DB` - Database name (default: jlptreference)
+- `POSTGRES_USER` - Database user (default: jlptuser)
+- `POSTGRES_PASSWORD` - Database password (default: jlptpassword)
 
 ## Troubleshooting
 
-### Port conflicts
-If ports 5432 or 8080 are already in use, modify the `.env` file:
+### Common Issues
+
+1. **Database Connection**: Ensure PostgreSQL is running and accessible
+2. **Data Files**: Verify all source JSON files are present
+3. **Permissions**: Ensure proper file permissions for data access
+4. **Memory**: Large datasets may require sufficient memory
+
+### Logs
+
+Check Docker logs for processing status:
+
 ```bash
-POSTGRES_PORT=5433
-PGADMIN_PORT=8081
+# Check data processor logs
+docker logs jlpt-reference-data-processor
+
+# Check database logs
+docker logs jlpt-reference-db
 ```
-
-### Permission issues
-On Linux/macOS, you might need to fix permissions:
-```bash
-sudo chown -R 999:999 ./postgres_data
-```
-
-### Container won't start
-Check logs for errors:
-```bash
-docker-compose logs postgres
-```
-
-## Health Checks
-
-The PostgreSQL service includes health checks. You can verify the database is ready by checking:
-```bash
-docker-compose ps
-```
-
-The health status should show "healthy" for the postgres service.

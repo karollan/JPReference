@@ -9,6 +9,13 @@ export interface Kanji {
     frequency?: number
     jlptOld?: number
     jlptNew?: number
+    codepoints?: string[]
+    radicals?: string[]
+    variants?: string[]
+    radicalNames?: string[]
+    dictionaryReferences?: string[]
+    queryCodes?: string[]
+    nanori?: string[]
 }
 
 export interface KanjiListCache {

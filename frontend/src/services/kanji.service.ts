@@ -12,7 +12,7 @@ interface KanjiListResponse {
 
 export class KanjiService {
     static async fetchKanjis(jlptLevel: number[], search: string | null, page: number = 1, pageSize: number = 50): Promise<KanjiListResponse> {
-        const { data } = await axios.get<KanjiListResponse>(`${API_URL}/kanji`, {
+        const response = await axios.get<Kanji[]>(`${API_URL}/kanji`, {
             params: {
                 jlptLevel: jlptLevel,
                 search: search,
@@ -23,8 +23,17 @@ export class KanjiService {
                 indexes: null
             }
         })
+        
+        // Extract metadata from headers
+        const totalCount = parseInt(response.headers['x-total-count'] || '0')
+        const currentPage = parseInt(response.headers['x-page'] || '1')
+        const currentPageSize = parseInt(response.headers['x-page-size'] || '50')
+        
+        // Ensure response.data is an array
+        const kanjiArray = Array.isArray(response.data) ? response.data : []
+        
         return {
-            items: data.items.map(k => ({
+            items: kanjiArray.map(k => ({
                 id: k.id,
                 character: k.character,
                 meanings: k.meanings,
@@ -34,11 +43,18 @@ export class KanjiService {
                 grade: k.grade,
                 frequency: k.frequency,
                 jlptOld: k.jlptOld,
-                jlptNew: k.jlptNew
+                jlptNew: k.jlptNew,
+                codepoints: k.codepoints,
+                radicals: k.radicals,
+                variants: k.variants,
+                radicalNames: k.radicalNames,
+                dictionaryReferences: k.dictionaryReferences,
+                queryCodes: k.queryCodes,
+                nanori: k.nanori
             })),
-            totalCount: data.totalCount,
-            page: data.page,
-            pageSize: data.pageSize
+            totalCount: totalCount,
+            page: currentPage,
+            pageSize: currentPageSize
         }
     }
 

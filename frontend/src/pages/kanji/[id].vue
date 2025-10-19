@@ -118,6 +118,14 @@
                   <v-list-item-subtitle>{{ kanji.strokeCount }}</v-list-item-subtitle>
                 </v-list-item>
                 
+                <v-list-item v-if="kanji.grade">
+                  <template v-slot:prepend>
+                    <v-icon>mdi-school</v-icon>
+                  </template>
+                  <v-list-item-title>Grade</v-list-item-title>
+                  <v-list-item-subtitle>{{ kanji.grade }}</v-list-item-subtitle>
+                </v-list-item>
+                
                 <v-list-item v-if="kanji.frequency">
                   <template v-slot:prepend>
                     <v-icon>mdi-chart-line</v-icon>
@@ -134,6 +142,72 @@
                   <v-list-item-subtitle>N{{ kanji.jlptOld }}</v-list-item-subtitle>
                 </v-list-item>
               </v-list>
+            </v-card-text>
+          </v-card>
+
+          <!-- Radicals -->
+          <v-card v-if="kanji.radicals && kanji.radicals.length" variant="outlined" class="mt-4">
+            <v-card-title class="text-h6 pa-4 pb-2">
+              <v-icon start>mdi-puzzle</v-icon>
+              Radicals
+            </v-card-title>
+            <v-card-text class="pt-0">
+              <div class="radicals-list">
+                <v-chip
+                  v-for="(radical, index) in kanji.radicals"
+                  :key="index"
+                  class="ma-1"
+                  color="purple"
+                  variant="outlined"
+                  size="small"
+                >
+                  {{ radical }}
+                </v-chip>
+              </div>
+            </v-card-text>
+          </v-card>
+
+          <!-- Nanori -->
+          <v-card v-if="kanji.nanori && kanji.nanori.length" variant="outlined" class="mt-4">
+            <v-card-title class="text-h6 pa-4 pb-2">
+              <v-icon start>mdi-account</v-icon>
+              Nanori (Name Readings)
+            </v-card-title>
+            <v-card-text class="pt-0">
+              <div class="nanori-list">
+                <v-chip
+                  v-for="(nanori, index) in kanji.nanori"
+                  :key="index"
+                  class="ma-1"
+                  color="teal"
+                  variant="outlined"
+                  size="small"
+                >
+                  {{ nanori }}
+                </v-chip>
+              </div>
+            </v-card-text>
+          </v-card>
+
+          <!-- Codepoints -->
+          <v-card v-if="kanji.codepoints && kanji.codepoints.length" variant="outlined" class="mt-4">
+            <v-card-title class="text-h6 pa-4 pb-2">
+              <v-icon start>mdi-code-braces</v-icon>
+              Unicode Codepoints
+            </v-card-title>
+            <v-card-text class="pt-0">
+              <div class="codepoints-list">
+                <v-chip
+                  v-for="(codepoint, index) in kanji.codepoints"
+                  :key="index"
+                  class="ma-1"
+                  color="grey"
+                  variant="outlined"
+                  size="small"
+                >
+                  U+{{ codepoint.toUpperCase() }}
+                </v-chip>
+              </div>
             </v-card-text>
           </v-card>
         </v-col>
@@ -370,7 +444,10 @@ watch(() => (route.params as any).id, () => {
 }
 
 .meanings-list,
-.readings-list {
+.readings-list,
+.radicals-list,
+.nanori-list,
+.codepoints-list {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;

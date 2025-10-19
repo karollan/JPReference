@@ -1,5 +1,3 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace JLPTReference.Api.Models;
 
 public class Kanji
@@ -14,10 +12,20 @@ public class Kanji
     public int? Frequency { get; set; }
     public int? JlptOld { get; set; }
     public int? JlptNew { get; set; }
+    public string[]? Codepoints { get; set; }
+    public string[]? Radicals { get; set; }
+    public string[]? Variants { get; set; }
+    public string[]? RadicalNames { get; set; }
+    public string[]? DictionaryReferences { get; set; }
+    public string[]? QueryCodes { get; set; }
+    public string[]? Nanori { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+    
+    // Navigation properties
+    public ICollection<KanjiRadical> KanjiRadicals { get; set; } = new List<KanjiRadical>();
+    public ICollection<KanjiDecomposition> KanjiDecompositions { get; set; } = new List<KanjiDecomposition>();
 }
-
 public class KanjiDto
 {
     public required string Character { get; set; }
@@ -29,4 +37,12 @@ public class KanjiDto
     public int? Frequency { get; set; }
     public int? JlptOld { get; set; }
     public int? JlptNew { get; set; }
+    public string[]? Codepoints { get; set; }
+    public string[]? Radicals { get; set; }
+    public string[]? Variants { get; set; }
+    public string[]? RadicalNames { get; set; }
+    public string[]? DictionaryReferences { get; set; }
+    public string[]? QueryCodes { get; set; }
+    public string[]? Nanori { get; set; }
 }
+

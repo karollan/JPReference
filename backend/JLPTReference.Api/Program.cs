@@ -29,7 +29,8 @@ builder.Services.AddCors(options => {
         policy.WithOrigins(frontendUrl)
             .AllowAnyHeader()
             .AllowAnyMethod()
-            .AllowCredentials();
+            .AllowCredentials()
+            .WithExposedHeaders("X-Total-Count", "X-Page", "X-Page-Size");
     });
 });
 

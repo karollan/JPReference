@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 """
-Local Data Processor Runner
+Comprehensive Data Processor Runner for Docker Compose
 
-This script runs the comprehensive data processor locally for development.
-It processes all data sources and populates the database.
+This script runs the comprehensive data processor that handles all data sources:
+- Kanji from kanjidic2
+- Vocabulary from JMdict
+- Vocabulary with examples
+- Radical and kradfile data
+- JLPT level mapping
 """
 
 import os
@@ -19,7 +23,7 @@ from process_all_data import JLPTDataProcessor
 
 def main():
     """Main function."""
-    print("Starting local JLPT data processor...")
+    print("Starting comprehensive JLPT data processor...")
     print("This will process all data sources including:")
     print("- Kanji data from kanjidic2")
     print("- Vocabulary data from JMdict")
@@ -27,13 +31,6 @@ def main():
     print("- Radical and kradfile data")
     print("- JLPT level mapping from reference files")
     print()
-    
-    # Set environment variables for local development
-    os.environ.setdefault('POSTGRES_HOST', 'localhost')
-    os.environ.setdefault('POSTGRES_PORT', '5432')
-    os.environ.setdefault('POSTGRES_DB', 'jlptreference')
-    os.environ.setdefault('POSTGRES_USER', 'jlptuser')
-    os.environ.setdefault('POSTGRES_PASSWORD', 'jlptpassword')
     
     # Create processor instance
     processor = JLPTDataProcessor()
@@ -43,7 +40,7 @@ def main():
         print("Data processing failed!")
         sys.exit(1)
     
-    print("Local data processing completed successfully!")
+    print("Comprehensive data processing completed successfully!")
 
 if __name__ == "__main__":
     main()

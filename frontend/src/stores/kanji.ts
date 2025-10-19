@@ -71,6 +71,11 @@ export const useKanjiStore = defineStore('kanji', () => {
 
     try {
       const response = await KanjiService.fetchKanjis(jlptLevel, search, 1, pageSize);
+      
+      // Validate response structure
+      if (!response || !Array.isArray(response.items)) {
+        throw new Error('Invalid response structure from KanjiService');
+      }
 
       //Cache hygiene
       if (Object.keys(kanjiListCache).length > 10) {
@@ -83,6 +88,7 @@ export const useKanjiStore = defineStore('kanji', () => {
       kanjiList.value = flattenPages(kanjiListCache, key)
       kanjiListCache[key].hasMorePages = kanjiList.value.length < kanjiListCache[key].totalCount
     } catch(err: any) {
+      console.error('KanjiStore error:', err);
       error.value = err.message ?? "Failed to fetch kanjis";
       kanjiList.value = [];
     } finally {
@@ -107,10 +113,17 @@ export const useKanjiStore = defineStore('kanji', () => {
             nextPage, 
             pageSize
         );
+        
+        // Validate response structure
+        if (!response || !Array.isArray(response.items)) {
+            throw new Error('Invalid response structure from KanjiService');
+        }
+        
         kanjiListCache[key]!.pages[nextPage] = response.items
         kanjiList.value = flattenPages(kanjiListCache, key);
         kanjiListCache[key]!.hasMorePages = kanjiList.value.length < kanjiListCache[key]!.totalCount
     } catch (err: any) {
+        console.error('KanjiStore fetchNextPage error:', err);
         error.value = err.message ?? "Failed to fetch more kanjis";
     } finally {
         loadingMore.value = false;
@@ -132,12 +145,16 @@ export const useKanjiStore = defineStore('kanji', () => {
 
   // Getters
   const hasMorePages = computed(() => {
-    let cache = kanjiListCache[currentCacheKey(50)] ?? { hasMorePages: false, totalCount: 0 }
+    // Use the current filters to get the right cache
+    const key = currentCacheKey(50)
+    let cache = kanjiListCache[key] ?? { hasMorePages: false, totalCount: 0 }
     return cache.hasMorePages;
   })
 
   const totalCount = computed(() => {
-    let cache = kanjiListCache[currentCacheKey(50)] ?? { totalCount: 0 }
+    // Use the current filters to get the right cache
+    const key = currentCacheKey(50)
+    let cache = kanjiListCache[key] ?? { totalCount: 0 }
     return cache.totalCount;
   })
 

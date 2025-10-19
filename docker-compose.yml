@@ -91,10 +91,10 @@ services:
     depends_on:
       - backend
 
-  # Kanji Data Processor (runs once to populate database)
-  kanji-processor:
+  # Comprehensive Data Processor (runs once to populate database)
+  data-processor:
     image: python:3.11-slim
-    container_name: jlpt-reference-kanji-processor
+    container_name: jlpt-reference-data-processor
     restart: "no"
     environment:
       POSTGRES_HOST: postgres
@@ -109,7 +109,7 @@ services:
     command: >
       sh -c "
         pip install -r requirements.txt &&
-        python run_kanji_processor.py
+        python run_comprehensive_processor.py
       "
     networks:
       - jlpt-network

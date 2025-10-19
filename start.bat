@@ -30,7 +30,7 @@ timeout /t 15 /nobreak >nul
 
 REM Run kanji processor to populate database
 echo 📚 Populating database with kanji data...
-docker-compose up kanji-processor
+docker-compose up data-processor
 
 REM Show service status
 echo 📊 Service Status:
