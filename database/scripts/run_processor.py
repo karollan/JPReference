@@ -19,11 +19,11 @@ from pathlib import Path
 script_dir = Path(__file__).parent
 sys.path.insert(0, str(script_dir))
 
-from process_all_data import JLPTDataProcessor
+from test import JLPTDataProcessor
 
 def main():
     """Main function."""
-    print("Starting comprehensive JLPT data processor...")
+    print("Starting dictionary data processor...")
     print("This will process all data sources including:")
     print("- Kanji data from kanjidic2")
     print("- Vocabulary data from JMdict")
@@ -40,7 +40,7 @@ def main():
         print("Data processing failed!")
         sys.exit(1)
     
-    print("Comprehensive data processing completed successfully!")
+    print("Data processing completed successfully!")
 
 if __name__ == "__main__":
     main()
