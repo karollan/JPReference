@@ -399,10 +399,13 @@ class JLPTDataProcessor:
                 
                 # Insert vocabulary
                 cursor.execute("""
-                    INSERT INTO jlpt.vocabulary (jlpt_level_new)
-                    VALUES (%s)
+                    INSERT INTO jlpt.vocabulary (jmdict_id, jlpt_level_new)
+                    VALUES (%s, %s)
+                    ON CONFLICT (jmdict_id) DO UPDATE SET
+                        jlpt_level_new = EXCLUDED.jlpt_level_new,
+                        updated_at = CURRENT_TIMESTAMP
                     RETURNING id
-                """, (jlpt_new,))
+                """, (jmdict_id, jlpt_new,))
                 
                 vocabulary_id = cursor.fetchone()[0]
                 self.vocabulary_cache[jmdict_id] = vocabulary_id
@@ -557,24 +560,6 @@ class JLPTDataProcessor:
                 VALUES (%s, %s)
                 ON CONFLICT DO NOTHING
             """, misc_batch)
-        
-        # # Related terms
-        # related_batch = [(sense_id, None, None, r.get('term'), r.get('reading'), 'related') for r in sense.get('related', [])]
-        # if related_batch:
-        #     cursor.executemany("""
-        #         INSERT INTO jlpt.vocabulary_sense_relation (source_sense_id, target_vocab_id, target_sense_id, target_term, target_reading, relation_type)
-        #         VALUES (%s, %s, %s, %s, %s, %s)
-        #         ON CONFLICT DO NOTHING
-        #     """, related_batch)
-        
-        # # Antonyms
-        # antonym_batch = [(sense_id, None, None, a.get('term'), a.get('reading'), 'antonym') for a in sense.get('antonym', [])]
-        # if antonym_batch:
-        #     cursor.executemany("""
-        #         INSERT INTO jlpt.vocabulary_sense_relation (source_sense_id, target_vocab_id, target_sense_id, target_term, target_reading, relation_type)
-        #         VALUES (%s, %s, %s, %s, %s, %s)
-        #         ON CONFLICT DO NOTHING
-        #     """, antonym_batch)
         
         # Language sources
         lang_batch = [
@@ -808,9 +793,11 @@ class JLPTDataProcessor:
                 
                 # Insert proper noun
                 cursor.execute("""
-                    INSERT INTO jlpt.proper_noun DEFAULT VALUES
+                    INSERT INTO jlpt.proper_noun (jmnedict_id)
+                    VALUES (%s)
+                    ON CONFLICT (jmnedict_id) DO NOTHING
                     RETURNING id
-                """)
+                """, (jmnedict_id,))
                 proper_noun_id = cursor.fetchone()[0]
                 
                 # Process kanji forms

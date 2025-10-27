@@ -289,10 +289,13 @@ class ParallelJLPTDataProcessor:
                 
                 # Insert vocabulary
                 cursor.execute("""
-                    INSERT INTO jlpt.vocabulary (jlpt_level_new)
-                    VALUES (%s)
+                    INSERT INTO jlpt.vocabulary (jmdict_id, jlpt_level_new)
+                    VALUES (%s, %s)
+                    ON CONFLICT (jmdict_id) DO UPDATE SET
+                        jlpt_level_new = EXCLUDED.jlpt_level_new,
+                        updated_at = CURRENT_TIMESTAMP
                     RETURNING id
-                """, (jlpt_new,))
+                """, (jmdict_id, jlpt_new,))
                 
                 vocabulary_id = cursor.fetchone()[0]
                 self.safe_cache_update(self.vocabulary_cache, jmdict_id, vocabulary_id, self.vocab_cache_lock)
@@ -940,15 +943,17 @@ class ParallelJLPTDataProcessor:
         try:
             processed = 0
             for name_data in name_batch_data:
-                jmdict_id = name_data.get('id', '')
-                if not jmdict_id:
+                jmnedict_id = name_data.get('id', '')
+                if not jmnedict_id:
                     continue
                 
                 # Insert proper noun
                 cursor.execute("""
-                    INSERT INTO jlpt.proper_noun DEFAULT VALUES
+                    INSERT INTO jlpt.proper_noun (jmnedict_id)
+                    VALUES (%s)
+                    ON CONFLICT (jmnedict_id) DO NOTHING
                     RETURNING id
-                """)
+                """, (jmnedict_id,))
 
                 proper_noun_id = cursor.fetchone()[0]
 

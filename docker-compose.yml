@@ -133,11 +133,35 @@ services:
     volumes:
       - ./database/scripts:/app/scripts
       - ./database/source:/app/source
+      - processor_state:/app/state
     working_dir: /app/scripts
     command: >
       sh -c "
-        pip install -r requirements.txt &&
+        if [ -f /app/state/.data_seeded ]; then
+          echo 'Data processor: Data already seeded. Skipping.'
+          exit 0
+        fi
+
+        echo 'Data processor: First run detected. Installing dependencies...'
+        pip install -r requirements.txt
+        if [ $? -ne 0 ]; then
+          echo 'Data processor: pip install failed!'
+          exit 1
+        fi
+
+        echo 'Data processor: Running data processor...'
         python -u run_processor.py
+
+        if [ $? -eq 0 ]; then
+          echo 'Data processor: Seeding successful. Creating flag file.'
+          touch /app/state/.data_seeded
+          echo 'Data processor: Done.'
+          exit 0
+        else
+          echo 'Data processor: Seeding FAILED. Flag file *not* created.'
+          echo 'Data processor: The script will re-run on next start.'
+          exit 1
+        fi
       "
     networks:
       - jlpt-network
@@ -157,6 +181,8 @@ volumes:
   postgres_data:
     driver: local
   pgadmin_data:
+    driver: local
+  processor_state:
     driver: local
 
 networks:
