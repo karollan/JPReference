@@ -18,9 +18,9 @@ services:
       - jlpt-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      interval: 10s
+      timeout: 5s
+      retries: 5
     command: >
       sh -c "
         mkdir -p /var/lib/postgresql/data/pgdata &&
@@ -28,6 +28,22 @@ services:
         chmod -R 700 /var/lib/postgresql/data &&
         docker-entrypoint.sh postgres
       "
+      postgres
+      -c max_connections=200
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+      -c maintenance_work_mem=128MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=16MB
+      -c default_statistics_target=100
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=200
+      -c work_mem=16MB
+      -c min_wal_size=1GB
+      -c max_wal_size=4GB
+      -c max_worker_processes=8
+      -c max_parallel_workers_per_gather=4
+      -c max_parallel_workers=8
 
   # PgAdmin for database management
   pgadmin:
@@ -96,20 +112,24 @@ services:
     depends_on:
       - backend
 
-  # Comprehensive Data Processor (runs once to populate database)
+  # Data Processor (runs once to populate database)
   data-processor:
     image: python:3.11-slim
     container_name: jlpt-reference-data-processor
     restart: "no"
+    stdin_open: true
+    tty: true
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PYTHONUNBUFFERED: 1
       PYTHONIOENCODING: utf-8
       LANG: C.UTF-8
       LC_ALL: C.UTF-8
+      NUM_WORKERS: 8
     volumes:
       - ./database/scripts:/app/scripts
       - ./database/source:/app/source
@@ -117,7 +137,7 @@ services:
     command: >
       sh -c "
         pip install -r requirements.txt &&
-        python run_processor.py
+        python -u run_processor.py
       "
     networks:
       - jlpt-network
@@ -127,9 +147,11 @@ services:
     deploy:
       resources:
         limits:
-          memory: 2G
+          memory: 4G
+          cpus: '4'
         reservations:
-          memory: 1G
+          memory: 2G
+          cpus: '2'
 
 volumes:
   postgres_data:

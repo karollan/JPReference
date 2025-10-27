@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Memory-Optimized Comprehensive Data Processor for JLPT Reference Database
+Memory-Optimized Data Processor for JLPT Reference Database
 
 Optimizations:
 1. Stream JSON files using ijson instead of loading entire files
@@ -13,7 +13,6 @@ import sys
 import time
 import psycopg2
 from pathlib import Path
-from typing import Dict, List, Any, Optional, Tuple, Set
 import ijson
 
 # Batch size for commits and bulk inserts
@@ -1383,7 +1382,7 @@ class JLPTDataProcessor:
 def main():
     """Main function."""
     print("=" * 60)
-    print("JLPT Reference Database - Optimized Data Processor")
+    print("JLPT Reference Database - Data Processor")
     print("=" * 60)
     
     processor = JLPTDataProcessor()
@@ -1391,7 +1390,7 @@ def main():
     if not processor.process_all_data():
         sys.exit(1)
     
-    print("\nComprehensive data processing completed successfully!")
+    print("\nData processing completed successfully!")
 
 if __name__ == "__main__":
     main()
