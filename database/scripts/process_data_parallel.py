@@ -510,50 +510,31 @@ class ParallelJLPTDataProcessor:
 
     def _process_sense_attributes(self, cursor, sense_id, sense, pending_relations_list):
         """Process attributes for a sense."""
-        # Part of speech
-        pos_batch = []
+        # Unified tag processing
+        tag_batch = []
+        
         for pos in sense.get('partOfSpeech', []):
             self.ensure_tag_exists(cursor, pos, 'part_of_speech')
-            pos_batch.append((sense_id, pos))
-        if pos_batch:
-            cursor.executemany("""
-                INSERT INTO jlpt.vocabulary_sense_pos (sense_id, tag_code)
-                VALUES (%s, %s)
-                ON CONFLICT DO NOTHING
-            """, pos_batch)
+            tag_batch.append((sense_id, pos, 'pos'))
         
-        # Field tags
-        field_batch = [(sense_id, field) for field in sense.get('field', [])]
-        if field_batch:
-            for _, field in field_batch:
-                self.ensure_tag_exists(cursor, field, 'field')
-            cursor.executemany("""
-                INSERT INTO jlpt.vocabulary_sense_field (sense_id, tag_code)
-                VALUES (%s, %s)
-                ON CONFLICT DO NOTHING
-            """, field_batch)
+        for field in sense.get('field', []):
+            self.ensure_tag_exists(cursor, field, 'field')
+            tag_batch.append((sense_id, field, 'field'))
         
-        # Dialect tags
-        dialect_batch = [(sense_id, d) for d in sense.get('dialect', [])]
-        if dialect_batch:
-            for _, d in dialect_batch:
-                self.ensure_tag_exists(cursor, d, 'dialect')
-            cursor.executemany("""
-                INSERT INTO jlpt.vocabulary_sense_dialect (sense_id, tag_code)
-                VALUES (%s, %s)
-                ON CONFLICT DO NOTHING
-            """, dialect_batch)
+        for dialect in sense.get('dialect', []):
+            self.ensure_tag_exists(cursor, dialect, 'dialect')
+            tag_batch.append((sense_id, dialect, 'dialect'))
         
-        # Misc tags
-        misc_batch = [(sense_id, m) for m in sense.get('misc', [])]
-        if misc_batch:
-            for _, m in misc_batch:
-                self.ensure_tag_exists(cursor, m, 'misc')
+        for misc in sense.get('misc', []):
+            self.ensure_tag_exists(cursor, misc, 'misc')
+            tag_batch.append((sense_id, misc, 'misc'))
+        
+        if tag_batch:
             cursor.executemany("""
-                INSERT INTO jlpt.vocabulary_sense_misc (sense_id, tag_code)
-                VALUES (%s, %s)
+                INSERT INTO jlpt.vocabulary_sense_tag (sense_id, tag_code, tag_type)
+                VALUES (%s, %s, %s)
                 ON CONFLICT DO NOTHING
-            """, misc_batch)
+            """, tag_batch)
         
         # Language sources
         lang_batch = [

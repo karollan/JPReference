@@ -224,49 +224,20 @@ CREATE TABLE IF NOT EXISTS vocabulary_sense (
 );
 CREATE INDEX IF NOT EXISTS idx_vocabulary_sense_vocab ON vocabulary_sense(vocabulary_id);
 
--- Part of speech for senses
-CREATE TABLE IF NOT EXISTS vocabulary_sense_pos (
+-- Vocabulary sense tags (unified)
+CREATE TABLE IF NOT EXISTS vocabulary_sense_tag (
     id UUID PRIMARY KEY DEFAULT uuidv7(),
     sense_id UUID NOT NULL REFERENCES vocabulary_sense(id) ON DELETE CASCADE,
     tag_code VARCHAR(50) NOT NULL REFERENCES tag(code),
+    tag_type VARCHAR(20) NOT NULL CHECK (tag_type IN ('pos', 'field', 'dialect', 'misc')),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(sense_id, tag_code, tag_type)
 );
-CREATE INDEX IF NOT EXISTS idx_vocabulary_sense_pos_sense ON vocabulary_sense_pos(sense_id);
-CREATE INDEX IF NOT EXISTS idx_vocabulary_sense_pos_tag ON vocabulary_sense_pos(tag_code);
-
--- Field tags for senses
-CREATE TABLE IF NOT EXISTS vocabulary_sense_field (
-    id UUID PRIMARY KEY DEFAULT uuidv7(),
-    sense_id UUID NOT NULL REFERENCES vocabulary_sense(id) ON DELETE CASCADE,
-    tag_code VARCHAR(50) NOT NULL REFERENCES tag(code),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-CREATE INDEX IF NOT EXISTS idx_vocabulary_sense_field_sense ON vocabulary_sense_field(sense_id);
-CREATE INDEX IF NOT EXISTS idx_vocabulary_sense_field_tag ON vocabulary_sense_field(tag_code);
-
--- Dialect tags for senses
-CREATE TABLE IF NOT EXISTS vocabulary_sense_dialect (
-    id UUID PRIMARY KEY DEFAULT uuidv7(),
-    sense_id UUID NOT NULL REFERENCES vocabulary_sense(id) ON DELETE CASCADE,
-    tag_code VARCHAR(50) NOT NULL REFERENCES tag(code),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-CREATE INDEX IF NOT EXISTS idx_vocabulary_sense_dialect_sense ON vocabulary_sense_dialect(sense_id);
-CREATE INDEX IF NOT EXISTS idx_vocabulary_sense_dialect_tag ON vocabulary_sense_dialect(tag_code);
-
--- Misc tags for senses
-CREATE TABLE IF NOT EXISTS vocabulary_sense_misc (
-    id UUID PRIMARY KEY DEFAULT uuidv7(),
-    sense_id UUID NOT NULL REFERENCES vocabulary_sense(id) ON DELETE CASCADE,
-    tag_code VARCHAR(50) NOT NULL REFERENCES tag(code),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-CREATE INDEX IF NOT EXISTS idx_vocabulary_sense_misc_sense ON vocabulary_sense_misc(sense_id);
-CREATE INDEX IF NOT EXISTS idx_vocabulary_sense_misc_tag ON vocabulary_sense_misc(tag_code);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_sense_tag_sense ON vocabulary_sense_tag(sense_id);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_sense_tag_tag ON vocabulary_sense_tag(tag_code);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_sense_tag_type ON vocabulary_sense_tag(tag_type);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_sense_tag_sense_type ON vocabulary_sense_tag(sense_id, tag_type);
 
 -- Vocabulary relation
 CREATE TABLE IF NOT EXISTS vocabulary_sense_relation (
@@ -508,8 +479,8 @@ CREATE INDEX idx_vocabulary_kana_common ON vocabulary_kana(vocabulary_id, is_com
 CREATE INDEX idx_vocabulary_gloss_fts ON vocabulary_sense_gloss USING gin(to_tsvector('english', text));
 CREATE INDEX idx_vocabulary_gloss_lang ON vocabulary_sense_gloss(lang, sense_id);
 
--- Part of speech filtering
-CREATE INDEX idx_vocabulary_sense_pos_lookup ON vocabulary_sense_pos(sense_id, tag_code);
+-- Sense tag filtering
+CREATE INDEX idx_vocabulary_sense_tag_lookup ON vocabulary_sense_tag(sense_id, tag_type, tag_code);
 
 -- Vocabulary relationships
 CREATE INDEX idx_vocabulary_uses_kanji_lookup ON vocabulary_uses_kanji(vocabulary_id, kanji_id);
@@ -589,22 +560,16 @@ SELECT
     STRING_AGG(DISTINCT vk.text, ', ' ORDER BY vk.text) as kanji_forms,
     STRING_AGG(DISTINCT vka.text, ', ' ORDER BY vka.text) as kana_readings,
     v.jlpt_level_new,
-    STRING_AGG(DISTINCT t_pos.code, ', ') as part_of_speech_tags,
-    STRING_AGG(DISTINCT t_field.code, ', ') as field_tags,
-    STRING_AGG(DISTINCT t_dialect.code, ', ') as dialect_tags,
-    STRING_AGG(DISTINCT t_misc.code, ', ') as misc_tags
+    STRING_AGG(DISTINCT t.code, ', ') FILTER (WHERE vst.tag_type = 'pos') as part_of_speech_tags,
+    STRING_AGG(DISTINCT t.code, ', ') FILTER (WHERE vst.tag_type = 'field') as field_tags,
+    STRING_AGG(DISTINCT t.code, ', ') FILTER (WHERE vst.tag_type = 'dialect') as dialect_tags,
+    STRING_AGG(DISTINCT t.code, ', ') FILTER (WHERE vst.tag_type = 'misc') as misc_tags
 FROM vocabulary v
 LEFT JOIN vocabulary_kanji vk ON vk.vocabulary_id = v.id
 LEFT JOIN vocabulary_kana vka ON vka.vocabulary_id = v.id
 LEFT JOIN vocabulary_sense vs ON vs.vocabulary_id = v.id
-LEFT JOIN vocabulary_sense_pos vsp ON vsp.sense_id = vs.id
-LEFT JOIN tag t_pos ON t_pos.code = vsp.tag_code
-LEFT JOIN vocabulary_sense_field vsf ON vsf.sense_id = vs.id
-LEFT JOIN tag t_field ON t_field.code = vsf.tag_code
-LEFT JOIN vocabulary_sense_dialect vsd ON vsd.sense_id = vs.id
-LEFT JOIN tag t_dialect ON t_dialect.code = vsd.tag_code
-LEFT JOIN vocabulary_sense_misc vsm ON vsm.sense_id = vs.id
-LEFT JOIN tag t_misc ON t_misc.code = vsm.tag_code
+LEFT JOIN vocabulary_sense_tag vst ON vst.sense_id = vs.id
+LEFT JOIN tag t ON t.code = vst.tag_code
 GROUP BY v.id, v.jlpt_level_new;
 
 -- ============================================
@@ -783,23 +748,8 @@ CREATE TRIGGER trigger_vocabulary_sense_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER trigger_vocabulary_sense_pos_updated_at
-    BEFORE UPDATE ON vocabulary_sense_pos
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER trigger_vocabulary_sense_field_updated_at
-    BEFORE UPDATE ON vocabulary_sense_field
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER trigger_vocabulary_sense_dialect_updated_at
-    BEFORE UPDATE ON vocabulary_sense_dialect
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER trigger_vocabulary_sense_misc_updated_at
-    BEFORE UPDATE ON vocabulary_sense_misc
+CREATE TRIGGER trigger_vocabulary_sense_tag_updated_at
+    BEFORE UPDATE ON vocabulary_sense_tag
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
@@ -947,22 +897,16 @@ BEGIN
         v.jlpt_level_new,
         STRING_AGG(DISTINCT vk.text, ', ' ORDER BY vk.text) as kanji_forms,
         STRING_AGG(DISTINCT vka.text, ', ' ORDER BY vka.text) as kana_readings,
-        STRING_AGG(DISTINCT t_pos.code, ', ') as part_of_speech_tags,
-        STRING_AGG(DISTINCT t_field.code, ', ') as field_tags,
-        STRING_AGG(DISTINCT t_dialect.code, ', ') as dialect_tags,
-        STRING_AGG(DISTINCT t_misc.code, ', ') as misc_tags
+        STRING_AGG(DISTINCT t.code, ', ') FILTER (WHERE vst.tag_type = 'pos') as part_of_speech_tags,
+        STRING_AGG(DISTINCT t.code, ', ') FILTER (WHERE vst.tag_type = 'field') as field_tags,
+        STRING_AGG(DISTINCT t.code, ', ') FILTER (WHERE vst.tag_type = 'dialect') as dialect_tags,
+        STRING_AGG(DISTINCT t.code, ', ') FILTER (WHERE vst.tag_type = 'misc') as misc_tags
     FROM vocabulary v
     LEFT JOIN vocabulary_kanji vk ON vk.vocabulary_id = v.id
     LEFT JOIN vocabulary_kana vka ON vka.vocabulary_id = v.id
     LEFT JOIN vocabulary_sense vs ON vs.vocabulary_id = v.id
-    LEFT JOIN vocabulary_sense_pos vsp ON vsp.sense_id = vs.id
-    LEFT JOIN tag t_pos ON t_pos.code = vsp.tag_code
-    LEFT JOIN vocabulary_sense_field vsf ON vsf.sense_id = vs.id
-    LEFT JOIN tag t_field ON t_field.code = vsf.tag_code
-    LEFT JOIN vocabulary_sense_dialect vsd ON vsd.sense_id = vs.id
-    LEFT JOIN tag t_dialect ON t_dialect.code = vsd.tag_code
-    LEFT JOIN vocabulary_sense_misc vsm ON vsm.sense_id = vs.id
-    LEFT JOIN tag t_misc ON t_misc.code = vsm.tag_code
+    LEFT JOIN vocabulary_sense_tag vst ON vst.sense_id = vs.id
+    LEFT JOIN tag t ON t.code = vst.tag_code
     WHERE v.jlpt_level_new = p_jlpt_level
     GROUP BY v.id, v.jlpt_level_new
     ORDER BY v.id
@@ -1036,7 +980,7 @@ BEGIN
         v.jlpt_level_new,
         STRING_AGG(DISTINCT vk.text, ', ' ORDER BY vk.text) as kanji_forms,
         STRING_AGG(DISTINCT vka.text, ', ' ORDER BY vka.text) as kana_readings,
-        STRING_AGG(DISTINCT t_pos.code, ', ') as part_of_speech_tags,
+        STRING_AGG(DISTINCT t.code, ', ') FILTER (WHERE vst.tag_type = 'pos') as part_of_speech_tags,
         ts_rank(
             to_tsvector('japanese', STRING_AGG(DISTINCT vk.text, ' ' ORDER BY vk.text)),
             plainto_tsquery('japanese', p_search_text)
@@ -1045,8 +989,8 @@ BEGIN
     LEFT JOIN vocabulary_kanji vk ON vk.vocabulary_id = v.id
     LEFT JOIN vocabulary_kana vka ON vka.vocabulary_id = v.id
     LEFT JOIN vocabulary_sense vs ON vs.vocabulary_id = v.id
-    LEFT JOIN vocabulary_sense_pos vsp ON vsp.sense_id = vs.id
-    LEFT JOIN tag t_pos ON t_pos.code = vsp.tag_code
+    LEFT JOIN vocabulary_sense_tag vst ON vst.sense_id = vs.id
+    LEFT JOIN tag t ON t.code = vst.tag_code
     WHERE 
         vk.text ILIKE '%' || p_search_text || '%' OR
         vka.text ILIKE '%' || p_search_text || '%' OR
