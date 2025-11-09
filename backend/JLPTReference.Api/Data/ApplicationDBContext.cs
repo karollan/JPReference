@@ -3,6 +3,7 @@ using JLPTReference.Api.Entities.Radical;
 using JLPTReference.Api.Entities.Vocabulary;
 using JLPTReference.Api.Entities.ProperNoun;
 using JLPTReference.Api.Entities.Relations;
+using JLPTReference.Api.DTOs.Search;
 using Microsoft.EntityFrameworkCore;
 
 namespace JLPTReference.Api.Data;

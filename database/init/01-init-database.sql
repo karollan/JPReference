@@ -8,6 +8,8 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pg_trgm";
 
+SET pg_trgm.similarity_threshold = 0.4; -- stricter for dictionary usage
+
 -- Create a schema for JLPT-specific tables
 CREATE SCHEMA IF NOT EXISTS jlpt;
 
@@ -436,105 +438,105 @@ CREATE INDEX IF NOT EXISTS idx_proper_noun_uses_kanji_kanji ON proper_noun_uses_
 -- KANJI PERFORMANCE INDEXES
 -- ============================================
 -- JLPT level with frequency for pagination
-CREATE INDEX idx_kanji_jlpt_frequency ON kanji(jlpt_level_new, frequency DESC, id);
+CREATE INDEX IF NOT EXISTS idx_kanji_jlpt_frequency ON kanji(jlpt_level_new, frequency DESC, id);
 
 -- Stroke count for kanji lookup
-CREATE INDEX idx_kanji_stroke_count ON kanji(stroke_count, jlpt_level_new);
+CREATE INDEX IF NOT EXISTS idx_kanji_stroke_count ON kanji(stroke_count, jlpt_level_new);
 
 -- Grade level for educational content
-CREATE INDEX idx_kanji_grade ON kanji(grade, jlpt_level_new);
+CREATE INDEX IF NOT EXISTS idx_kanji_grade ON kanji(grade, jlpt_level_new);
 
 -- Frequency-based ordering
-CREATE INDEX idx_kanji_frequency_desc ON kanji(frequency DESC NULLS LAST);
+CREATE INDEX IF NOT EXISTS idx_kanji_frequency_desc ON kanji(frequency DESC NULLS LAST);
 
 -- Radical-based kanji lookup
-CREATE INDEX idx_kanji_radical_lookup ON kanji_radical(radical_id, kanji_id);
+CREATE INDEX IF NOT EXISTS idx_kanji_radical_lookup ON kanji_radical(radical_id, kanji_id);
 
 -- Kanji readings for search
-CREATE INDEX idx_kanji_reading_search ON kanji_reading(kanji_id, type, value);
+CREATE INDEX IF NOT EXISTS idx_kanji_reading_search ON kanji_reading(kanji_id, type, value);
 
 -- Kanji meanings for English search
-CREATE INDEX idx_kanji_meaning_fts ON kanji_meaning USING gin(to_tsvector('english', value));
-CREATE INDEX idx_kanji_meaning_lang_id ON kanji_meaning(lang, kanji_id);
+CREATE INDEX IF NOT EXISTS idx_kanji_meaning_fts ON kanji_meaning USING gin(to_tsvector('english', value));
+CREATE INDEX IF NOT EXISTS idx_kanji_meaning_lang_id ON kanji_meaning(lang, kanji_id);
 
 -- ============================================
 -- VOCABULARY PERFORMANCE INDEXES
 -- ============================================
 -- JLPT level vocabulary with common status
-CREATE INDEX idx_vocabulary_jlpt_common ON vocabulary(jlpt_level_new, id);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_jlpt_common ON vocabulary(jlpt_level_new, id);
 
 -- Vocabulary kanji text search (Japanese)
-CREATE INDEX idx_vocabulary_kanji_text_gin ON vocabulary_kanji USING gin(to_tsvector('japanese', text));
-CREATE INDEX idx_vocabulary_kanji_text_trgm ON vocabulary_kanji USING gin(text gin_trgm_ops);
+--CREATE INDEX IF NOT EXISTS idx_vocabulary_kanji_text_gin ON vocabulary_kanji USING gin(to_tsvector('japanese', text));
+CREATE INDEX IF NOT EXISTS idx_vocabulary_kanji_text_trgm ON vocabulary_kanji USING gin(text gin_trgm_ops);
 
 -- Vocabulary kana text search (Japanese)
-CREATE INDEX idx_vocabulary_kana_text_gin ON vocabulary_kana USING gin(to_tsvector('japanese', text));
-CREATE INDEX idx_vocabulary_kana_text_trgm ON vocabulary_kana USING gin(text gin_trgm_ops);
+--CREATE INDEX IF NOT EXISTS idx_vocabulary_kana_text_gin ON vocabulary_kana USING gin(to_tsvector('japanese', text));
+CREATE INDEX IF NOT EXISTS idx_vocabulary_kana_text_trgm ON vocabulary_kana USING gin(text gin_trgm_ops);
 
 -- Common vocabulary optimization
-CREATE INDEX idx_vocabulary_kanji_common ON vocabulary_kanji(vocabulary_id, is_common) WHERE is_common = true;
-CREATE INDEX idx_vocabulary_kana_common ON vocabulary_kana(vocabulary_id, is_common) WHERE is_common = true;
+CREATE INDEX IF NOT EXISTS idx_vocabulary_kanji_common ON vocabulary_kanji(vocabulary_id, is_common) WHERE is_common = true;
+CREATE INDEX IF NOT EXISTS idx_vocabulary_kana_common ON vocabulary_kana(vocabulary_id, is_common) WHERE is_common = true;
 
 -- Vocabulary sense glosses for English search
-CREATE INDEX idx_vocabulary_gloss_fts ON vocabulary_sense_gloss USING gin(to_tsvector('english', text));
-CREATE INDEX idx_vocabulary_gloss_lang ON vocabulary_sense_gloss(lang, sense_id);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_gloss_fts ON vocabulary_sense_gloss USING gin(to_tsvector('english', text));
+CREATE INDEX IF NOT EXISTS idx_vocabulary_gloss_lang ON vocabulary_sense_gloss(lang, sense_id);
 
 -- Sense tag filtering
-CREATE INDEX idx_vocabulary_sense_tag_lookup ON vocabulary_sense_tag(sense_id, tag_type, tag_code);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_sense_tag_lookup ON vocabulary_sense_tag(sense_id, tag_type, tag_code);
 
 -- Vocabulary relationships
-CREATE INDEX idx_vocabulary_uses_kanji_lookup ON vocabulary_uses_kanji(vocabulary_id, kanji_id);
-CREATE INDEX idx_vocabulary_uses_kanji_reverse ON vocabulary_uses_kanji(kanji_id, vocabulary_id);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_uses_kanji_lookup ON vocabulary_uses_kanji(vocabulary_id, kanji_id);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_uses_kanji_reverse ON vocabulary_uses_kanji(kanji_id, vocabulary_id);
 
 -- ============================================
 -- PROPER NOUN PERFORMANCE INDEXES
 -- ============================================
 -- Proper noun text search
-CREATE INDEX idx_proper_noun_kanji_text_gin ON proper_noun_kanji USING gin(to_tsvector('japanese', text));
-CREATE INDEX idx_proper_noun_kana_text_gin ON proper_noun_kana USING gin(to_tsvector('japanese', text));
+--CREATE INDEX IF NOT EXISTS idx_proper_noun_kanji_text_gin ON proper_noun_kanji USING gin(to_tsvector('japanese', text));
+--CREATE INDEX IF NOT EXISTS idx_proper_noun_kana_text_gin ON proper_noun_kana USING gin(to_tsvector('japanese', text));
 
 -- Proper noun relationships
-CREATE INDEX idx_proper_noun_uses_kanji_lookup ON proper_noun_uses_kanji(proper_noun_id, kanji_id);
-CREATE INDEX idx_proper_noun_uses_kanji_reverse ON proper_noun_uses_kanji(kanji_id, proper_noun_id);
+CREATE INDEX IF NOT EXISTS idx_proper_noun_uses_kanji_lookup ON proper_noun_uses_kanji(proper_noun_id, kanji_id);
+CREATE INDEX IF NOT EXISTS idx_proper_noun_uses_kanji_reverse ON proper_noun_uses_kanji(kanji_id, proper_noun_id);
 
 -- ============================================
 -- RADICAL PERFORMANCE INDEXES
 -- ============================================
 -- Radical lookup by stroke count
-CREATE INDEX idx_radical_stroke_count ON radical(stroke_count, literal);
+CREATE INDEX IF NOT EXISTS idx_radical_stroke_count ON radical(stroke_count, literal);
 
 -- ============================================
 -- TAG PERFORMANCE INDEXES
 -- ============================================
 -- Tag category lookup
-CREATE INDEX idx_tag_category_lookup ON tag(category, code);
+CREATE INDEX IF NOT EXISTS idx_tag_category_lookup ON tag(category, code);
 
 -- ============================================
 -- COMPOSITE INDEXES FOR COMPLEX QUERIES
 -- ============================================
 -- Kanji with readings and meanings (for detailed views)
-CREATE INDEX idx_kanji_detailed ON kanji(id, jlpt_level_new, stroke_count, frequency);
+CREATE INDEX IF NOT EXISTS idx_kanji_detailed ON kanji(id, jlpt_level_new, stroke_count, frequency);
 
 -- Vocabulary with senses (for detailed views)
-CREATE INDEX idx_vocabulary_detailed ON vocabulary(id, jlpt_level_new);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_detailed ON vocabulary(id, jlpt_level_new);
 
 -- ============================================
 -- SEARCH OPTIMIZATION INDEXES
 -- ============================================
 -- Prefix search optimization
-CREATE INDEX idx_vocabulary_kanji_prefix ON vocabulary_kanji(text varchar_pattern_ops);
-CREATE INDEX idx_vocabulary_kana_prefix ON vocabulary_kana(text varchar_pattern_ops);
-CREATE INDEX idx_kanji_reading_prefix ON kanji_reading(value varchar_pattern_ops);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_kanji_prefix ON vocabulary_kanji(text varchar_pattern_ops);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_kana_prefix ON vocabulary_kana(text varchar_pattern_ops);
+CREATE INDEX IF NOT EXISTS idx_kanji_reading_prefix ON kanji_reading(value varchar_pattern_ops);
 
 -- Suffix search optimization
-CREATE INDEX idx_vocabulary_kanji_suffix ON vocabulary_kanji(reverse(text) varchar_pattern_ops);
-CREATE INDEX idx_vocabulary_kana_suffix ON vocabulary_kana(reverse(text) varchar_pattern_ops);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_kanji_suffix ON vocabulary_kanji(reverse(text) varchar_pattern_ops);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_kana_suffix ON vocabulary_kana(reverse(text) varchar_pattern_ops);
 
 -- ============================================
 -- UTILITY VIEWS
 -- ============================================
 -- View for kanji with all basic info
-CREATE VIEW IF NOT EXISTS kanji_summary AS
+CREATE OR REPLACE VIEW kanji_summary AS
 SELECT 
     k.id,
     k.literal,
@@ -543,18 +545,16 @@ SELECT
     k.frequency,
     k.jlpt_level_old,
     k.jlpt_level_new,
-    r.literal as radical_literal,
     STRING_AGG(DISTINCT kr.value, ', ' ORDER BY kr.value) FILTER (WHERE kr.type = 'ja_on') as on_readings,
     STRING_AGG(DISTINCT kr.value, ', ' ORDER BY kr.value) FILTER (WHERE kr.type = 'ja_kun') as kun_readings,
     STRING_AGG(DISTINCT km.value, '; ' ORDER BY km.value) FILTER (WHERE km.lang = 'en') as meanings_en
 FROM kanji k
-LEFT JOIN radical r ON r.id = k.classical_radical
 LEFT JOIN kanji_reading kr ON kr.kanji_id = k.id
 LEFT JOIN kanji_meaning km ON km.kanji_id = k.id
-GROUP BY k.id, k.literal, k.grade, k.stroke_count, k.frequency, k.jlpt_level_old, k.jlpt_level_new, r.literal;
+GROUP BY k.id, k.literal, k.grade, k.stroke_count, k.frequency, k.jlpt_level_old, k.jlpt_level_new;
 
 -- View for vocabulary with basic info and tags
-CREATE VIEW IF NOT EXISTS vocabulary_summary AS
+CREATE OR REPLACE VIEW vocabulary_summary AS
 SELECT 
     v.id,
     STRING_AGG(DISTINCT vk.text, ', ' ORDER BY vk.text) as kanji_forms,
@@ -577,7 +577,7 @@ GROUP BY v.id, v.jlpt_level_new;
 -- ============================================
 
 -- Kanji statistics by JLPT level
-CREATE MATERIALIZED VIEW kanji_stats AS
+CREATE MATERIALIZED VIEW IF NOT EXISTS kanji_stats AS
 SELECT 
     jlpt_level_new,
     COUNT(*) as kanji_count,
@@ -592,7 +592,7 @@ WHERE jlpt_level_new IS NOT NULL
 GROUP BY jlpt_level_new;
 
 -- Vocabulary statistics by JLPT level
-CREATE MATERIALIZED VIEW vocabulary_stats AS
+CREATE MATERIALIZED VIEW IF NOT EXISTS vocabulary_stats AS
 SELECT 
     v.jlpt_level_new,
     COUNT(DISTINCT v.id) as vocabulary_count,
@@ -607,7 +607,7 @@ WHERE v.jlpt_level_new IS NOT NULL
 GROUP BY v.jlpt_level_new;
 
 -- Radical usage statistics
-CREATE MATERIALIZED VIEW radical_stats AS
+CREATE MATERIALIZED VIEW IF NOT EXISTS radical_stats AS
 SELECT 
     r.id as radical_id,
     r.literal as radical_literal,
@@ -620,7 +620,7 @@ LEFT JOIN kanji k ON k.id = kr.kanji_id
 GROUP BY r.id, r.literal, r.stroke_count;
 
 -- Most common kanji by frequency
-CREATE MATERIALIZED VIEW common_kanji AS
+CREATE MATERIALIZED VIEW IF NOT EXISTS common_kanji AS
 SELECT 
     k.id,
     k.literal,
@@ -639,7 +639,7 @@ ORDER BY k.frequency ASC
 LIMIT 1000;
 
 -- Vocabulary with kanji relationships
-CREATE MATERIALIZED VIEW vocabulary_kanji_relationships AS
+CREATE MATERIALIZED VIEW IF NOT EXISTS vocabulary_kanji_relationships AS
 SELECT 
     v.id as vocabulary_id,
     v.jlpt_level_new,
@@ -656,13 +656,13 @@ WHERE v.jlpt_level_new IS NOT NULL
 GROUP BY v.id, v.jlpt_level_new;
 
 -- Create indexes on materialized views
-CREATE INDEX idx_kanji_stats_jlpt ON kanji_stats(jlpt_level_new);
-CREATE INDEX idx_vocabulary_stats_jlpt ON vocabulary_stats(jlpt_level_new);
-CREATE INDEX idx_radical_stats_stroke ON radical_stats(stroke_count);
-CREATE INDEX idx_radical_stats_usage ON radical_stats(kanji_count DESC);
-CREATE INDEX idx_common_kanji_frequency ON common_kanji(frequency ASC);
-CREATE INDEX idx_vocabulary_kanji_relationships_jlpt ON vocabulary_kanji_relationships(jlpt_level_new);
-CREATE INDEX idx_vocabulary_kanji_relationships_kanji_count ON vocabulary_kanji_relationships(kanji_count);
+CREATE INDEX IF NOT EXISTS idx_kanji_stats_jlpt ON kanji_stats(jlpt_level_new);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_stats_jlpt ON vocabulary_stats(jlpt_level_new);
+CREATE INDEX IF NOT EXISTS idx_radical_stats_stroke ON radical_stats(stroke_count);
+CREATE INDEX IF NOT EXISTS idx_radical_stats_usage ON radical_stats(kanji_count DESC);
+CREATE INDEX IF NOT EXISTS idx_common_kanji_frequency ON common_kanji(frequency ASC);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_kanji_relationships_jlpt ON vocabulary_kanji_relationships(jlpt_level_new);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_kanji_relationships_kanji_count ON vocabulary_kanji_relationships(kanji_count);
 
 -- ============================================
 -- TRIGGERS FOR UPDATED_AT COLUMNS

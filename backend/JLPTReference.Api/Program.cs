@@ -1,6 +1,10 @@
 using Microsoft.OpenApi.Models;
 using Microsoft.EntityFrameworkCore;
 using JLPTReference.Api.Data;
+using JLPTReference.Api.Services.Interfaces;
+using JLPTReference.Api.Services.Implementations;
+using JLPTReference.Api.Repositories.Interfaces;
+using JLPTReference.Api.Repositories.Implementations;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,6 +38,9 @@ builder.Services.AddCors(options => {
     });
 });
 
+// Add services
+builder.Services.AddScoped<ISearchService, SearchService>();
+builder.Services.AddScoped<ISearchRepository, SearchRepository>();
 
 var app = builder.Build();
 
