@@ -19,30 +19,30 @@ public class SearchService : ISearchService
         return results;
     }
 
-    public async Task<SearchResultKanji> SearchKanjiAsync(string query, int page, int pageSize)
+    public async Task<SearchResultKanji> SearchKanjiAsync(GlobalSearchRequest request)
     {
-        if (page < 1) page = 1;
-        if (pageSize < 1) pageSize = 50;
-        if (pageSize > 100) pageSize = 100;
-        var results = await _searchRepository.SearchKanjiAsync(query, page, pageSize);
+        if (request.Page < 1) request.Page = 1;
+        if (request.PageSize < 1) request.PageSize = 50;
+        if (request.PageSize > 100) request.PageSize = 100;
+        var results = await _searchRepository.SearchKanjiAsync(request);
         return results;
     }
 
-    public async Task<SearchResultProperNoun> SearchProperNounAsync(string query, int page, int pageSize)
+    public async Task<SearchResultProperNoun> SearchProperNounAsync(GlobalSearchRequest request)
     {
-        if (page < 1) page = 1;
-        if (pageSize < 1) pageSize = 50;
-        if (pageSize > 100) pageSize = 100;
-        var results = await _searchRepository.SearchProperNounAsync(query, page, pageSize);
+        if (request.Page < 1) request.Page = 1;
+        if (request.PageSize < 1) request.PageSize = 50;
+        if (request.PageSize > 100) request.PageSize = 100;
+        var results = await _searchRepository.SearchProperNounAsync(request);
         return results;
     }
 
-    public async Task<SearchResultVocabulary> SearchVocabularyAsync(string query, int page, int pageSize)
+    public async Task<SearchResultVocabulary> SearchVocabularyAsync(GlobalSearchRequest request)
     {
-        if (page < 1) page = 1;
-        if (pageSize < 1) pageSize = 50;
-        if (pageSize > 100) pageSize = 100;
-        var results = await _searchRepository.SearchVocabularyAsync(query, page, pageSize);
+        if (request.Page < 1) request.Page = 1;
+        if (request.PageSize < 1) request.PageSize = 50;
+        if (request.PageSize > 100) request.PageSize = 100;
+        var results = await _searchRepository.SearchVocabularyAsync(request);
         return results;
     }
 }

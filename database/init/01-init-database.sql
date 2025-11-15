@@ -7,6 +7,7 @@
 -- Create extensions that might be useful for JLPT reference data
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pg_trgm";
+--CREATE EXTENSION IF NOT EXISTS "textsearch_ja";
 
 SET pg_trgm.similarity_threshold = 0.4; -- stricter for dictionary usage
 
@@ -30,7 +31,7 @@ $$ language 'plpgsql';
 -- ============================================
 CREATE TABLE IF NOT EXISTS kanji (
     id UUID PRIMARY KEY DEFAULT uuidv7(),
-    literal CHAR(1) NOT NULL UNIQUE,
+    literal VARCHAR(1) NOT NULL UNIQUE,
     grade INTEGER,
     stroke_count INTEGER NOT NULL,
     frequency INTEGER,
@@ -39,9 +40,6 @@ CREATE TABLE IF NOT EXISTS kanji (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS idx_kanji_literal ON kanji(literal);
-CREATE INDEX IF NOT EXISTS idx_kanji_frequency ON kanji(frequency);
-CREATE INDEX IF NOT EXISTS idx_kanji_jlpt ON kanji(jlpt_level_new);
 
 -- Codepoints for kanjis
 CREATE TABLE IF NOT EXISTS kanji_codepoint (
@@ -52,7 +50,6 @@ CREATE TABLE IF NOT EXISTS kanji_codepoint (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS idx_kanji_codepoint_kanji ON kanji_codepoint(kanji_id);
 
 -- Kanji dictionary references
 CREATE TABLE IF NOT EXISTS kanji_dictionary_reference (
@@ -65,8 +62,6 @@ CREATE TABLE IF NOT EXISTS kanji_dictionary_reference (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS idx_kanji_dict_ref_kanji ON kanji_dictionary_reference(kanji_id);
-CREATE INDEX IF NOT EXISTS idx_kanji_dict_ref_type ON kanji_dictionary_reference(type);
 
 -- Kanji query codes
 CREATE TABLE IF NOT EXISTS kanji_query_code (
@@ -78,7 +73,6 @@ CREATE TABLE IF NOT EXISTS kanji_query_code (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS idx_kanji_query_code_kanji ON kanji_query_code(kanji_id);
 
 -- Kanji readings
 CREATE TABLE IF NOT EXISTS kanji_reading (
@@ -91,8 +85,6 @@ CREATE TABLE IF NOT EXISTS kanji_reading (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS idx_kanji_reading_kanji ON kanji_reading(kanji_id);
-CREATE INDEX IF NOT EXISTS idx_kanji_reading_type ON kanji_reading(type);
 
 -- Kanji meanings
 CREATE TABLE IF NOT EXISTS kanji_meaning (
@@ -103,8 +95,6 @@ CREATE TABLE IF NOT EXISTS kanji_meaning (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS idx_kanji_meaning_kanji ON kanji_meaning(kanji_id);
-CREATE INDEX IF NOT EXISTS idx_kanji_meaning_lang ON kanji_meaning(lang);
 
 -- Kanji nanori
 CREATE TABLE IF NOT EXISTS kanji_nanori (
@@ -114,7 +104,6 @@ CREATE TABLE IF NOT EXISTS kanji_nanori (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS idx_kanji_nanori_kanji ON kanji_nanori(kanji_id);
 
 
 -- ============================================
@@ -122,13 +111,12 @@ CREATE INDEX IF NOT EXISTS idx_kanji_nanori_kanji ON kanji_nanori(kanji_id);
 -- ============================================
 CREATE TABLE IF NOT EXISTS radical (
     id UUID PRIMARY KEY DEFAULT uuidv7(),
-    literal CHAR(1) UNIQUE NOT NULL,
+    literal VARCHAR(1) UNIQUE NOT NULL,
     stroke_count INTEGER,
     code VARCHAR(20),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS idx_radical_literal ON radical(literal);
 
 -- Radicals used in kanji
 CREATE TABLE IF NOT EXISTS kanji_radical (
@@ -139,9 +127,6 @@ CREATE TABLE IF NOT EXISTS kanji_radical (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(kanji_id, radical_id)
 );
-CREATE INDEX IF NOT EXISTS idx_kanji_radical_kanji ON kanji_radical(kanji_id);
-CREATE INDEX IF NOT EXISTS idx_kanji_radical_radical ON kanji_radical(radical_id);
-
 
 -- ============================================
 -- VOCABULARY
@@ -153,7 +138,6 @@ CREATE TABLE IF NOT EXISTS tag (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS idx_tag_category ON tag(category);
 
 -- Vocabulary
 CREATE TABLE IF NOT EXISTS vocabulary (
@@ -163,7 +147,6 @@ CREATE TABLE IF NOT EXISTS vocabulary (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS idx_vocabulary_jlpt ON vocabulary(jlpt_level_new);
 
 -- Kanji forms of vocabulary
 CREATE TABLE IF NOT EXISTS vocabulary_kanji (
@@ -174,8 +157,6 @@ CREATE TABLE IF NOT EXISTS vocabulary_kanji (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS idx_vocabulary_kanji_vocab ON vocabulary_kanji(vocabulary_id);
-CREATE INDEX IF NOT EXISTS idx_vocabulary_kanji_text ON vocabulary_kanji(text);
 
 -- Vocabulary kanji tags (references tag table)
 CREATE TABLE IF NOT EXISTS vocabulary_kanji_tag (
@@ -185,9 +166,6 @@ CREATE TABLE IF NOT EXISTS vocabulary_kanji_tag (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
-CREATE INDEX IF NOT EXISTS idx_vocabulary_kanji_tag_vocab_kanji ON vocabulary_kanji_tag(vocabulary_kanji_id);
-CREATE INDEX IF NOT EXISTS idx_vocabulary_kanji_tag_code ON vocabulary_kanji_tag(tag_code);
 
 -- Kana forms for vocabulary
 CREATE TABLE IF NOT EXISTS vocabulary_kana (
@@ -199,8 +177,6 @@ CREATE TABLE IF NOT EXISTS vocabulary_kana (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS idx_vocabulary_kana_vocab ON vocabulary_kana(vocabulary_id);
-CREATE INDEX IF NOT EXISTS idx_vocabulary_kana_text ON vocabulary_kana(text);
 
 -- Vocabulary kana tags (references tag table)
 CREATE TABLE vocabulary_kana_tag (
@@ -210,9 +186,6 @@ CREATE TABLE vocabulary_kana_tag (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
-CREATE INDEX IF NOT EXISTS idx_vocabulary_kana_tag_vocab_kana ON vocabulary_kana_tag(vocabulary_kana_id);
-CREATE INDEX IF NOT EXISTS idx_vocabulary_kana_tag_code ON vocabulary_kana_tag(tag_code);
 
 -- Vocabulary senses (definitions)
 CREATE TABLE IF NOT EXISTS vocabulary_sense (
@@ -224,7 +197,6 @@ CREATE TABLE IF NOT EXISTS vocabulary_sense (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS idx_vocabulary_sense_vocab ON vocabulary_sense(vocabulary_id);
 
 -- Vocabulary sense tags (unified)
 CREATE TABLE IF NOT EXISTS vocabulary_sense_tag (
@@ -236,10 +208,6 @@ CREATE TABLE IF NOT EXISTS vocabulary_sense_tag (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(sense_id, tag_code, tag_type)
 );
-CREATE INDEX IF NOT EXISTS idx_vocabulary_sense_tag_sense ON vocabulary_sense_tag(sense_id);
-CREATE INDEX IF NOT EXISTS idx_vocabulary_sense_tag_tag ON vocabulary_sense_tag(tag_code);
-CREATE INDEX IF NOT EXISTS idx_vocabulary_sense_tag_type ON vocabulary_sense_tag(tag_type);
-CREATE INDEX IF NOT EXISTS idx_vocabulary_sense_tag_sense_type ON vocabulary_sense_tag(sense_id, tag_type);
 
 -- Vocabulary relation
 CREATE TABLE IF NOT EXISTS vocabulary_sense_relation (
@@ -253,8 +221,6 @@ CREATE TABLE IF NOT EXISTS vocabulary_sense_relation (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS idx_vocabulary_sense_relation_source ON vocabulary_sense_relation(source_sense_id);
-CREATE INDEX IF NOT EXISTS idx_vocabulary_sense_relation_target ON vocabulary_sense_relation(target_vocab_id);
 
 -- Language source
 CREATE TABLE IF NOT EXISTS vocabulary_sense_language_source (
@@ -267,7 +233,6 @@ CREATE TABLE IF NOT EXISTS vocabulary_sense_language_source (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS idx_vocabulary_sense_language_source_sense ON vocabulary_sense_language_source(sense_id);
 
 -- Glosses
 CREATE TABLE IF NOT EXISTS vocabulary_sense_gloss (
@@ -280,8 +245,6 @@ CREATE TABLE IF NOT EXISTS vocabulary_sense_gloss (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS idx_vocabulary_sense_gloss_sense ON vocabulary_sense_gloss(sense_id);
-CREATE INDEX IF NOT EXISTS idx_vocabulary_sense_gloss_lang ON vocabulary_sense_gloss(lang);
 
 -- Example sentences
 CREATE TABLE IF NOT EXISTS vocabulary_sense_example (
@@ -293,7 +256,6 @@ CREATE TABLE IF NOT EXISTS vocabulary_sense_example (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS idx_vocabulary_sense_example_sense ON vocabulary_sense_example(sense_id);
 
 -- Sentence translations
 CREATE TABLE IF NOT EXISTS vocabulary_sense_example_sentence (
@@ -304,8 +266,6 @@ CREATE TABLE IF NOT EXISTS vocabulary_sense_example_sentence (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS idx_vocabulary_sense_example_sentence_example ON vocabulary_sense_example_sentence(example_id);
-
 
 -- ============================================
 -- PROPER NOUNS (Names, Places, Companies)
@@ -325,8 +285,6 @@ CREATE TABLE IF NOT EXISTS proper_noun_kanji (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS idx_proper_noun_kanji_noun ON proper_noun_kanji(proper_noun_id);
-CREATE INDEX IF NOT EXISTS idx_proper_noun_kanji_text ON proper_noun_kanji(text);
 
 -- Proper noun kanji tags
 CREATE TABLE IF NOT EXISTS proper_noun_kanji_tag (
@@ -336,8 +294,6 @@ CREATE TABLE IF NOT EXISTS proper_noun_kanji_tag (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS idx_proper_noun_kanji_tag_noun_kanji ON proper_noun_kanji_tag(proper_noun_kanji_id);
-CREATE INDEX IF NOT EXISTS idx_proper_noun_kanji_tag_code ON proper_noun_kanji_tag(tag_code);
 
 -- Kana readings for proper nouns
 CREATE TABLE IF NOT EXISTS proper_noun_kana (
@@ -348,7 +304,6 @@ CREATE TABLE IF NOT EXISTS proper_noun_kana (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS idx_proper_noun_kana_noun ON proper_noun_kana(proper_noun_id);
 
 -- Proper noun kana tags
 CREATE TABLE IF NOT EXISTS proper_noun_kana_tag (
@@ -358,8 +313,6 @@ CREATE TABLE IF NOT EXISTS proper_noun_kana_tag (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS idx_proper_noun_kana_tag_noun_kana ON proper_noun_kana_tag(proper_noun_kana_id);
-CREATE INDEX IF NOT EXISTS idx_proper_noun_kana_tag_code ON proper_noun_kana_tag(tag_code);
 
 -- Proper noun translations
 CREATE TABLE IF NOT EXISTS proper_noun_translation (
@@ -377,8 +330,6 @@ CREATE TABLE IF NOT EXISTS proper_noun_translation_type (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS idx_proper_noun_trans_type_trans ON proper_noun_translation_type(translation_id);
-CREATE INDEX IF NOT EXISTS idx_proper_noun_trans_type_tag ON proper_noun_translation_type(tag_code);
 
 -- Related terms for proper nouns
 CREATE TABLE IF NOT EXISTS proper_noun_translation_related (
@@ -391,8 +342,6 @@ CREATE TABLE IF NOT EXISTS proper_noun_translation_related (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS idx_proper_noun_trans_related_trans ON proper_noun_translation_related(translation_id);
-CREATE INDEX IF NOT EXISTS idx_proper_noun_trans_related_ref_trans ON proper_noun_translation_related(reference_proper_noun_id);
 
 -- Translation text
 CREATE TABLE IF NOT EXISTS proper_noun_translation_text (
@@ -403,7 +352,6 @@ CREATE TABLE IF NOT EXISTS proper_noun_translation_text (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS idx_proper_noun_trans_text_trans ON proper_noun_translation_text(translation_id);
 
 -- ============================================
 -- RELATIONSHIPS
@@ -416,8 +364,6 @@ CREATE TABLE IF NOT EXISTS vocabulary_uses_kanji (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(vocabulary_id, kanji_id)
 );
-CREATE INDEX IF NOT EXISTS idx_vocab_uses_kanji_vocab ON vocabulary_uses_kanji(vocabulary_id);
-CREATE INDEX IF NOT EXISTS idx_vocab_uses_kanji_kanji ON vocabulary_uses_kanji(kanji_id);
 
 CREATE TABLE IF NOT EXISTS proper_noun_uses_kanji (
     id UUID PRIMARY KEY DEFAULT uuidv7(),
@@ -427,83 +373,141 @@ CREATE TABLE IF NOT EXISTS proper_noun_uses_kanji (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(proper_noun_id, kanji_id)
 );
-CREATE INDEX IF NOT EXISTS idx_proper_noun_uses_kanji_noun ON proper_noun_uses_kanji(proper_noun_id);
-CREATE INDEX IF NOT EXISTS idx_proper_noun_uses_kanji_kanji ON proper_noun_uses_kanji(kanji_id);
 
 -- ============================================
--- COMPREHENSIVE PERFORMANCE INDEXES
+-- KANJI INDEXES
 -- ============================================
-
--- ============================================
--- KANJI PERFORMANCE INDEXES
--- ============================================
+CREATE INDEX IF NOT EXISTS idx_kanji_literal ON kanji(literal);
+CREATE INDEX IF NOT EXISTS idx_kanji_frequency ON kanji(frequency);
+CREATE INDEX IF NOT EXISTS idx_kanji_jlpt ON kanji(jlpt_level_new);
+CREATE INDEX IF NOT EXISTS idx_kanji_codepoint_kanji ON kanji_codepoint(kanji_id);
+CREATE INDEX IF NOT EXISTS idx_kanji_dict_ref_kanji ON kanji_dictionary_reference(kanji_id);
+CREATE INDEX IF NOT EXISTS idx_kanji_dict_ref_type ON kanji_dictionary_reference(type);
+CREATE INDEX IF NOT EXISTS idx_kanji_query_code_kanji ON kanji_query_code(kanji_id);
+CREATE INDEX IF NOT EXISTS idx_kanji_reading_kanji ON kanji_reading(kanji_id);
+CREATE INDEX IF NOT EXISTS idx_kanji_reading_type ON kanji_reading(type);
+CREATE INDEX IF NOT EXISTS idx_kanji_meaning_kanji ON kanji_meaning(kanji_id);
+CREATE INDEX IF NOT EXISTS idx_kanji_meaning_lang ON kanji_meaning(lang);
+CREATE INDEX IF NOT EXISTS idx_kanji_nanori_kanji ON kanji_nanori(kanji_id);
 -- JLPT level with frequency for pagination
 CREATE INDEX IF NOT EXISTS idx_kanji_jlpt_frequency ON kanji(jlpt_level_new, frequency DESC, id);
-
 -- Stroke count for kanji lookup
 CREATE INDEX IF NOT EXISTS idx_kanji_stroke_count ON kanji(stroke_count, jlpt_level_new);
-
 -- Grade level for educational content
 CREATE INDEX IF NOT EXISTS idx_kanji_grade ON kanji(grade, jlpt_level_new);
-
 -- Frequency-based ordering
 CREATE INDEX IF NOT EXISTS idx_kanji_frequency_desc ON kanji(frequency DESC NULLS LAST);
-
 -- Radical-based kanji lookup
 CREATE INDEX IF NOT EXISTS idx_kanji_radical_lookup ON kanji_radical(radical_id, kanji_id);
-
 -- Kanji readings for search
 CREATE INDEX IF NOT EXISTS idx_kanji_reading_search ON kanji_reading(kanji_id, type, value);
-
 -- Kanji meanings for English search
-CREATE INDEX IF NOT EXISTS idx_kanji_meaning_fts ON kanji_meaning USING gin(to_tsvector('english', value));
+CREATE INDEX IF NOT EXISTS idx_kanji_literal_trgm ON kanji USING gist (literal gist_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_kanji_literal_trgm_gin ON kanji USING gin (literal gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_kanji_meaning_value_trgm ON kanji_meaning USING gist(value gist_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_kanji_meaning_value_trgm_gin ON kanji_meaning USING gin(value gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_kanji_reading_value_trgm ON kanji_reading USING gist(value gist_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_kanji_reading_value_trgm_gin ON kanji_reading USING gin(value gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS idx_kanji_meaning_lang_id ON kanji_meaning(lang, kanji_id);
 
 -- ============================================
--- VOCABULARY PERFORMANCE INDEXES
+-- VOCABULARY INDEXES
 -- ============================================
+CREATE INDEX IF NOT EXISTS idx_tag_category ON tag(category);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_jlpt ON vocabulary(jlpt_level_new);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_kanji_vocab ON vocabulary_kanji(vocabulary_id);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_kanji_text ON vocabulary_kanji(text);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_kanji_tag_vocab_kanji ON vocabulary_kanji_tag(vocabulary_kanji_id);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_kanji_tag_code ON vocabulary_kanji_tag(tag_code);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_kana_vocab ON vocabulary_kana(vocabulary_id);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_kana_text ON vocabulary_kana(text);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_kana_tag_vocab_kana ON vocabulary_kana_tag(vocabulary_kana_id);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_kana_tag_code ON vocabulary_kana_tag(tag_code);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_sense_vocab ON vocabulary_sense(vocabulary_id);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_sense_tag_sense ON vocabulary_sense_tag(sense_id);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_sense_tag_tag ON vocabulary_sense_tag(tag_code);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_sense_tag_type ON vocabulary_sense_tag(tag_type);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_sense_tag_sense_type ON vocabulary_sense_tag(sense_id, tag_type);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_sense_relation_source ON vocabulary_sense_relation(source_sense_id);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_sense_relation_target ON vocabulary_sense_relation(target_vocab_id);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_sense_language_source_sense ON vocabulary_sense_language_source(sense_id);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_sense_gloss_sense ON vocabulary_sense_gloss(sense_id);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_sense_gloss_lang ON vocabulary_sense_gloss(lang);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_sense_example_sense ON vocabulary_sense_example(sense_id);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_sense_example_sentence_example ON vocabulary_sense_example_sentence(example_id);
 -- JLPT level vocabulary with common status
 CREATE INDEX IF NOT EXISTS idx_vocabulary_jlpt_common ON vocabulary(jlpt_level_new, id);
-
 -- Vocabulary kanji text search (Japanese)
---CREATE INDEX IF NOT EXISTS idx_vocabulary_kanji_text_gin ON vocabulary_kanji USING gin(to_tsvector('japanese', text));
-CREATE INDEX IF NOT EXISTS idx_vocabulary_kanji_text_trgm ON vocabulary_kanji USING gin(text gin_trgm_ops);
-
+CREATE INDEX IF NOT EXISTS idx_vocabulary_kanji_text_trgm ON vocabulary_kanji USING gist (text gist_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_kanji_text_trgm_gin ON vocabulary_kanji USING gin (text gin_trgm_ops);
 -- Vocabulary kana text search (Japanese)
---CREATE INDEX IF NOT EXISTS idx_vocabulary_kana_text_gin ON vocabulary_kana USING gin(to_tsvector('japanese', text));
-CREATE INDEX IF NOT EXISTS idx_vocabulary_kana_text_trgm ON vocabulary_kana USING gin(text gin_trgm_ops);
-
+CREATE INDEX IF NOT EXISTS idx_vocabulary_kana_text_trgm ON vocabulary_kana USING gist (text gist_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_kana_text_trgm_gin ON vocabulary_kana USING gin (text gin_trgm_ops);
 -- Common vocabulary optimization
 CREATE INDEX IF NOT EXISTS idx_vocabulary_kanji_common ON vocabulary_kanji(vocabulary_id, is_common) WHERE is_common = true;
 CREATE INDEX IF NOT EXISTS idx_vocabulary_kana_common ON vocabulary_kana(vocabulary_id, is_common) WHERE is_common = true;
-
 -- Vocabulary sense glosses for English search
-CREATE INDEX IF NOT EXISTS idx_vocabulary_gloss_fts ON vocabulary_sense_gloss USING gin(to_tsvector('english', text));
+CREATE INDEX IF NOT EXISTS idx_vocabulary_gloss_text_trgm ON vocabulary_sense_gloss USING gist (text gist_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_gloss_text_trgm_gin ON vocabulary_sense_gloss USING gin (text gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS idx_vocabulary_gloss_lang ON vocabulary_sense_gloss(lang, sense_id);
-
 -- Sense tag filtering
 CREATE INDEX IF NOT EXISTS idx_vocabulary_sense_tag_lookup ON vocabulary_sense_tag(sense_id, tag_type, tag_code);
-
 -- Vocabulary relationships
 CREATE INDEX IF NOT EXISTS idx_vocabulary_uses_kanji_lookup ON vocabulary_uses_kanji(vocabulary_id, kanji_id);
 CREATE INDEX IF NOT EXISTS idx_vocabulary_uses_kanji_reverse ON vocabulary_uses_kanji(kanji_id, vocabulary_id);
 
 -- ============================================
--- PROPER NOUN PERFORMANCE INDEXES
+-- PROPER NOUN INDEXES
 -- ============================================
+CREATE INDEX IF NOT EXISTS idx_proper_noun_kanji_noun ON proper_noun_kanji(proper_noun_id);
+CREATE INDEX IF NOT EXISTS idx_proper_noun_kanji_text ON proper_noun_kanji(text);
+CREATE INDEX IF NOT EXISTS idx_proper_noun_kanji_tag_noun_kanji ON proper_noun_kanji_tag(proper_noun_kanji_id);
+CREATE INDEX IF NOT EXISTS idx_proper_noun_kanji_tag_code ON proper_noun_kanji_tag(tag_code);
+CREATE INDEX IF NOT EXISTS idx_proper_noun_kana_noun ON proper_noun_kana(proper_noun_id);
+CREATE INDEX IF NOT EXISTS idx_proper_noun_kana_tag_noun_kana ON proper_noun_kana_tag(proper_noun_kana_id);
+CREATE INDEX IF NOT EXISTS idx_proper_noun_kana_tag_code ON proper_noun_kana_tag(tag_code);
+CREATE INDEX IF NOT EXISTS idx_proper_noun_trans_type_trans ON proper_noun_translation_type(translation_id);
+CREATE INDEX IF NOT EXISTS idx_proper_noun_trans_type_tag ON proper_noun_translation_type(tag_code);
+CREATE INDEX IF NOT EXISTS idx_proper_noun_trans_related_trans ON proper_noun_translation_related(translation_id);
+CREATE INDEX IF NOT EXISTS idx_proper_noun_trans_related_ref_trans ON proper_noun_translation_related(reference_proper_noun_id);
+CREATE INDEX IF NOT EXISTS idx_proper_noun_trans_text_trans ON proper_noun_translation_text(translation_id);
 -- Proper noun text search
---CREATE INDEX IF NOT EXISTS idx_proper_noun_kanji_text_gin ON proper_noun_kanji USING gin(to_tsvector('japanese', text));
---CREATE INDEX IF NOT EXISTS idx_proper_noun_kana_text_gin ON proper_noun_kana USING gin(to_tsvector('japanese', text));
-
+CREATE INDEX IF NOT EXISTS idx_proper_noun_kanji_text_trgm ON proper_noun_kanji USING gist (text gist_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_proper_noun_kanji_text_trgm_gin ON proper_noun_kanji USING gin (text gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_proper_noun_kana_text_trgm ON proper_noun_kana USING gist (text gist_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_proper_noun_kana_text_trgm_gin ON proper_noun_kana USING gin (text gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_proper_noun_translation_text_trgm ON proper_noun_translation_text USING gist (text gist_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_proper_noun_translation_text_trgm_gin ON proper_noun_translation_text USING gin (text gin_trgm_ops);
+-- Prefix indexes
+-- CREATE INDEX IF NOT EXISTS idx_proper_noun_kanji_prefix ON jlpt.proper_noun_kanji (LEFT(text, 10));
+-- CREATE INDEX IF NOT EXISTS idx_proper_noun_kana_prefix ON jlpt.proper_noun_kana (LEFT(text, 10));
+-- CREATE INDEX IF NOT EXISTS idx_proper_noun_translation_prefix ON jlpt.proper_noun_translation_text (LEFT(text, 20));
+-- -- Suffix indexes
+-- CREATE INDEX IF NOT EXISTS idx_proper_noun_kanji_suffix ON jlpt.proper_noun_kanji (RIGHT(text, 10));
+-- CREATE INDEX IF NOT EXISTS idx_proper_noun_kana_suffix ON jlpt.proper_noun_kana (RIGHT(text, 10));
+-- CREATE INDEX IF NOT EXISTS idx_proper_noun_translation_suffix ON jlpt.proper_noun_translation_text (RIGHT(text, 20));
+-- FK indexes (for JOINs)
+CREATE INDEX IF NOT EXISTS idx_proper_noun_translation_pn_id ON jlpt.proper_noun_translation (proper_noun_id);
 -- Proper noun relationships
 CREATE INDEX IF NOT EXISTS idx_proper_noun_uses_kanji_lookup ON proper_noun_uses_kanji(proper_noun_id, kanji_id);
 CREATE INDEX IF NOT EXISTS idx_proper_noun_uses_kanji_reverse ON proper_noun_uses_kanji(kanji_id, proper_noun_id);
 
 -- ============================================
--- RADICAL PERFORMANCE INDEXES
+-- RADICAL INDEXES
 -- ============================================
+CREATE INDEX IF NOT EXISTS idx_radical_literal ON radical(literal);
+CREATE INDEX IF NOT EXISTS idx_kanji_radical_kanji ON kanji_radical(kanji_id);
+CREATE INDEX IF NOT EXISTS idx_kanji_radical_radical ON kanji_radical(radical_id);
 -- Radical lookup by stroke count
 CREATE INDEX IF NOT EXISTS idx_radical_stroke_count ON radical(stroke_count, literal);
+
+-- ============================================
+-- RELATIONSHIPS INDEXES
+-- ============================================
+CREATE INDEX IF NOT EXISTS idx_vocab_uses_kanji_vocab ON vocabulary_uses_kanji(vocabulary_id);
+CREATE INDEX IF NOT EXISTS idx_vocab_uses_kanji_kanji ON vocabulary_uses_kanji(kanji_id);
+CREATE INDEX IF NOT EXISTS idx_proper_noun_uses_kanji_noun ON proper_noun_uses_kanji(proper_noun_id);
+CREATE INDEX IF NOT EXISTS idx_proper_noun_uses_kanji_kanji ON proper_noun_uses_kanji(kanji_id);
 
 -- ============================================
 -- TAG PERFORMANCE INDEXES
@@ -516,21 +520,9 @@ CREATE INDEX IF NOT EXISTS idx_tag_category_lookup ON tag(category, code);
 -- ============================================
 -- Kanji with readings and meanings (for detailed views)
 CREATE INDEX IF NOT EXISTS idx_kanji_detailed ON kanji(id, jlpt_level_new, stroke_count, frequency);
-
 -- Vocabulary with senses (for detailed views)
 CREATE INDEX IF NOT EXISTS idx_vocabulary_detailed ON vocabulary(id, jlpt_level_new);
 
--- ============================================
--- SEARCH OPTIMIZATION INDEXES
--- ============================================
--- Prefix search optimization
-CREATE INDEX IF NOT EXISTS idx_vocabulary_kanji_prefix ON vocabulary_kanji(text varchar_pattern_ops);
-CREATE INDEX IF NOT EXISTS idx_vocabulary_kana_prefix ON vocabulary_kana(text varchar_pattern_ops);
-CREATE INDEX IF NOT EXISTS idx_kanji_reading_prefix ON kanji_reading(value varchar_pattern_ops);
-
--- Suffix search optimization
-CREATE INDEX IF NOT EXISTS idx_vocabulary_kanji_suffix ON vocabulary_kanji(reverse(text) varchar_pattern_ops);
-CREATE INDEX IF NOT EXISTS idx_vocabulary_kana_suffix ON vocabulary_kana(reverse(text) varchar_pattern_ops);
 
 -- ============================================
 -- UTILITY VIEWS
@@ -590,6 +582,7 @@ SELECT
 FROM kanji 
 WHERE jlpt_level_new IS NOT NULL
 GROUP BY jlpt_level_new;
+CREATE INDEX IF NOT EXISTS idx_kanji_stats_jlpt ON kanji_stats(jlpt_level_new);
 
 -- Vocabulary statistics by JLPT level
 CREATE MATERIALIZED VIEW IF NOT EXISTS vocabulary_stats AS
@@ -605,6 +598,7 @@ LEFT JOIN vocabulary_kana vka ON vka.vocabulary_id = v.id
 LEFT JOIN vocabulary_sense vs ON vs.vocabulary_id = v.id
 WHERE v.jlpt_level_new IS NOT NULL
 GROUP BY v.jlpt_level_new;
+CREATE INDEX IF NOT EXISTS idx_vocabulary_stats_jlpt ON vocabulary_stats(jlpt_level_new);
 
 -- Radical usage statistics
 CREATE MATERIALIZED VIEW IF NOT EXISTS radical_stats AS
@@ -618,51 +612,16 @@ FROM radical r
 LEFT JOIN kanji_radical kr ON kr.radical_id = r.id
 LEFT JOIN kanji k ON k.id = kr.kanji_id
 GROUP BY r.id, r.literal, r.stroke_count;
-
--- Most common kanji by frequency
-CREATE MATERIALIZED VIEW IF NOT EXISTS common_kanji AS
-SELECT 
-    k.id,
-    k.literal,
-    k.jlpt_level_new,
-    k.stroke_count,
-    k.frequency,
-    STRING_AGG(DISTINCT kr.value, ', ' ORDER BY kr.value) FILTER (WHERE kr.type = 'ja_on') as on_readings,
-    STRING_AGG(DISTINCT kr.value, ', ' ORDER BY kr.value) FILTER (WHERE kr.type = 'ja_kun') as kun_readings,
-    STRING_AGG(DISTINCT km.value, '; ' ORDER BY km.value) FILTER (WHERE km.lang = 'en') as meanings_en
-FROM kanji k
-LEFT JOIN kanji_reading kr ON kr.kanji_id = k.id
-LEFT JOIN kanji_meaning km ON km.kanji_id = k.id
-WHERE k.frequency IS NOT NULL AND k.frequency > 0
-GROUP BY k.id, k.literal, k.jlpt_level_new, k.stroke_count, k.frequency
-ORDER BY k.frequency ASC
-LIMIT 1000;
-
--- Vocabulary with kanji relationships
-CREATE MATERIALIZED VIEW IF NOT EXISTS vocabulary_kanji_relationships AS
-SELECT 
-    v.id as vocabulary_id,
-    v.jlpt_level_new,
-    STRING_AGG(DISTINCT vk.text, ', ' ORDER BY vk.text) as kanji_forms,
-    STRING_AGG(DISTINCT vka.text, ', ' ORDER BY vka.text) as kana_readings,
-    STRING_AGG(DISTINCT k.literal, '' ORDER BY k.literal) as used_kanji,
-    COUNT(DISTINCT vuk.kanji_id) as kanji_count
-FROM vocabulary v
-LEFT JOIN vocabulary_kanji vk ON vk.vocabulary_id = v.id
-LEFT JOIN vocabulary_kana vka ON vka.vocabulary_id = v.id
-LEFT JOIN vocabulary_uses_kanji vuk ON vuk.vocabulary_id = v.id
-LEFT JOIN kanji k ON k.id = vuk.kanji_id
-WHERE v.jlpt_level_new IS NOT NULL
-GROUP BY v.id, v.jlpt_level_new;
-
--- Create indexes on materialized views
-CREATE INDEX IF NOT EXISTS idx_kanji_stats_jlpt ON kanji_stats(jlpt_level_new);
-CREATE INDEX IF NOT EXISTS idx_vocabulary_stats_jlpt ON vocabulary_stats(jlpt_level_new);
 CREATE INDEX IF NOT EXISTS idx_radical_stats_stroke ON radical_stats(stroke_count);
 CREATE INDEX IF NOT EXISTS idx_radical_stats_usage ON radical_stats(kanji_count DESC);
-CREATE INDEX IF NOT EXISTS idx_common_kanji_frequency ON common_kanji(frequency ASC);
-CREATE INDEX IF NOT EXISTS idx_vocabulary_kanji_relationships_jlpt ON vocabulary_kanji_relationships(jlpt_level_new);
-CREATE INDEX IF NOT EXISTS idx_vocabulary_kanji_relationships_kanji_count ON vocabulary_kanji_relationships(kanji_count);
+
+-- Proper noun search materialized view
+
+-- Vocabulary search materialized view
+
+-- Kanji search materialized view
+
+-- Global search materialized view
 
 -- ============================================
 -- TRIGGERS FOR UPDATED_AT COLUMNS
@@ -837,224 +796,1292 @@ CREATE TRIGGER trigger_proper_noun_uses_kanji_updated_at
 -- SEARCH FUNCTIONS FOR DICTIONARY API
 -- ============================================
 
--- Function to search kanji by JLPT level with pagination
-CREATE OR REPLACE FUNCTION search_kanji_by_jlpt(
-    p_jlpt_level INTEGER,
-    p_limit INTEGER DEFAULT 50,
-    p_offset INTEGER DEFAULT 0
+-- Function to search global by text with pagination
+CREATE OR REPLACE FUNCTION search_global_by_text(
+    queries TEXT[],
+    relevanceThreshold FLOAT DEFAULT 0.4,
+    pageSize INT DEFAULT 50,
+    page_offset INT DEFAULT 0
 )
 RETURNS TABLE (
     id UUID,
-    literal CHAR(1),
-    jlpt_level_new INTEGER,
-    stroke_count INTEGER,
-    frequency INTEGER,
-    on_readings TEXT,
-    kun_readings TEXT,
-    meanings_en TEXT
-) AS $$
+    entry_type TEXT,
+    dict_id VARCHAR(20),
+    jlpt_level INT,
+    relevance_score FLOAT,
+    primary_kanji JSON,
+    other_kanji_forms JSON,
+    primary_kana JSON,
+    other_kana_forms JSON,
+    senses JSON,
+    is_common BOOLEAN,
+    translations JSON,
+    literal TEXT,
+    grade INT,
+    stroke_count INT,
+    frequency INT,
+    kunyomi JSON,
+    onyomi JSON,
+    meanings_kanji JSON,
+    radicals JSON,
+    total_count_vocab BIGINT,
+    total_count_proper_noun BIGINT,
+    total_count_kanji BIGINT
+)
+AS $$
 BEGIN
     RETURN QUERY
-    SELECT 
-        k.id,
-        k.literal,
-        k.jlpt_level_new,
-        k.stroke_count,
-        k.frequency,
-        STRING_AGG(DISTINCT kr.value, ', ' ORDER BY kr.value) FILTER (WHERE kr.type = 'ja_on') as on_readings,
-        STRING_AGG(DISTINCT kr.value, ', ' ORDER BY kr.value) FILTER (WHERE kr.type = 'ja_kun') as kun_readings,
-        STRING_AGG(DISTINCT km.value, '; ' ORDER BY km.value) FILTER (WHERE km.lang = 'en') as meanings_en
-    FROM kanji k
-    LEFT JOIN kanji_reading kr ON kr.kanji_id = k.id
-    LEFT JOIN kanji_meaning km ON km.kanji_id = k.id
-    WHERE k.jlpt_level_new = p_jlpt_level
-    GROUP BY k.id, k.literal, k.jlpt_level_new, k.stroke_count, k.frequency
-    ORDER BY k.frequency ASC NULLS LAST, k.stroke_count ASC
-    LIMIT p_limit OFFSET p_offset;
-END;
-$$ LANGUAGE plpgsql;
+        WITH kanji_search_matches AS (
+            -- Search by literal (exact match has highest priority)
+            SELECT DISTINCT
+                k.id as kanji_id,
+                k.literal as match_text,
+                'literal' as match_type,
+                CASE
+				    WHEN k.literal = q THEN 1.0
+				    WHEN k.literal LIKE q || '%' THEN 0.95
+				    WHEN k.literal LIKE '%' || q THEN 0.90
+				    ELSE similarity(k.literal, q)
+				END as relevance
+            FROM jlpt.kanji k
+			CROSS JOIN LATERAL unnest(queries) AS q
+            WHERE 
+			    (k.literal % q AND similarity(k.literal, q) >= relevanceThreshold)
+			    OR k.literal LIKE q || '%'
+			    OR k.literal LIKE '%' || q
+            
+            UNION ALL
+            
+            -- Search in readings (kunyomi and onyomi)
+            SELECT DISTINCT
+                k.id as kanji_id,
+                kr.value as match_text,
+                'reading' as match_type,
+                CASE
+				    WHEN kr.value = q THEN 1.0
+				    WHEN kr.value LIKE q || '%' THEN 0.95
+				    WHEN kr.value LIKE '%' || q THEN 0.90
+				    ELSE similarity(kr.value, q)
+				END as relevance
+	        FROM jlpt.kanji k
+	        JOIN jlpt.kanji_reading kr ON k.id = kr.kanji_id
+			CROSS JOIN LATERAL unnest(queries) AS q
+	        WHERE 
+			    (kr.value % q AND similarity(kr.value, q) >= relevanceThreshold)
+			    OR kr.value LIKE q || '%'
+			    OR kr.value LIKE '%' || q
+            
+            UNION ALL
+            
+            -- Search in meanings
+            SELECT DISTINCT
+                k.id as kanji_id,
+                km.value as match_text,
+                'meaning' as match_type,
+                CASE
+				    WHEN km.value = q THEN 1.0
+				    WHEN km.value LIKE q || '%' THEN 0.95
+				    WHEN km.value LIKE '%' || q THEN 0.90
+				    ELSE similarity(km.value, q)
+				END as relevance
+	        FROM jlpt.kanji k
+	        JOIN jlpt.kanji_meaning km ON k.id = km.kanji_id
+			CROSS JOIN LATERAL unnest(queries) AS q
+	        WHERE 
+			    (km.value % q AND similarity(km.value, q) >= relevanceThreshold)
+			    OR km.value LIKE q || '%'
+			    OR km.value LIKE '%' || q
+        ),
+        kanji_ranked_matches AS (
+            SELECT 
+                kanji_id,
+                MAX(relevance)::double precision as max_relevance
+            FROM kanji_search_matches
+            GROUP BY kanji_id
+        ),
+        kanji_data AS (
+            SELECT
+                k.id,
+                'kanji' as entry_type,
+                NULL::text as dict_id,
+                k.jlpt_level_new as jlpt_level,
+                rm.max_relevance::double precision as relevance_score,
+                NULL::json as primary_kanji,
+                NULL::json as other_kanji_forms,
+                NULL::json as primary_kana,
+                NULL::json as other_kana_forms,
+                NULL::json as senses,
+                false as is_common,
+                NULL::json as translations,
+                k.literal,
+                k.grade,
+                k.stroke_count,
+                k.frequency,
+                
+                -- Get kunyomi readings (ja_kun)
+                (SELECT json_agg(json_build_object(
+                    'type', kr.type,
+                    'value', kr.value,
+                    'status', kr.status
+                ) ORDER BY kr.created_at)
+                FROM jlpt.kanji_reading kr
+                WHERE kr.kanji_id = k.id 
+                AND kr.type = 'ja_kun'
+                ) as kunyomi,
+                
+                -- Get onyomi readings (ja_on)
+                (SELECT json_agg(json_build_object(
+                    'type', kr.type,
+                    'value', kr.value,
+                    'status', kr.status,
+                    'on_type', kr.on_type
+                ) ORDER BY kr.created_at)
+                FROM jlpt.kanji_reading kr
+                WHERE kr.kanji_id = k.id 
+                AND kr.type = 'ja_on'
+                ) as onyomi,
+                
+                -- Get meanings
+                (SELECT json_agg(json_build_object(
+                    'language', km.lang,
+                    'meaning', km.value
+                ) ORDER BY km.created_at)
+                FROM jlpt.kanji_meaning km
+                WHERE km.kanji_id = k.id
+                ) as meanings_kanji,
+                
+                -- Get radicals
+                (SELECT json_agg(json_build_object(
+                    'id', r.id::text,
+                    'literal', r.literal
+                ))
+                FROM jlpt.kanji_radical kr
+                JOIN jlpt.radical r ON kr.radical_id = r.id
+                WHERE kr.kanji_id = k.id
+                ) as radicals
+                
+            FROM jlpt.kanji k
+            JOIN kanji_ranked_matches rm ON k.id = rm.kanji_id
+            WHERE rm.max_relevance::double precision >= relevanceThreshold
+        ),
+        proper_noun_search_matches AS (
+            -- Search in kanji
+            SELECT DISTINCT
+                pn.id as proper_noun_id,
+                pnk.text as match_text,
+                'kanji' as match_type,
+                CASE
+				    WHEN pnk.text = q THEN 1.0
+				    WHEN pnk.text LIKE q || '%' THEN 0.95
+				    WHEN pnk.text LIKE '%' || q THEN 0.90
+				    ELSE similarity(pnk.text, q)
+				END as relevance
+	        FROM jlpt.proper_noun pn
+	        JOIN jlpt.proper_noun_kanji pnk ON pn.id = pnk.proper_noun_id
+			CROSS JOIN LATERAL unnest(queries) AS q
+	        WHERE (pnk.text % q AND similarity(pnk.text, q) >= relevanceThreshold)
+			    OR pnk.text LIKE q || '%'
+			    OR pnk.text LIKE '%' || q
+            
+            UNION ALL
+            
+            -- Search in kana
+            SELECT DISTINCT
+                pn.id as proper_noun_id,
+                pnkn.text as match_text,
+                'kana' as match_type,
+                CASE
+				    WHEN pnkn.text = q THEN 1.0
+				    WHEN pnkn.text LIKE q || '%' THEN 0.95
+				    WHEN pnkn.text LIKE '%' || q THEN 0.90
+				    ELSE similarity(pnkn.text, q)
+				END as relevance
+	        FROM jlpt.proper_noun pn
+	        JOIN jlpt.proper_noun_kana pnkn ON pn.id = pnkn.proper_noun_id
+			CROSS JOIN LATERAL unnest(queries) AS q
+	        WHERE (pnkn.text % q AND similarity(pnkn.text, q) >= relevanceThreshold)
+			    OR pnkn.text LIKE q || '%'
+			    OR pnkn.text LIKE '%' || q
+            
+            UNION ALL
+            
+            -- Search in translations
+            SELECT DISTINCT
+                pn.id as proper_noun_id,
+                pntt.text as match_text,
+                'translation' as match_type,
+                CASE
+				    WHEN pntt.text = q THEN 1.0
+				    WHEN pntt.text LIKE q || '%' THEN 0.95
+				    WHEN pntt.text LIKE '%' || q THEN 0.90
+				    ELSE similarity(pntt.text, q)
+				END as relevance
+	        FROM jlpt.proper_noun pn
+	        JOIN jlpt.proper_noun_translation pnt ON pn.id = pnt.proper_noun_id
+	        JOIN jlpt.proper_noun_translation_text pntt ON pnt.id = pntt.translation_id
+			CROSS JOIN LATERAL unnest(queries) AS q
+	        WHERE (pntt.text % q AND similarity(pntt.text, q) >= relevanceThreshold)
+			    OR pntt.text LIKE q || '%'
+			    OR pntt.text LIKE '%' || q
+        ),
+        proper_noun_ranked_matches AS (
+            SELECT 
+                proper_noun_id,
+                MAX(relevance)::double precision as max_relevance
+            FROM proper_noun_search_matches
+            GROUP BY proper_noun_id
+        ),
+        proper_noun_data AS (
+            SELECT
+                pn.id,
+                'proper_noun' as entry_type,
+                pn.jmnedict_id as dict_id,
+                NULL::integer as jlpt_level,
+                rm.max_relevance::double precision as relevance_score,
+                
+                -- Get primary kanji (first one)
+                (SELECT json_build_object(
+                    'text', pnk.text,
+                    'tags', COALESCE(
+                        (SELECT json_agg(json_build_object(
+                            'code', t.code,
+                            'description', t.description,
+                            'category', t.category
+                        ))
+                        FROM jlpt.proper_noun_kanji_tag pnkt
+                        JOIN jlpt.tag t ON pnkt.tag_code = t.code
+                        WHERE pnkt.proper_noun_kanji_id = pnk.id),
+                        '[]'::json
+                    )
+                )
+                FROM jlpt.proper_noun_kanji pnk
+                WHERE pnk.proper_noun_id = pn.id
+                ORDER BY pnk.created_at ASC
+                LIMIT 1
+                ) as primary_kanji,
+                
+                -- Get all other kanji forms
+                (SELECT json_agg(json_build_object(
+                    'text', pnk.text,
+                    'tags', COALESCE(
+                        (SELECT json_agg(json_build_object(
+                            'code', t.code,
+                            'description', t.description,
+                            'category', t.category
+                        ))
+                        FROM jlpt.proper_noun_kanji_tag pnkt
+                        JOIN jlpt.tag t ON pnkt.tag_code = t.code
+                        WHERE pnkt.proper_noun_kanji_id = pnk.id),
+                        '[]'::json
+                    )
+                ) ORDER BY pnk.created_at ASC)
+                FROM jlpt.proper_noun_kanji pnk
+                WHERE pnk.proper_noun_id = pn.id
+                OFFSET 1
+                ) as other_kanji_forms,
+                
+                -- Get primary kana (respecting applies_to_kanji)
+                (SELECT json_build_object(
+                    'text', pnkn.text,
+                    'applies_to_kanji', pnkn.applies_to_kanji,
+                    'tags', COALESCE(
+                        (SELECT json_agg(json_build_object(
+                            'code', t.code,
+                            'description', t.description,
+                            'category', t.category
+                        ))
+                        FROM jlpt.proper_noun_kana_tag pnknt
+                        JOIN jlpt.tag t ON pnknt.tag_code = t.code
+                        WHERE pnknt.proper_noun_kana_id = pnkn.id),
+                        '[]'::json
+                    )
+                )
+                FROM jlpt.proper_noun_kana pnkn
+                WHERE pnkn.proper_noun_id = pn.id
+                ORDER BY pnkn.created_at ASC
+                LIMIT 1
+                ) as primary_kana,
+                
+                -- Get all other kana forms
+                (SELECT json_agg(json_build_object(
+                    'text', pnkn.text,
+                    'applies_to_kanji', pnkn.applies_to_kanji,
+                    'tags', COALESCE(
+                        (SELECT json_agg(json_build_object(
+                            'code', t.code,
+                            'description', t.description,
+                            'category', t.category
+                        ))
+                        FROM jlpt.proper_noun_kana_tag pnknt
+                        JOIN jlpt.tag t ON pnknt.tag_code = t.code
+                        WHERE pnknt.proper_noun_kana_id = pnkn.id),
+                        '[]'::json
+                    )
+                ) ORDER BY pnkn.created_at ASC)
+                FROM jlpt.proper_noun_kana pnkn
+                WHERE pnkn.proper_noun_id = pn.id
+                OFFSET 1
+                ) as other_kana_forms,
+                NULL::json as senses,
+                false as is_common,
+                -- Get all translations
+                (SELECT json_agg(translation_data ORDER BY translation_order)
+                FROM (
+                    SELECT 
+                        pnt.id,
+                        ROW_NUMBER() OVER (ORDER BY pnt.created_at) as translation_order,
+                        json_build_object(
+                            'types', (
+                                SELECT json_agg(json_build_object(
+                                    'code', t.code,
+                                    'description', t.description,
+                                    'category', t.category
+                                ))
+                                FROM jlpt.proper_noun_translation_type pntt
+                                JOIN jlpt.tag t ON pntt.tag_code = t.code
+                                WHERE pntt.translation_id = pnt.id
+                            ),
+                            'translations', (
+                                SELECT json_agg(json_build_object(
+                                    'lang', pnttxt.lang,
+                                    'text', pnttxt.text
+                                ))
+                                FROM jlpt.proper_noun_translation_text pnttxt
+                                WHERE pnttxt.translation_id = pnt.id
+                            )
+                        ) as translation_data
+                    FROM jlpt.proper_noun_translation pnt
+                    WHERE pnt.proper_noun_id = pn.id
+                    ORDER BY pnt.created_at
+                ) translations
+                ) as translations,
+                NULL::text as literal,
+                NULL::integer as grade,
+                NULL::integer as stroke_count,
+                NULL::integer as frequency,
+                NULL::json as kunyomi,
+                NULL::json as onyomi,
+                NULL::json as meanings_kanji,
+                NULL::json as radicals
+                
+            FROM jlpt.proper_noun pn
+            JOIN proper_noun_ranked_matches rm ON pn.id = rm.proper_noun_id
+            WHERE rm.max_relevance::double precision >= relevanceThreshold
+        ),
+        vocabulary_search_matches AS (
+            -- Search in kanji
+            SELECT DISTINCT
+                v.id as vocabulary_id,
+                vk.text as match_text,
+                'kanji' as match_type,
+                CASE
+				    WHEN vk.text = q THEN 1.0
+				    WHEN vk.text LIKE q || '%' THEN 0.95
+				    WHEN vk.text LIKE '%' || q THEN 0.90
+				    ELSE similarity(vk.text, q)
+				END as relevance
+	        FROM jlpt.vocabulary v
+	        JOIN jlpt.vocabulary_kanji vk ON v.id = vk.vocabulary_id
+			CROSS JOIN LATERAL unnest(queries) AS q
+	        WHERE (vk.text % q AND similarity(vk.text, q) >= relevanceThreshold)
+			    OR vk.text LIKE q || '%'
+			    OR vk.text LIKE '%' || q
+            
+            UNION ALL
+            
+            -- Search in kana
+            SELECT DISTINCT
+                v.id as vocabulary_id,
+                vkn.text as match_text,
+                'kana' as match_type,
+                CASE
+				    WHEN vkn.text = q THEN 1.0
+				    WHEN vkn.text LIKE q || '%' THEN 0.95
+				    WHEN vkn.text LIKE '%' || q THEN 0.90
+			    	ELSE similarity(vkn.text, q)
+				END as relevance
+	        FROM jlpt.vocabulary v
+	        JOIN jlpt.vocabulary_kana vkn ON v.id = vkn.vocabulary_id
+			CROSS JOIN LATERAL unnest(queries) AS q
+	        WHERE (vkn.text % q AND similarity(vkn.text, q) >= relevanceThreshold)
+			    OR vkn.text LIKE q || '%'
+			    OR vkn.text LIKE '%' || q
+            
+            UNION ALL
+            
+            -- Search in glosses
+            SELECT DISTINCT
+                v.id as vocabulary_id,
+                vsg.text as match_text,
+                'gloss' as match_type,
+                CASE
+				    WHEN vsg.text = q THEN 1.0
+				    WHEN vsg.text LIKE q || '%' THEN 0.95
+				    WHEN vsg.text LIKE '%' || q THEN 0.90
+			    	ELSE similarity(vsg.text, q)
+				END as relevance
+	        FROM jlpt.vocabulary v
+	        JOIN jlpt.vocabulary_sense vs ON v.id = vs.vocabulary_id
+	        JOIN jlpt.vocabulary_sense_gloss vsg ON vs.id = vsg.sense_id
+			CROSS JOIN LATERAL unnest(queries) AS q
+	        WHERE (vsg.text % q AND similarity(vsg.text, q) >= relevanceThreshold)
+			    OR vsg.text LIKE q || '%'
+			    OR vsg.text LIKE '%' || q
+        ),
+        vocabulary_ranked_matches AS (
+            SELECT 
+                vocabulary_id,
+                MAX(relevance)::double precision as max_relevance
+            FROM vocabulary_search_matches
+            GROUP BY vocabulary_id
+        ),
+        vocabulary_data AS (
+            SELECT
+                v.id,
+                'vocabulary' as entry_type,
+                v.jmdict_id as dict_id,
+                v.jlpt_level_new as jlpt_level,
+                rm.max_relevance::double precision as relevance_score,
+                
+                -- Get primary kanji (first common one, or first one)
+                (SELECT json_build_object(
+                    'text', vk.text,
+                    'is_common', vk.is_common,
+                    'tags', COALESCE(
+                        (SELECT json_agg(json_build_object(
+                            'code', t.code,
+                            'description', t.description,
+                            'category', t.category
+                        ))
+                        FROM jlpt.vocabulary_kanji_tag vkt
+                        JOIN jlpt.tag t ON vkt.tag_code = t.code
+                        WHERE vkt.vocabulary_kanji_id = vk.id),
+                        '[]'::json
+                    )
+                )
+                FROM jlpt.vocabulary_kanji vk
+                WHERE vk.vocabulary_id = v.id
+                ORDER BY vk.is_common DESC, vk.created_at ASC
+                LIMIT 1
+                ) as primary_kanji,
+                
+                -- Get all other kanji forms
+                (SELECT json_agg(json_build_object(
+                    'text', vk.text,
+                    'is_common', vk.is_common,
+                    'tags', COALESCE(
+                        (SELECT json_agg(json_build_object(
+                            'code', t.code,
+                            'description', t.description,
+                            'category', t.category
+                        ))
+                        FROM jlpt.vocabulary_kanji_tag vkt
+                        JOIN jlpt.tag t ON vkt.tag_code = t.code
+                        WHERE vkt.vocabulary_kanji_id = vk.id),
+                        '[]'::json
+                    )
+                ) ORDER BY vk.is_common DESC, vk.created_at ASC)
+                FROM jlpt.vocabulary_kanji vk
+                WHERE vk.vocabulary_id = v.id
+                OFFSET 1
+                ) as other_kanji_forms,
+                
+                -- Get primary kana (respecting applies_to_kanji)
+                (SELECT json_build_object(
+                    'text', vkn.text,
+                    'is_common', vkn.is_common,
+                    'applies_to_kanji', vkn.applies_to_kanji,
+                    'tags', COALESCE(
+                        (SELECT json_agg(json_build_object(
+                            'code', t.code,
+                            'description', t.description,
+                            'category', t.category
+                        ))
+                        FROM jlpt.vocabulary_kana_tag vknt
+                        JOIN jlpt.tag t ON vknt.tag_code = t.code
+                        WHERE vknt.vocabulary_kana_id = vkn.id),
+                        '[]'::json
+                    )
+                )
+                FROM jlpt.vocabulary_kana vkn
+                WHERE vkn.vocabulary_id = v.id
+                ORDER BY vkn.is_common DESC, vkn.created_at ASC
+                LIMIT 1
+                ) as primary_kana,
+                
+                -- Get all other kana forms
+                (SELECT json_agg(json_build_object(
+                    'text', vkn.text,
+                    'is_common', vkn.is_common,
+                    'applies_to_kanji', vkn.applies_to_kanji,
+                    'tags', COALESCE(
+                        (SELECT json_agg(json_build_object(
+                            'code', t.code,
+                            'description', t.description,
+                            'category', t.category
+                        ))
+                        FROM jlpt.vocabulary_kana_tag vknt
+                        JOIN jlpt.tag t ON vknt.tag_code = t.code
+                        WHERE vknt.vocabulary_kana_id = vkn.id),
+                        '[]'::json
+                    )
+                ) ORDER BY vkn.is_common DESC, vkn.created_at ASC)
+                FROM jlpt.vocabulary_kana vkn
+                WHERE vkn.vocabulary_id = v.id
+                OFFSET 1
+                ) as other_kana_forms,
+                
+                -- Get first 3 senses with their data
+                (SELECT json_agg(sense_data ORDER BY sense_order)
+                FROM (
+                    SELECT 
+                        vs.id,
+                        ROW_NUMBER() OVER (ORDER BY vs.created_at) as sense_order,
+                        json_build_object(
+                            'applies_to_kanji', vs.applies_to_kanji,
+                            'applies_to_kana', vs.applies_to_kana,
+                            'info', vs.info,
+                            'glosses', (
+                                SELECT json_agg(json_build_object(
+                                    'language', vsg.lang,
+                                    'text', vsg.text,
+                                    'gender', vsg.gender,
+                                    'type', vsg.type
+                                ))
+                                FROM jlpt.vocabulary_sense_gloss vsg
+                                WHERE vsg.sense_id = vs.id
+                            ),
+                            'tags', (
+                                SELECT json_agg(json_build_object(
+                                    'code', t.code,
+                                    'description', t.description,
+                                    'category', t.category,
+                                    'type', vst.tag_type
+                                ))
+                                FROM jlpt.vocabulary_sense_tag vst
+                                JOIN jlpt.tag t ON vst.tag_code = t.code
+                                WHERE vst.sense_id = vs.id
+                            )
+                        ) as sense_data
+                    FROM jlpt.vocabulary_sense vs
+                    WHERE vs.vocabulary_id = v.id
+                    ORDER BY vs.created_at
+                    LIMIT 3
+                ) senses
+                ) as senses,
+                CASE 
+                    WHEN (
+                        SELECT vk.is_common 
+                        FROM jlpt.vocabulary_kanji vk 
+                        WHERE vk.vocabulary_id = v.id 
+                        ORDER BY vk.is_common DESC, vk.created_at ASC 
+                        LIMIT 1
+                    ) = true 
+                    OR (
+                        SELECT vkn.is_common 
+                        FROM jlpt.vocabulary_kana vkn 
+                        WHERE vkn.vocabulary_id = v.id 
+                        ORDER BY vkn.is_common DESC, vkn.created_at ASC 
+                        LIMIT 1
+                    ) = true 
+                    THEN true 
+                    ELSE false 
+                END as is_common,
+                NULL::json as translations,
+                NULL::text as literal,
+                NULL::integer as grade,
+                NULL::integer as stroke_count,
+                NULL::integer as frequency,
+                NULL::json as kunyomi,
+                NULL::json as onyomi,
+                NULL::json as meanings_kanji,
+                NULL::json as radicals
+            FROM jlpt.vocabulary v
+            JOIN vocabulary_ranked_matches rm ON v.id = rm.vocabulary_id
+            WHERE rm.max_relevance::double precision >= relevanceThreshold
+        ),
+        all_results AS (
+            SELECT * FROM (
+                SELECT 
+                    vd.id, vd.entry_type, vd.dict_id, vd.jlpt_level, vd.relevance_score,
+                    vd.primary_kanji, vd.other_kanji_forms, vd.primary_kana, vd.other_kana_forms,
+                    vd.senses, vd.is_common, vd.translations,
+                    vd.literal, vd.grade, vd.stroke_count, vd.frequency,
+                    vd.kunyomi, vd.onyomi, vd.meanings_kanji, vd.radicals
+                FROM vocabulary_data vd
+                LIMIT pageSize OFFSET page_offset
+            ) v
 
--- Function to search vocabulary by JLPT level with pagination
-CREATE OR REPLACE FUNCTION search_vocabulary_by_jlpt(
-    p_jlpt_level INTEGER,
-    p_limit INTEGER DEFAULT 50,
-    p_offset INTEGER DEFAULT 0
-)
-RETURNS TABLE (
-    id UUID,
-    jlpt_level_new INTEGER,
-    kanji_forms TEXT,
-    kana_readings TEXT,
-    part_of_speech_tags TEXT,
-    field_tags TEXT,
-    dialect_tags TEXT,
-    misc_tags TEXT
-) AS $$
-BEGIN
-    RETURN QUERY
-    SELECT 
-        v.id,
-        v.jlpt_level_new,
-        STRING_AGG(DISTINCT vk.text, ', ' ORDER BY vk.text) as kanji_forms,
-        STRING_AGG(DISTINCT vka.text, ', ' ORDER BY vka.text) as kana_readings,
-        STRING_AGG(DISTINCT t.code, ', ') FILTER (WHERE vst.tag_type = 'pos') as part_of_speech_tags,
-        STRING_AGG(DISTINCT t.code, ', ') FILTER (WHERE vst.tag_type = 'field') as field_tags,
-        STRING_AGG(DISTINCT t.code, ', ') FILTER (WHERE vst.tag_type = 'dialect') as dialect_tags,
-        STRING_AGG(DISTINCT t.code, ', ') FILTER (WHERE vst.tag_type = 'misc') as misc_tags
-    FROM vocabulary v
-    LEFT JOIN vocabulary_kanji vk ON vk.vocabulary_id = v.id
-    LEFT JOIN vocabulary_kana vka ON vka.vocabulary_id = v.id
-    LEFT JOIN vocabulary_sense vs ON vs.vocabulary_id = v.id
-    LEFT JOIN vocabulary_sense_tag vst ON vst.sense_id = vs.id
-    LEFT JOIN tag t ON t.code = vst.tag_code
-    WHERE v.jlpt_level_new = p_jlpt_level
-    GROUP BY v.id, v.jlpt_level_new
-    ORDER BY v.id
-    LIMIT p_limit OFFSET p_offset;
+            UNION ALL
+
+            SELECT * FROM (
+                SELECT 
+                    pnd.id, pnd.entry_type, pnd.dict_id, pnd.jlpt_level, pnd.relevance_score,
+                    pnd.primary_kanji, pnd.other_kanji_forms, pnd.primary_kana, pnd.other_kana_forms,
+                    pnd.senses, pnd.is_common, pnd.translations,
+                    pnd.literal, pnd.grade, pnd.stroke_count, pnd.frequency,
+                    pnd.kunyomi, pnd.onyomi, pnd.meanings_kanji, pnd.radicals
+                FROM proper_noun_data pnd
+                LIMIT pageSize OFFSET page_offset
+            ) p
+
+            UNION ALL
+
+            SELECT * FROM (
+                SELECT 
+                    kd.id, kd.entry_type, kd.dict_id, kd.jlpt_level, kd.relevance_score,
+                    kd.primary_kanji, kd.other_kanji_forms, kd.primary_kana, kd.other_kana_forms,
+                    kd.senses, kd.is_common, kd.translations,
+                    kd.literal, kd.grade, kd.stroke_count, kd.frequency,
+                    kd.kunyomi, kd.onyomi, kd.meanings_kanji, kd.radicals
+                FROM kanji_data kd
+                LIMIT pageSize OFFSET page_offset
+            ) k
+        ),
+        total_count_vocab AS (
+            SELECT COUNT(*) as total_count_vocab FROM vocabulary_data
+        ),
+        total_count_proper_noun as (
+            SELECT COUNT(*) as total_count_proper_noun FROM proper_noun_data
+        ),
+        total_count_kanji as (
+            SELECT COUNT(*) as total_count_kanji FROM kanji_data
+        )
+        SELECT
+            ar.*,
+            tcv.*,
+            tcpn.*,
+            tck.*
+        FROM all_results ar
+        CROSS JOIN total_count_vocab tcv
+        cross join total_count_proper_noun tcpn
+        cross join total_count_kanji tck
+        ORDER BY
+            ar.relevance_score DESC;
 END;
 $$ LANGUAGE plpgsql;
 
 -- Function to search kanji by text (readings or meanings)
 CREATE OR REPLACE FUNCTION search_kanji_by_text(
-    p_search_text TEXT,
-    p_limit INTEGER DEFAULT 50,
-    p_offset INTEGER DEFAULT 0
+    queries TEXT[],
+    relevanceThreshold FLOAT DEFAULT 0.4,
+    pageSize INT DEFAULT 50,
+    page_offset INT DEFAULT 0
 )
 RETURNS TABLE (
     id UUID,
-    literal CHAR(1),
-    jlpt_level_new INTEGER,
-    stroke_count INTEGER,
-    frequency INTEGER,
-    on_readings TEXT,
-    kun_readings TEXT,
-    meanings_en TEXT,
-    relevance_score REAL
+    literal VARCHAR(1),
+    grade INT,
+    stroke_count INT,
+    frequency INT,
+    jlpt_level_new INT,
+    relevance_score FLOAT,
+    kunyomi JSON,
+    onyomi JSON,
+    meanings JSON,
+    radicals JSON,
+    total_count BIGINT
 ) AS $$
 BEGIN
     RETURN QUERY
+    WITH search_matches AS (
+        -- Search by literal (exact match has highest priority)
+        SELECT DISTINCT
+            k.id as kanji_id,
+            k.literal as match_text,
+            'literal' as match_type,
+            CASE
+			    WHEN k.literal = q THEN 1.0
+			    WHEN k.literal LIKE q || '%' THEN 0.95
+			    WHEN k.literal LIKE '%' || q THEN 0.90
+			    ELSE similarity(k.literal, q)
+			END as relevance
+        FROM jlpt.kanji k
+		CROSS JOIN LATERAL unnest(queries) AS q
+        WHERE 
+		    (k.literal % q AND similarity(k.literal, q) >= relevanceThreshold)
+		    OR k.literal LIKE q || '%'
+		    OR k.literal LIKE '%' || q
+        
+        UNION ALL
+        
+        -- Search in readings (kunyomi and onyomi)
+        SELECT DISTINCT
+            k.id as kanji_id,
+            kr.value as match_text,
+            'reading' as match_type,
+            CASE
+			    WHEN kr.value = q THEN 1.0
+			    WHEN kr.value LIKE q || '%' THEN 0.95
+			    WHEN kr.value LIKE '%' || q THEN 0.90
+			    ELSE similarity(kr.value, q)
+			END as relevance
+        FROM jlpt.kanji k
+        JOIN jlpt.kanji_reading kr ON k.id = kr.kanji_id
+		CROSS JOIN LATERAL unnest(queries) AS q
+        WHERE 
+		    (kr.value % q AND similarity(kr.value, q) >= relevanceThreshold)
+		    OR kr.value LIKE q || '%'
+		    OR kr.value LIKE '%' || q
+        
+        UNION ALL
+        
+        -- Search in meanings
+        SELECT DISTINCT
+            k.id as kanji_id,
+            km.value as match_text,
+            'meaning' as match_type,
+            CASE
+			    WHEN km.value = q THEN 1.0
+			    WHEN km.value LIKE q || '%' THEN 0.95
+			    WHEN km.value LIKE '%' || q THEN 0.90
+			    ELSE similarity(km.value, q)
+			END as relevance
+        FROM jlpt.kanji k
+        JOIN jlpt.kanji_meaning km ON k.id = km.kanji_id
+		CROSS JOIN LATERAL unnest(queries) AS q
+        WHERE 
+		    (km.value % q AND similarity(km.value, q) >= relevanceThreshold)
+		    OR km.value LIKE q || '%'
+		    OR km.value LIKE '%' || q
+    ),
+    ranked_matches AS (
+        SELECT 
+            kanji_id,
+            MAX(relevance)::double precision as max_relevance
+        FROM search_matches
+        GROUP BY kanji_id
+    ),
+    kanji_data AS (
+        SELECT
+            k.id,
+            k.literal,
+            k.grade,
+            k.stroke_count,
+            k.frequency,
+            k.jlpt_level_new,
+            rm.max_relevance::double precision as relevance_score,
+            
+            -- Get kunyomi readings (ja_kun)
+            (SELECT json_agg(json_build_object(
+                'type', kr.type,
+                'value', kr.value,
+                'status', kr.status
+            ) ORDER BY kr.created_at)
+            FROM jlpt.kanji_reading kr
+            WHERE kr.kanji_id = k.id 
+            AND kr.type = 'ja_kun'
+            ) as kunyomi,
+            
+            -- Get onyomi readings (ja_on)
+            (SELECT json_agg(json_build_object(
+                'type', kr.type,
+                'value', kr.value,
+                'status', kr.status,
+                'on_type', kr.on_type
+            ) ORDER BY kr.created_at)
+            FROM jlpt.kanji_reading kr
+            WHERE kr.kanji_id = k.id 
+            AND kr.type = 'ja_on'
+            ) as onyomi,
+            
+            -- Get meanings
+            (SELECT json_agg(json_build_object(
+                'language', km.lang,
+                'meaning', km.value
+            ) ORDER BY km.created_at)
+            FROM jlpt.kanji_meaning km
+            WHERE km.kanji_id = k.id
+            ) as meanings,
+            
+            -- Get radicals
+            (SELECT json_agg(json_build_object(
+                'id', r.id::text,
+                'literal', r.literal
+            ))
+            FROM jlpt.kanji_radical kr
+            JOIN jlpt.radical r ON kr.radical_id = r.id
+            WHERE kr.kanji_id = k.id
+            ) as radicals
+            
+        FROM jlpt.kanji k
+        JOIN ranked_matches rm ON k.id = rm.kanji_id
+    ),
+    all_results AS (
     SELECT 
-        k.id,
-        k.literal,
-        k.jlpt_level_new,
-        k.stroke_count,
-        k.frequency,
-        STRING_AGG(DISTINCT kr.value, ', ' ORDER BY kr.value) FILTER (WHERE kr.type = 'ja_on') as on_readings,
-        STRING_AGG(DISTINCT kr.value, ', ' ORDER BY kr.value) FILTER (WHERE kr.type = 'ja_kun') as kun_readings,
-        STRING_AGG(DISTINCT km.value, '; ' ORDER BY km.value) FILTER (WHERE km.lang = 'en') as meanings_en,
-        ts_rank(
-            to_tsvector('english', STRING_AGG(DISTINCT km.value, ' ' ORDER BY km.value) FILTER (WHERE km.lang = 'en')),
-            plainto_tsquery('english', p_search_text)
-        ) as relevance_score
-    FROM kanji k
-    LEFT JOIN kanji_reading kr ON kr.kanji_id = k.id
-    LEFT JOIN kanji_meaning km ON km.kanji_id = k.id
-    WHERE 
-        k.literal = p_search_text OR
-        kr.value ILIKE '%' || p_search_text || '%' OR
-        to_tsvector('english', km.value) @@ plainto_tsquery('english', p_search_text)
-    GROUP BY k.id, k.literal, k.jlpt_level_new, k.stroke_count, k.frequency
-    ORDER BY relevance_score DESC NULLS LAST, k.frequency ASC NULLS LAST
-    LIMIT p_limit OFFSET p_offset;
+        kd.id,
+        kd.literal,
+        kd.grade,
+        kd.stroke_count,
+        kd.frequency,
+        kd.jlpt_level_new,
+        kd.relevance_score,
+        kd.kunyomi,
+        kd.onyomi,
+        kd.meanings,
+        kd.radicals
+    FROM kanji_data kd
+    WHERE kd.relevance_score >= relevanceThreshold
+    ORDER BY kd.relevance_score DESC, kd.frequency ASC NULLS LAST
+    ),
+    total_count AS (
+        SELECT COUNT(*) as total_count FROM all_results
+    )
+    SELECT
+        ar.*,
+        tc.total_count
+    FROM all_results ar
+    CROSS JOIN total_count tc
+    ORDER BY
+        ar.relevance_score DESC
+    LIMIT pageSize OFFSET page_offset;
 END;
 $$ LANGUAGE plpgsql;
 
 -- Function to search vocabulary by text
 CREATE OR REPLACE FUNCTION search_vocabulary_by_text(
-    p_search_text TEXT,
-    p_limit INTEGER DEFAULT 50,
-    p_offset INTEGER DEFAULT 0
+    queries TEXT[],
+    relevanceThreshold FLOAT DEFAULT 0.4,
+    pageSize INT DEFAULT 50,
+    page_offset INT DEFAULT 0
 )
 RETURNS TABLE (
     id UUID,
-    jlpt_level_new INTEGER,
-    kanji_forms TEXT,
-    kana_readings TEXT,
-    part_of_speech_tags TEXT,
-    relevance_score REAL
-) AS $$
-BEGIN
+    dict_id VARCHAR(30),
+    jlpt_level INT,
+    relevance_score FLOAT,
+    primary_kanji JSONB,
+    primary_kana JSONB,
+    other_kanji_forms JSONB,
+    other_kana_forms JSONB,
+    senses JSONB,
+    is_common BOOLEAN,
+    total_count BIGINT
+) AS $$ BEGIN
     RETURN QUERY
-    SELECT 
-        v.id,
-        v.jlpt_level_new,
-        STRING_AGG(DISTINCT vk.text, ', ' ORDER BY vk.text) as kanji_forms,
-        STRING_AGG(DISTINCT vka.text, ', ' ORDER BY vka.text) as kana_readings,
-        STRING_AGG(DISTINCT t.code, ', ') FILTER (WHERE vst.tag_type = 'pos') as part_of_speech_tags,
-        ts_rank(
-            to_tsvector('japanese', STRING_AGG(DISTINCT vk.text, ' ' ORDER BY vk.text)),
-            plainto_tsquery('japanese', p_search_text)
-        ) as relevance_score
-    FROM vocabulary v
-    LEFT JOIN vocabulary_kanji vk ON vk.vocabulary_id = v.id
-    LEFT JOIN vocabulary_kana vka ON vka.vocabulary_id = v.id
-    LEFT JOIN vocabulary_sense vs ON vs.vocabulary_id = v.id
-    LEFT JOIN vocabulary_sense_tag vst ON vst.sense_id = vs.id
-    LEFT JOIN tag t ON t.code = vst.tag_code
-    WHERE 
-        vk.text ILIKE '%' || p_search_text || '%' OR
-        vka.text ILIKE '%' || p_search_text || '%' OR
-        to_tsvector('japanese', vk.text) @@ plainto_tsquery('japanese', p_search_text) OR
-        to_tsvector('japanese', vka.text) @@ plainto_tsquery('japanese', p_search_text)
-    GROUP BY v.id, v.jlpt_level_new
-    ORDER BY relevance_score DESC NULLS LAST, v.id
-    LIMIT p_limit OFFSET p_offset;
+    -- Pre-aggregate all related data into JSONB to avoid N+1 subqueries.
+    -- This is the single most important optimization.
+    WITH kanji_json AS (
+        SELECT
+            vk.vocabulary_id,
+            jsonb_agg(
+                jsonb_build_object(
+                    'text', vk.text,
+                    'is_common', vk.is_common,
+                    'tags', COALESCE(
+                        (SELECT jsonb_agg(jsonb_build_object('code', t.code, 'description', t.description, 'category', t.category))
+                         FROM jlpt.vocabulary_kanji_tag vkt
+                         JOIN jlpt.tag t ON vkt.tag_code = t.code
+                         WHERE vkt.vocabulary_kanji_id = vk.id),
+                        '[]'::jsonb
+                    )
+                ) ORDER BY vk.is_common DESC, vk.created_at ASC
+            ) as kanji_forms
+        FROM jlpt.vocabulary_kanji vk
+        GROUP BY vk.vocabulary_id
+    ),
+    kana_json AS (
+        SELECT
+            vkn.vocabulary_id,
+            jsonb_agg(
+                jsonb_build_object(
+                    'text', vkn.text,
+                    'is_common', vkn.is_common,
+                    'applies_to_kanji', vkn.applies_to_kanji,
+                    'tags', COALESCE(
+                        (SELECT jsonb_agg(jsonb_build_object('code', t.code, 'description', t.description, 'category', t.category))
+                         FROM jlpt.vocabulary_kana_tag vknt
+                         JOIN jlpt.tag t ON vknt.tag_code = t.code
+                         WHERE vknt.vocabulary_kana_id = vkn.id),
+                        '[]'::jsonb
+                    )
+                ) ORDER BY vkn.is_common DESC, vkn.created_at ASC
+            ) as kana_forms
+        FROM jlpt.vocabulary_kana vkn
+        GROUP BY vkn.vocabulary_id
+    ),
+    senses_json AS (
+        SELECT
+            vs.vocabulary_id,
+            jsonb_agg(
+                jsonb_build_object(
+                    'applies_to_kanji', vs.applies_to_kanji,
+                    'applies_to_kana', vs.applies_to_kana,
+                    'info', vs.info,
+                    'glosses', (
+                        SELECT jsonb_agg(jsonb_build_object('language', vsg.lang, 'text', vsg.text, 'gender', vsg.gender, 'type', vsg.type))
+                        FROM jlpt.vocabulary_sense_gloss vsg
+                        WHERE vsg.sense_id = vs.id
+                    ),
+                    'tags', (
+                        SELECT jsonb_agg(jsonb_build_object('code', t.code, 'description', t.description, 'category', t.category, 'type', vst.tag_type))
+                        FROM jlpt.vocabulary_sense_tag vst
+                        JOIN jlpt.tag t ON vst.tag_code = t.code
+                        WHERE vst.sense_id = vs.id
+                    )
+                ) ORDER BY vs.created_at ASC
+            ) as senses
+        FROM jlpt.vocabulary_sense vs
+        GROUP BY vs.vocabulary_id
+    ),
+    -- FIX: The CASE statement that calculates relevance has been added back.
+    search_matches AS (
+        -- Search in kanji
+        SELECT
+            v.id as vocabulary_id,
+            'kanji' as match_type,
+            CASE
+                WHEN vk.text = q THEN 1.0
+                WHEN vk.text LIKE q || '%' THEN 0.95
+                WHEN vk.text LIKE '%' || q THEN 0.90
+                ELSE similarity(vk.text, q)
+            END as relevance
+        FROM jlpt.vocabulary v
+        JOIN jlpt.vocabulary_kanji vk ON v.id = vk.vocabulary_id
+        CROSS JOIN LATERAL unnest(queries) AS q
+        WHERE (vk.text % q AND similarity(vk.text, q) >= relevanceThreshold)
+            OR vk.text LIKE q || '%'
+            OR vk.text LIKE '%' || q
+        
+        UNION ALL
+        
+        -- Search in kana
+        SELECT
+            v.id as vocabulary_id,
+            'kana' as match_type,
+            CASE
+                WHEN vkn.text = q THEN 1.0
+                WHEN vkn.text LIKE q || '%' THEN 0.95
+                WHEN vkn.text LIKE '%' || q THEN 0.90
+                ELSE similarity(vkn.text, q)
+            END as relevance
+        FROM jlpt.vocabulary v
+        JOIN jlpt.vocabulary_kana vkn ON v.id = vkn.vocabulary_id
+        CROSS JOIN LATERAL unnest(queries) AS q
+        WHERE (vkn.text % q AND similarity(vkn.text, q) >= relevanceThreshold)
+            OR vkn.text LIKE q || '%'
+            OR vkn.text LIKE '%' || q
+        
+        UNION ALL
+        
+        -- Search in glosses
+        SELECT
+            v.id as vocabulary_id,
+            'gloss' as match_type,
+            CASE
+                WHEN vsg.text = q THEN 1.0
+                WHEN vsg.text LIKE q || '%' THEN 0.95
+                WHEN vsg.text LIKE '%' || q THEN 0.90
+                ELSE similarity(vsg.text, q)
+            END as relevance
+        FROM jlpt.vocabulary v
+        JOIN jlpt.vocabulary_sense vs ON v.id = vs.vocabulary_id
+        JOIN jlpt.vocabulary_sense_gloss vsg ON vs.id = vsg.sense_id
+        CROSS JOIN LATERAL unnest(queries) AS q
+        WHERE (vsg.text % q AND similarity(vsg.text, q) >= relevanceThreshold)
+            OR vsg.text LIKE q || '%'
+            OR vsg.text LIKE '%' || q
+    ),
+    ranked_matches AS (
+        SELECT
+            vocabulary_id,
+            MAX(relevance)::double precision as max_relevance
+        FROM search_matches
+        GROUP BY vocabulary_id
+    ),
+    vocabulary_data AS (
+        SELECT
+            v.id,
+            v.jmdict_id as dict_id,
+            v.jlpt_level_new as jlpt_level,
+            rm.max_relevance::double precision as relevance_score,
+            -- Extract primary and other forms from the pre-built JSONB arrays
+            kj.kanji_forms->0 as primary_kanji,
+            -- IMPROVEMENT: A clean way to get all other forms by removing the first element
+            (jsonb_set(kj.kanji_forms, '{0}', 'null'::jsonb) - 'null') as other_kanji_forms,
+            kn.kana_forms->0 as primary_kana,
+            (jsonb_set(kn.kana_forms, '{0}', 'null'::jsonb) - 'null') as other_kana_forms,
+            sj.senses as senses
+        FROM jlpt.vocabulary v
+        JOIN ranked_matches rm ON v.id = rm.vocabulary_id
+        LEFT JOIN kanji_json kj ON v.id = kj.vocabulary_id
+        LEFT JOIN kana_json kn ON v.id = kn.vocabulary_id
+        LEFT JOIN senses_json sj ON v.id = sj.vocabulary_id
+    ),
+    all_results AS (
+        SELECT
+            vd.id,
+            vd.dict_id,
+            vd.jlpt_level,
+            vd.relevance_score,
+            vd.primary_kanji,
+            vd.primary_kana,
+            vd.other_kanji_forms,
+            vd.other_kana_forms,
+            vd.senses,
+            CASE
+                WHEN (vd.primary_kanji->>'is_common')::boolean = true
+                     OR (vd.primary_kana->>'is_common')::boolean = true
+                THEN true
+                ELSE false
+            END as is_common
+        FROM vocabulary_data vd
+        WHERE vd.relevance_score >= relevanceThreshold
+        ORDER BY vd.relevance_score DESC
+    ),
+    total_count AS (
+        SELECT COUNT(*) as total_count FROM all_results
+    )
+    SELECT
+        ar.*,
+        tc.total_count
+    FROM all_results ar
+    CROSS JOIN total_count tc
+    ORDER BY
+        ar.relevance_score DESC
+    LIMIT pageSize OFFSET page_offset;
 END;
-$$ LANGUAGE plpgsql;
+ $$ LANGUAGE plpgsql;
 
--- Function to get kanji used in vocabulary
-CREATE OR REPLACE FUNCTION get_kanji_in_vocabulary(
-    p_vocabulary_id UUID
+-- Function to get proper nouns by text
+CREATE OR REPLACE FUNCTION search_proper_noun_by_text(
+    queries TEXT[],
+    relevanceThreshold FLOAT DEFAULT 0.4,
+    pageSize INT DEFAULT 50,
+    page_offset INT DEFAULT 0
 )
 RETURNS TABLE (
-    kanji_id UUID,
-    kanji_literal CHAR(1),
-    jlpt_level_new INTEGER,
-    stroke_count INTEGER,
-    frequency INTEGER
+    id UUID,
+    dict_id VARCHAR(30),
+    relevance_score FLOAT,
+    primary_kanji JSON,
+    primary_kana JSON,
+    other_kanji_forms JSON,
+    other_kana_forms JSON,
+    translations JSON,
+    total_count BIGINT
 ) AS $$
 BEGIN
+    -- We'll produce a ranked set by combining several indexed candidate sets.
     RETURN QUERY
-    SELECT 
-        k.id as kanji_id,
-        k.literal as kanji_literal,
-        k.jlpt_level_new,
-        k.stroke_count,
-        k.frequency
-    FROM vocabulary_uses_kanji vuk
-    JOIN kanji k ON k.id = vuk.kanji_id
-    WHERE vuk.vocabulary_id = p_vocabulary_id
-    ORDER BY k.frequency ASC NULLS LAST, k.stroke_count ASC;
-END;
-$$ LANGUAGE plpgsql;
+    WITH search_matches AS (
+			-- Search in kanji
+       		SELECT DISTINCT
+                pn.id as proper_noun_id,
+                pnk.text as match_text,
+                'kanji' as match_type,
+                CASE
+				    WHEN pnk.text = q THEN 1.0
+				    WHEN pnk.text LIKE q || '%' THEN 0.95
+				    WHEN pnk.text LIKE '%' || q THEN 0.90
+				    ELSE similarity(pnk.text, q)
+				END as relevance
+	        FROM jlpt.proper_noun pn
+	        JOIN jlpt.proper_noun_kanji pnk ON pn.id = pnk.proper_noun_id
+			CROSS JOIN LATERAL unnest(queries) AS q
+	        WHERE (pnk.text % q AND similarity(pnk.text, q) >= relevanceThreshold)
+			    OR pnk.text LIKE q || '%'
+			    OR pnk.text LIKE '%' || q
+            
+            UNION ALL
+            
+            -- Search in kana
+            SELECT DISTINCT
+                pn.id as proper_noun_id,
+                pnkn.text as match_text,
+                'kana' as match_type,
+                CASE
+				    WHEN pnkn.text = q THEN 1.0
+				    WHEN pnkn.text LIKE q || '%' THEN 0.95
+				    WHEN pnkn.text LIKE '%' || q THEN 0.90
+				    ELSE similarity(pnkn.text, q)
+				END as relevance
+	        FROM jlpt.proper_noun pn
+	        JOIN jlpt.proper_noun_kana pnkn ON pn.id = pnkn.proper_noun_id
+			CROSS JOIN LATERAL unnest(queries) AS q
+	        WHERE (pnkn.text % q AND similarity(pnkn.text, q) >= relevanceThreshold)
+			    OR pnkn.text LIKE q || '%'
+			    OR pnkn.text LIKE '%' || q
+            
+            UNION ALL
+            
+            -- Search in translations
+            SELECT DISTINCT
+                pn.id as proper_noun_id,
+                pntt.text as match_text,
+                'translation' as match_type,
+                CASE
+				    WHEN pntt.text = q THEN 1.0
+				    WHEN pntt.text LIKE q || '%' THEN 0.95
+				    WHEN pntt.text LIKE '%' || q THEN 0.90
+				    ELSE similarity(pntt.text, q)
+				END as relevance
+	        FROM jlpt.proper_noun pn
+	        JOIN jlpt.proper_noun_translation pnt ON pn.id = pnt.proper_noun_id
+	        JOIN jlpt.proper_noun_translation_text pntt ON pnt.id = pntt.translation_id
+			CROSS JOIN LATERAL unnest(queries) AS q
+	        WHERE (pntt.text % q AND similarity(pntt.text, q) >= relevanceThreshold)
+			    OR pntt.text LIKE q || '%'
+			    OR pntt.text LIKE '%' || q
+    ),
+    ranked_matches AS (
+        SELECT 
+            proper_noun_id,
+            MAX(relevance)::double precision as max_relevance
+        FROM search_matches
+        GROUP BY proper_noun_id
+    ),
+    proper_noun_data AS (
+        SELECT
+            pn.id,
+            pn.jmnedict_id as dict_id,
+            rm.max_relevance::double precision as relevance_score,
 
--- Function to get vocabulary using kanji
-CREATE OR REPLACE FUNCTION get_vocabulary_using_kanji(
-    p_kanji_id UUID,
-    p_limit INTEGER DEFAULT 50,
-    p_offset INTEGER DEFAULT 0
-)
-RETURNS TABLE (
-    vocabulary_id UUID,
-    jlpt_level_new INTEGER,
-    kanji_forms TEXT,
-    kana_readings TEXT
-) AS $$
-BEGIN
-    RETURN QUERY
-    SELECT 
-        v.id as vocabulary_id,
-        v.jlpt_level_new,
-        STRING_AGG(DISTINCT vk.text, ', ' ORDER BY vk.text) as kanji_forms,
-        STRING_AGG(DISTINCT vka.text, ', ' ORDER BY vka.text) as kana_readings
-    FROM vocabulary_uses_kanji vuk
-    JOIN vocabulary v ON v.id = vuk.vocabulary_id
-    LEFT JOIN vocabulary_kanji vk ON vk.vocabulary_id = v.id
-    LEFT JOIN vocabulary_kana vka ON vka.vocabulary_id = v.id
-    WHERE vuk.kanji_id = p_kanji_id
-    GROUP BY v.id, v.jlpt_level_new
-    ORDER BY v.jlpt_level_new ASC, v.id
-    LIMIT p_limit OFFSET p_offset;
+            
+            -- Get primary kanji (first common one, or first one)
+            (SELECT json_build_object(
+                    'text', pnk.text,
+                    'tags', COALESCE(
+                        (SELECT json_agg(json_build_object(
+                            'code', t.code,
+                            'description', t.description,
+                            'category', t.category
+                        ))
+                        FROM jlpt.proper_noun_kanji_tag pnkt
+                        JOIN jlpt.tag t ON pnkt.tag_code = t.code
+                        WHERE pnkt.proper_noun_kanji_id = pnk.id),
+                        '[]'::json
+                    )
+                )
+                FROM jlpt.proper_noun_kanji pnk
+                WHERE pnk.proper_noun_id = pn.id
+                ORDER BY pnk.created_at ASC
+                LIMIT 1
+                ) as primary_kanji,
+            
+            -- Get primary kana (respecting applies_to_kanji)
+            (SELECT json_build_object(
+                    'text', pnkn.text,
+                    'applies_to_kanji', pnkn.applies_to_kanji,
+                    'tags', COALESCE(
+                        (SELECT json_agg(json_build_object(
+                            'code', t.code,
+                            'description', t.description,
+                            'category', t.category
+                        ))
+                        FROM jlpt.proper_noun_kana_tag pnknt
+                        JOIN jlpt.tag t ON pnknt.tag_code = t.code
+                        WHERE pnknt.proper_noun_kana_id = pnkn.id),
+                        '[]'::json
+                    )
+                )
+                FROM jlpt.proper_noun_kana pnkn
+                WHERE pnkn.proper_noun_id = pn.id
+                ORDER BY pnkn.created_at ASC
+                LIMIT 1
+                ) as primary_kana,
+            
+            -- Get all other kanji forms
+            (SELECT json_agg(json_build_object(
+                    'text', pnk.text,
+                    'tags', COALESCE(
+                        (SELECT json_agg(json_build_object(
+                            'code', t.code,
+                            'description', t.description,
+                            'category', t.category
+                        ))
+                        FROM jlpt.proper_noun_kanji_tag pnkt
+                        JOIN jlpt.tag t ON pnkt.tag_code = t.code
+                        WHERE pnkt.proper_noun_kanji_id = pnk.id),
+                        '[]'::json
+                    )
+                ) ORDER BY pnk.created_at ASC)
+                FROM jlpt.proper_noun_kanji pnk
+                WHERE pnk.proper_noun_id = pn.id
+                OFFSET 1
+                ) as other_kanji_forms,
+            
+            -- Get all other kana forms
+            (SELECT json_agg(json_build_object(
+                    'text', pnkn.text,
+                    'applies_to_kanji', pnkn.applies_to_kanji,
+                    'tags', COALESCE(
+                        (SELECT json_agg(json_build_object(
+                            'code', t.code,
+                            'description', t.description,
+                            'category', t.category
+                        ))
+                        FROM jlpt.proper_noun_kana_tag pnknt
+                        JOIN jlpt.tag t ON pnknt.tag_code = t.code
+                        WHERE pnknt.proper_noun_kana_id = pnkn.id),
+                        '[]'::json
+                    )
+                ) ORDER BY pnkn.created_at ASC)
+                FROM jlpt.proper_noun_kana pnkn
+                WHERE pnkn.proper_noun_id = pn.id
+                OFFSET 1
+                ) as other_kana_forms,
+            
+            -- Get translations with their data
+            (SELECT json_agg(translation_data ORDER BY translation_order)
+                FROM (
+                    SELECT 
+                        pnt.id,
+                        ROW_NUMBER() OVER (ORDER BY pnt.created_at) as translation_order,
+                        json_build_object(
+                            'types', (
+                                SELECT json_agg(json_build_object(
+                                    'code', t.code,
+                                    'description', t.description,
+                                    'category', t.category
+                                ))
+                                FROM jlpt.proper_noun_translation_type pntt
+                                JOIN jlpt.tag t ON pntt.tag_code = t.code
+                                WHERE pntt.translation_id = pnt.id
+                            ),
+                            'translations', (
+                                SELECT json_agg(json_build_object(
+                                    'lang', pnttxt.lang,
+                                    'text', pnttxt.text
+                                ))
+                                FROM jlpt.proper_noun_translation_text pnttxt
+                                WHERE pnttxt.translation_id = pnt.id
+                            )
+                        ) as translation_data
+                    FROM jlpt.proper_noun_translation pnt
+                    WHERE pnt.proper_noun_id = pn.id
+                    ORDER BY pnt.created_at
+                ) translations
+                ) as translations
+            
+        FROM jlpt.proper_noun pn
+        JOIN ranked_matches rm ON pn.id = rm.proper_noun_id
+    ),
+    all_results AS (
+        SELECT 
+            pnd.id,
+            pnd.dict_id,
+            pnd.relevance_score,
+            pnd.primary_kanji,
+            pnd.primary_kana,
+            pnd.other_kanji_forms,
+            pnd.other_kana_forms,
+            pnd.translations
+        FROM proper_noun_data pnd
+        WHERE pnd.relevance_score >= relevanceThreshold
+        ORDER BY pnd.relevance_score DESC
+    ),
+    total_count AS (
+        SELECT COUNT(*) as total_count FROM all_results
+    )
+    SELECT
+        ar.*,
+        tc.total_count
+    FROM all_results ar
+    CROSS JOIN total_count tc
+    ORDER BY
+        ar.relevance_score DESC
+    LIMIT pageSize OFFSET page_offset;
 END;
 $$ LANGUAGE plpgsql;
 
