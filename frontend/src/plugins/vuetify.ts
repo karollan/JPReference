@@ -36,7 +36,7 @@ export default createVuetify({
       jlptThemeDark: {
         dark: true,
         colors: {
-          primary: '#FF6659',
+          primary: '#607AFB',
           background: '#1E1E1E',
           surface: '#2C2C2C',
           secondary: '#B0BEC5',

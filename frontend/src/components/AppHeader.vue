@@ -10,12 +10,13 @@
                     <v-icon
                         icon="mdi-ideogram-cjk-variant"
                         size="large"
-                        style="cursor: pointer; color:inherit; text-decoration:none;"
+                        color="primary"
+                        style="cursor: pointer; text-decoration:none; border-radius: 50%;"
                         to="/"
                     >
                     </v-icon>
                 </RouterLink>
-                <span class="title-text">JLPT Study</span>
+                <span class="title-text">Japanese Dictionary</span>
             </div>
 
         </v-app-bar-title>
@@ -67,5 +68,10 @@ a.v-btn::hover {
 }
 a.v-btn--active > .v-btn__overlay {
     opacity: 0;
+}
+.title-text {
+    font-size: 1.3rem;
+    font-weight: 500;
+    margin-left: 0.5rem;
 }
 </style>

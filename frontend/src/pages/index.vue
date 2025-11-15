@@ -7,7 +7,7 @@
         <h1
           class="home__title"
         >
-          Master the JLPT
+          Japanese Dictionary
         </h1>
       </v-col>
       <v-col cols="12">
@@ -18,7 +18,7 @@
         </h5>
       </v-col>
       <v-col cols="12">
-        <v-autocomplete
+        <v-text-field
           bg-color="white"
           icon-color="#00000066"
           class="home__search mx-auto"
@@ -27,7 +27,7 @@
           prepend-inner-icon="mdi-magnify"
           variant="outlined"
         >
-        </v-autocomplete>
+        </v-text-field>
       </v-col>
       <v-col
         cols="12"
@@ -36,14 +36,9 @@
         <v-btn
           elevation="0"
           class="text-none"
+          color="primary"
         >
-          Explore kanji
-        </v-btn>
-        <v-btn
-          elevation="0"
-          class="text-none"
-        >
-          Explore vocabulary
+          Explore
         </v-btn>
       </v-col>
     </v-row>
@@ -62,7 +57,7 @@
   max-width: 42rem;
 
   &__title {
-    font-size:3.75rem;
+    font-size:3.5rem;
     margin-bottom: 1.5rem;
   }
 
