@@ -10,8 +10,10 @@ declare module 'vue' {
   export interface GlobalComponents {
     AppFooter: typeof import('./components/AppFooter.vue')['default']
     AppHeader: typeof import('./components/AppHeader.vue')['default']
-    KanjiDictionaryCard: typeof import('./components/KanjiDictionaryCard.vue')['default']
+    KanjiSummary: typeof import('./components/search/KanjiSummary.vue')['default']
+    ProperNounSummary: typeof import('./components/search/ProperNounSummary.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    VocabularySummary: typeof import('./components/search/VocabularySummary.vue')['default']
   }
 }

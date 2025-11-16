@@ -1,15 +1,20 @@
-import type { TagInfo } from './Common'
+import type { PaginationMetadata, TagInfo } from './Common'
+
+export interface ProperNounResponse {
+    data: ProperNounSummary[]
+    pagination: PaginationMetadata
+}
 
 // Used to represent a summary of a proper noun in search lists
 export interface ProperNounSummary {
     id: string
     dictionaryId: string
     relevanceScore: number
-    primaryKanji: KanjiForm
-    primaryKana: KanaForm
-    otherKanjiForms: KanjiForm[]
-    otherKanaForms: KanaForm[]
-    translations: TranslationSummary[]
+    primaryKanji: KanjiForm | null
+    primaryKana: KanaForm | null
+    otherKanjiForms: KanjiForm[] | null
+    otherKanaForms: KanaForm[] | null
+    translations: TranslationSummary[] | null
 }
 
 interface KanjiForm {

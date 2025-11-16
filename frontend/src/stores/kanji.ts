@@ -1,12 +1,12 @@
 // Utilities
 import { defineStore } from 'pinia'
-import type { Kanji, KanjiListCache } from '@/types/Kanji'
+import type { KanjiSummary, KanjiListCache } from '@/types/Kanji'
 import { KanjiService } from '@/services/kanji.service'
 
 export const useKanjiStore = defineStore('kanji', () => {
   // State
   const kanjiListCache = reactive<KanjiListCache>({})
-  const kanjiList = shallowRef<Kanji[]>([])
+  const kanjiList = shallowRef<KanjiSummary[]>([])
   const loading = ref<boolean>(false)
   const loadingMore = ref<boolean>(false)
   const error = ref<string | null>(null)
@@ -16,7 +16,7 @@ export const useKanjiStore = defineStore('kanji', () => {
   }>({ jlptLevel: [], search: null })
 
   //Utils
-  const flattenPages = (cache: KanjiListCache, key: string): Kanji[] => {
+  const flattenPages = (cache: KanjiListCache, key: string): KanjiSummary[] => {
     if (!cache[key] || !cache[key].pages) {
       return [];
     }
@@ -27,7 +27,7 @@ export const useKanjiStore = defineStore('kanji', () => {
       .sort((a, b) => a - b);
 
     // Flatten pages into a single array
-    return pageNumbers.reduce<Kanji[]>((acc, pageNum) => {
+    return pageNumbers.reduce<KanjiSummary[]>((acc, pageNum) => {
       return acc.concat(cache[key]?.pages[pageNum] ?? []);
     }, []);
   }
@@ -70,10 +70,10 @@ export const useKanjiStore = defineStore('kanji', () => {
     loadingMore.value = false
 
     try {
-      const response = await KanjiService.fetchKanjis(jlptLevel, search, 1, pageSize);
+      const response = await KanjiService.fetchKanjis(search, 1, pageSize);
       
       // Validate response structure
-      if (!response || !Array.isArray(response.items)) {
+      if (!response || !Array.isArray(response.data)) {
         throw new Error('Invalid response structure from KanjiService');
       }
 
@@ -83,8 +83,8 @@ export const useKanjiStore = defineStore('kanji', () => {
       }
 
       //Cache the response
-      kanjiListCache[key] ??= { pages: {}, totalCount: response.totalCount, hasMorePages: true }
-      kanjiListCache[key].pages[response.page] = response.items
+      kanjiListCache[key] ??= { pages: {}, totalCount: response.pagination.totalCount, hasMorePages: true }
+      kanjiListCache[key].pages[response.pagination.page] = response.data
       kanjiList.value = flattenPages(kanjiListCache, key)
       kanjiListCache[key].hasMorePages = kanjiList.value.length < kanjiListCache[key].totalCount
     } catch(err: any) {
@@ -108,18 +108,17 @@ export const useKanjiStore = defineStore('kanji', () => {
 
     try {
         const response = await KanjiService.fetchKanjis(
-            currentFilters.jlptLevel, 
             currentFilters.search, 
             nextPage, 
             pageSize
         );
         
         // Validate response structure
-        if (!response || !Array.isArray(response.items)) {
+        if (!response || !Array.isArray(response.data)) {
             throw new Error('Invalid response structure from KanjiService');
         }
         
-        kanjiListCache[key]!.pages[nextPage] = response.items
+        kanjiListCache[key]!.pages[nextPage] = response.data;
         kanjiList.value = flattenPages(kanjiListCache, key);
         kanjiListCache[key]!.hasMorePages = kanjiList.value.length < kanjiListCache[key]!.totalCount
     } catch (err: any) {

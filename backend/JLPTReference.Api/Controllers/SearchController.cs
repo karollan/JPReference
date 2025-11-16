@@ -15,15 +15,15 @@ public class SearchController : ControllerBase
         _searchService = searchService;
     }
 
-    [HttpGet("search")]
+    [HttpGet("")]
     public async Task<IActionResult> Search(
-        [FromQuery] List<string> queries,
+        [FromQuery] string query,
         [FromQuery] List<string> types,
         [FromQuery] int page,
         [FromQuery] int pageSize
     ) {
-        if (queries == null || queries.Count == 0) {
-            return BadRequest("Queries are required");
+        if (string.IsNullOrEmpty(query)) {
+            return BadRequest("Query is required");
         }
         // Default types to all types if not provided
         if (types == null || types.Count == 0) {
@@ -37,7 +37,7 @@ public class SearchController : ControllerBase
         }
 
         GlobalSearchRequest request = new GlobalSearchRequest {
-            Queries = queries,
+            Query = query,
             Types = types,
             Page = page,
             PageSize = pageSize
@@ -48,28 +48,28 @@ public class SearchController : ControllerBase
         return Ok(result);
     }
 
-    [HttpGet("search/kanji")]
+    [HttpGet("kanji")]
 
     public async Task<IActionResult> SearchKanji(
-        [FromQuery] List<string> queries,
+        [FromQuery] string query,
         [FromQuery] int page,
         [FromQuery] int pageSize
     ) {
-        if (queries == null || queries.Count == 0) {
+        if (string.IsNullOrEmpty(query)) {
             return BadRequest("Term is required");
         }
         if (page <= 0) {
-            return BadRequest("Page must be greater than 0");
+            page = 1;
         }
         if (pageSize <= 0) {
             return BadRequest("PageSize must be greater than 0");
         }
         if (pageSize > 100) {
-            return BadRequest("PageSize must be less than 100");
+            pageSize = 100;
         }
 
         GlobalSearchRequest request = new GlobalSearchRequest {
-            Queries = queries,
+            Query = query,
             Page = page,
             PageSize = pageSize
         };
@@ -77,26 +77,26 @@ public class SearchController : ControllerBase
         return Ok(result);
     }
 
-    [HttpGet("search/vocabulary")]
+    [HttpGet("vocabulary")]
     public async Task<IActionResult> SearchVocabulary(
-        [FromQuery] List<string> queries,
+        [FromQuery] string query,
         [FromQuery] int page,
         [FromQuery] int pageSize
     ) {
-        if (queries == null || queries.Count == 0) {
+        if (string.IsNullOrEmpty(query)) {
             return BadRequest("Term is required");
         }
         if (page <= 0) {
-            return BadRequest("Page must be greater than 0");
+            page = 1;
         }
         if (pageSize <= 0) {
             return BadRequest("PageSize must be greater than 0");
         }
         if (pageSize > 100) {
-            return BadRequest("PageSize must be less than 100");
+            pageSize = 100;
         }
         GlobalSearchRequest request = new GlobalSearchRequest {
-            Queries = queries,
+            Query = query,
             Page = page,
             PageSize = pageSize
         };
@@ -104,26 +104,26 @@ public class SearchController : ControllerBase
         return Ok(result);
     }
 
-    [HttpGet("search/proper-noun")]
+    [HttpGet("proper-noun")]
     public async Task<IActionResult> SearchProperNoun(
-        [FromQuery] List<string> queries,
+        [FromQuery] string query,
         [FromQuery] int page,
         [FromQuery] int pageSize
     ) {
-        if (queries == null || queries.Count == 0) {
+        if (string.IsNullOrEmpty(query)) {
             return BadRequest("Term is required");
         }
         if (page <= 0) {
-            return BadRequest("Page must be greater than 0");
+            page = 1;
         }
         if (pageSize <= 0) {
             return BadRequest("PageSize must be greater than 0");
         }
         if (pageSize > 100) {
-            return BadRequest("PageSize must be less than 100");
+            pageSize = 100;
         }
         GlobalSearchRequest request = new GlobalSearchRequest {
-            Queries = queries,
+            Query = query,
             Page = page,
             PageSize = pageSize
         };

@@ -1,7 +1,18 @@
 <template>
-  <v-container class="text-center kanji main-container-layout">
-    <v-row justify="center" dense>
-      <v-col cols="12">
+  <v-container
+    :max-width="$vuetify.display.mdAndUp ? 1200 : '100%'"
+    class="text-center main-container-layout"
+    fluid
+  >
+    <v-row
+      class="content d-flex flex-row"
+      justify="center"
+      align="start"
+    >
+      <v-col
+        ref="searchColumn"
+        cols="12"
+      >
         <v-text-field
           v-model="searchQuery"
           bg-color="white"
@@ -12,134 +23,99 @@
           prepend-inner-icon="mdi-magnify"
           variant="outlined"
           clearable
+          hide-details="auto"
           @update:model-value="onSearchChanged"
         >
         </v-text-field>
-      </v-col>
-      <v-col cols="12">
-        <v-alert v-if="kanjiStore.error" type="error" class="mb-4">
-          {{ kanjiStore.error }}
-        </v-alert>
-        
-        <p style="text-align: left;">
-          Filter by JLPT Level
-        </p>
-        <v-chip-group
-          v-model="selectedLevel"
-          multiple
-          class="mb-4"
+        <v-col
+          v-if="searchStore.error"
+          cols="12"
         >
-          <v-chip
-            v-for="jltpLevel in jlptLevels" 
-            :key="jltpLevel"
-            :value="jltpLevel"
-            filter
+          <v-alert
+            type="error"
+            class="mb-4"
+            closable
           >
-            {{ jltpLevel === 0 ? 'N/A' : `N${jltpLevel}` }}
-          </v-chip>
-        </v-chip-group>
-        
-        <v-row>
-          <v-col cols="12">
-            <v-tabs
-              v-model="tab"
-              color="primary"
-              align-tabs="center"
-            >
-              <v-tab
-                value="kanji"
-                class="text-none"  
-              >
-                Kanji
-              </v-tab>
-              <v-tab
-                value="vocabulary"
-                class="text-none"
-              >
-                Vocabulary
-              </v-tab>
-            </v-tabs>
-          </v-col>
-        </v-row>
-        <v-tabs-window v-model="tab">
-          <v-tabs-window-item value="kanji">
-            <p style="text-align: right;">
-              {{ kanjiStore.totalCount }} kanji found
-            </p>
-            <!-- Initial loading state -->
-            <v-row v-if="kanjiStore.loading && kanjiList.length === 0" justify="center" class="pa-8">
-              <v-col cols="auto" class="text-center">
-                <v-progress-circular indeterminate color="primary" size="48" />
-                <p class="mt-4 text-grey">Loading kanji...</p>
-              </v-col>
-            </v-row>
-
-            <!-- Kanji Grid -->
-            <v-data-iterator
-              v-else
-              :items="kanjiList"
-              :items-per-page="-1"
-              item-key="id"
-              class="kanji-iterator justify-between"
-            >
-              <template v-slot:default="{ items }">
-                <v-row>
-                  <v-col
-                    v-for="item in items"
-                    :key="item.raw.id"
-                    cols="12"
-                    sm="6"
-                    md="4"
-                    lg="4"
-                    xl="4"
-                  >
-                    <kanji-dictionary-card 
-                      :kanji="item.raw" 
-                    />
-                  </v-col>
-                </v-row>
-              </template>
-              
-              <template v-slot:no-data>
-                <v-row justify="center" class="pa-8">
-                  <v-col cols="12" class="text-center">
-                    <v-icon size="64" color="grey-lighten-1">mdi-book-open-variant</v-icon>
-                    <h3 class="text-grey-lighten-1 mt-4">No kanji found</h3>
-                    <p class="text-grey">Try adjusting your search criteria</p>
-                  </v-col>
-                </v-row>
-              </template>
-            </v-data-iterator>
-
-            <!-- Loading more indicator -->
-            <v-row v-if="kanjiStore.loadingMore" justify="center" class="pa-4">
-              <v-col cols="auto">
-                <v-progress-circular indeterminate color="primary" size="32" />
-                <span class="ml-3 text-grey">Loading more...</span>
-              </v-col>
-            </v-row>
-
-            <!-- End of results -->
-            <v-row v-else-if="!kanjiStore.hasMorePages && kanjiList.length > 0" justify="center" class="pa-4">
-              <v-col cols="auto">
-                <v-chip color="grey-lighten-2" variant="outlined">
-                  <v-icon start>mdi-check-circle</v-icon>
-                  All kanji loaded
-                </v-chip>
-              </v-col>
-            </v-row>
-          </v-tabs-window-item>
-        </v-tabs-window>
+            {{ searchStore.error }}
+          </v-alert>
+        </v-col>
+      </v-col>
+      <v-col
+        cols="8"
+        class="d-flex flex-column"
+        :style="{ height: resultColumnHeight }"
+      >
+        <div class="text-left section-title mb-2">
+          <span>Vocabulary</span>
+        </div>
+        <v-divider class="mb-4 mt-2"></v-divider>
+        <div class="vocabulary-iterator overflow-y-auto h-100">
+          <VocabularySummary
+            v-for="vocabulary in searchStore.vocabularyList?.data || []"
+            :key="vocabulary.id"
+            :vocabulary="vocabulary"
+            class="mb-4"
+          />
+        </div>
+      </v-col>
+      <v-col
+        cols="4"
+        class="d-flex flex-column"
+        :style="{ height: resultColumnHeight }"
+      >
+        <div class="text-left section-title mb-2">
+          <span>Kanji</span>
+        </div>
+        <v-divider class="mb-4 mt-2"></v-divider>
+        <div class="flex-fill overflow-y-auto">
+          <div
+            class="kanji-iterator"
+          >
+            <KanjiSummary
+              v-for="kanji in searchStore.kanjiList?.data || []"
+              :key="kanji.literal"
+              :kanji="kanji"
+              class="mb-4"
+            />
+          </div>
+        </div>
+        <div class="text-left section-title mb-2 mt-4">
+          <span>Proper Nouns</span>
+        </div>
+        <v-divider class="mb-4 mt-2"></v-divider>
+        <div class="flex-fill overflow-y-auto">
+          <div class="proper-noun-iterator">
+            <ProperNounSummary
+              v-for="properNoun in searchStore.properNounList?.data || []"
+              :key="properNoun.id"
+              :properNoun="properNoun"
+              class="mb-4"
+            />
+          </div>
+        </div>
       </v-col>
     </v-row>
-
   </v-container>
 </template>
 
 <script lang="ts" setup>
-import { useKanjiStore } from '@/stores/kanji'
-import KanjiDictionaryCard from '@/components/KanjiDictionaryCard.vue'
-import { onMounted, onUnmounted, ref } from 'vue'
+import KanjiSummary from '@/components/search/KanjiSummary.vue'
+import VocabularySummary from '@/components/search/VocabularySummary.vue'
+import { useSearchStore } from '@/stores/search'
+import { ref } from 'vue'
+
+const route = useRoute()
+const router = useRouter()
+const searchStore = useSearchStore()
+
+const pageSize = 50
+const searchColumn = ref<any | null>(null)
+const searchQuery = ref<string>(route.query.query as string || '')
+
+const resultColumnHeight = computed(() => {
+  console.log(searchColumn.value)
+  return searchColumn.value ? `${window.innerHeight - searchColumn.value.$el.getBoundingClientRect().bottom - 32}px` : '400px'
+})
 
 // Simple debounce function
 const debounce = (func: Function, delay: number) => {
@@ -150,24 +126,10 @@ const debounce = (func: Function, delay: number) => {
   }
 }
 
-const kanjiStore = useKanjiStore()
 
-const tab = shallowRef<string>('kanji')
-const selectedLevel = ref<number[]>([])
-const searchQuery = ref<string>('')
-const pageSize = 50
-const jlptLevels = [5, 4, 3, 2, 1, 0]
-
-
-// Get the kanji list directly from store
-const kanjiList = computed(() => kanjiStore.kanjiList)
 
 const loadInitialData = async () => {
-  await kanjiStore.fetchKanji(selectedLevel.value, searchQuery.value || null, pageSize)
-}
-
-const loadMoreData = async () => {
-  await kanjiStore.fetchNextPage(pageSize)
+  await searchStore.performSearch(searchQuery.value, pageSize);
 }
 
 // Debounced search function
@@ -175,45 +137,31 @@ const debouncedSearch = debounce(async () => {
   await loadInitialData()
 }, 500)
 
+const updateUrl = (query: string) => {
+  router.replace({ 
+    query: { 
+      ...route.query,
+      query: query || undefined // Remove query param if empty
+    } 
+  })
+}
+
 const onSearchChanged = () => {
   debouncedSearch()
 }
 
-// Infinite scroll setup
-const scrollHandler = async () => {
-  const scrollPosition = window.innerHeight + window.scrollY
-  const documentHeight = document.documentElement.offsetHeight
-  const threshold = 400 // Load when user is 200px from bottom
-  if (scrollPosition >= documentHeight - threshold && kanjiStore.hasMorePages && !kanjiStore.loadingMore) {
-    await loadMoreData()
-  }
-}
+watch(searchQuery, (newQuery) => {
+  searchStore.reset()
+  updateUrl(newQuery)
+  debouncedSearch()
+}, { immediate: true})
 
-
-onMounted(async () => {
-  await loadInitialData()
-  window.addEventListener('scroll', scrollHandler)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('scroll', scrollHandler)
-})
-
-watch(selectedLevel, async () => {
-  await loadInitialData()
-})
 
 </script>
 <style lang="scss" scoped>
-.kanji-iterator {
-  min-height: 300px;
+.content {
+  height: calc(100vh - var(--v-layout-top) - var(--v-layout-bottom) - 2rem);
+  padding: 1rem;
 }
 
-.main-container-layout {
-  max-width: 1400px;
-}
-
-.home__search {
-  max-width: 400px;
-}
 </style>

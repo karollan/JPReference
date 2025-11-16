@@ -4,30 +4,53 @@ namespace JLPTReference.Api.Services.Interfaces;
 
 public interface ITransliterationService
 {
-    List<string> GetAllSearchVariants(string text) {
-        return new List<string> {
-            text,
-            ToHiragana(text),
-            ToKatakana(text),
-            ToRomaji(text)
+    static List<string> GetAllSearchVariants(string text) {
+        HashSet<string> variants = new HashSet<string>(StringComparer.Ordinal)
+        {
+            text
         };
+
+        if (IsRomaji(text))
+        {
+            variants.Add(ToHiragana(text));
+            variants.Add(ToKatakana(text));
+        } else if (IsHiragana(text))
+        {
+            variants.Add(ToKatakana(text));
+            variants.Add(ToRomaji(text));
+        }
+        else if (IsKatakana(text))
+        {
+            variants.Add(ToHiragana(text));
+            variants.Add(ToRomaji(text));
+        }
+        else if (IsKanji(text))
+        {
+            variants.Add(text);
+        }
+
+        return variants.ToList();
     }
-    string ToHiragana(string text) {
+    static string ToHiragana(string text) {
         return WanaKana.ToHiragana(text);
     }
-    string ToKatakana(string text) {
+    static string ToKatakana(string text) {
         return WanaKana.ToKatakana(text);
     }
-    string ToRomaji(string text) {
+    static string ToRomaji(string text) {
         return WanaKana.ToRomaji(text);
     }
-    bool IsHiragana(string text) {
+
+    static bool IsRomaji(string text) {
+        return WanaKana.IsRomaji(text);
+    }
+    static bool IsHiragana(string text) {
         return WanaKana.IsHiragana(text);
     }
-    bool IsKatakana(string text) {
+    static  bool IsKatakana(string text) {
         return WanaKana.IsKatakana(text);
     }
-    bool IsKanji(string text) {
+    static bool IsKanji(string text) {
         return WanaKana.IsKanji(text);
     }
 }

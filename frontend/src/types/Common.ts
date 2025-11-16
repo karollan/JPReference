@@ -4,3 +4,12 @@ export interface TagInfo {
     category: string
     type?: string
 }
+
+export interface PaginationMetadata {
+    totalCount: number
+    page: number
+    pageSize: number
+    totalPages: number
+    hasPrevious: boolean
+    hasNext: boolean
+}

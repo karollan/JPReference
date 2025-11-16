@@ -1,4 +1,10 @@
+import type { PaginationMetadata } from "./Common"
 import type { RadicalSummary } from "./Radical"
+
+export interface KanjiResponse {
+    data: KanjiSummary[]
+    pagination: PaginationMetadata
+}
 
 // Used to represent a summary of a kanji in search lists
 export interface KanjiSummary {
@@ -9,10 +15,10 @@ export interface KanjiSummary {
     frequency?: number
     grade?: number
     jlptLevel?: number
-    kunyomiReadings: KanjiReading[]
-    onyomiReadings: KanjiReading[]
-    meanings: KanjiMeaning[]
-    radicals: RadicalSummary[]
+    kunyomiReadings: KanjiReading[] | null
+    onyomiReadings: KanjiReading[] | null
+    meanings: KanjiMeaning[] | null
+    radicals: RadicalSummary[] | null
 }
 
 interface KanjiReading {

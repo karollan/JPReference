@@ -19,6 +19,7 @@
       </v-col>
       <v-col cols="12">
         <v-text-field
+          v-model="searchQuery"
           bg-color="white"
           icon-color="#00000066"
           class="home__search mx-auto"
@@ -37,6 +38,8 @@
           elevation="0"
           class="text-none"
           color="primary"
+          :disabled="disabled"
+          :to="`/search/?query=${encodeURIComponent(searchQuery)}`"
         >
           Explore
         </v-btn>
@@ -46,7 +49,9 @@
 </template>
 
 <script lang="ts" setup>
-  //
+const searchQuery = ref('');
+
+const disabled = computed(() => searchQuery.value.trim().length === 0);
 </script>
 <style lang="scss" scoped>
 .home {

@@ -1,15 +1,20 @@
-import type { TagInfo } from './Common'
+import type { PaginationMetadata, TagInfo } from './Common'
+
+export interface VocabularyResponse {
+    data: VocabularySummary[]
+    pagination: PaginationMetadata
+}
 
 // Used to represent a summary of a vocabulary in search lists
-export interface VocaabularySummary {
+export interface VocabularySummary {
     id: string
     dictionaryId: string
     relevanceScore: number
-    primaryKanji: KanjiForm
-    primaryKana: KanaForm
-    otherKanjiForms: KanjiForm[]
-    otherKanaForms: KanaForm[]
-    senses: SenseSummary[]
+    primaryKanji: KanjiForm | null
+    primaryKana: KanaForm | null
+    otherKanjiForms: KanjiForm[] | null
+    otherKanaForms: KanaForm[] | null
+    senses: SenseSummary[] | null
     jlptLevel?: number
     isCommon: boolean
 }
