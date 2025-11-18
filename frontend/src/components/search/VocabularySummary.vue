@@ -1,104 +1,344 @@
 <template>
-    <v-card
-        class="pa-4 mb-4"
-        outlined
-    >
+    <v-hover v-slot="{ isHovering, props: hoverProps }">
+        <v-card
+            v-bind="hoverProps"
+            class="pa-4 mb-4 interactive-card"
+            outlined
+            :elevation="isHovering ? 8 : 2"
+            v-ripple
+            @click="handleCardClick"
+        >
+            <div class="d-flex justify-space-between align-start mb-2">
+                <div class="vocabulary-primary flex-grow-1">
+                    <ruby v-if="vocabulary.primaryKanji">
+                        {{ vocabulary.primaryKanji.text }}
+                        <rt>{{ vocabulary.primaryKana?.text }}</rt>
+                    </ruby>
+                    <span v-else class="vocabulary-text">
+                        {{ vocabulary.primaryKana?.text }}
+                    </span>
+                </div>
+                <LanguageSelector
+                    v-if="availableLanguages.length > 0"
+                    :available-languages="availableLanguages"
+                    :default-language="selectedLanguage"
+                    @language-changed="onLanguageChanged"
+                />
+            </div>
+
         <v-row>
-            <v-col cols="4">
-                <div class="vocabulary-primary">
-                    <span class="furigana">
-                        {{  vocabulary.primaryKanji ? vocabulary.primaryKana?.text : '' }}
-                    </span>
-                    <span>
-                        {{ vocabulary.primaryKanji?.text ?? vocabulary.primaryKana?.text }}
-                    </span>
-                    <div>
+            <v-col cols="12" md="4">
+                <div class="metadata-section">
+                    <!-- Badges -->
+                    <div class="badges-container">
                         <v-chip
                             v-if="vocabulary.isCommon"
                             size="small"
-                            color="primary"
-                            text-color="white"
-                            class="mt-1"
-                            style="width: fit-content;"
+                            color="success"
+                            variant="flat"
+                            class="mr-1 mb-1"
                         >
-                            {{ vocabulary.isCommon ? 'Common' : '' }}
+                            Common
                         </v-chip>
                         <v-chip
                             v-if="vocabulary.jlptLevel"
                             size="small"
                             color="primary"
-                            text-color="white"
-                            class="mt-1"
-                            style="width: fit-content;"
+                            variant="flat"
+                            class="mr-1 mb-1"
                         >
                             JLPT N{{ vocabulary.jlptLevel }}
                         </v-chip>
-                        <v-chip
-                            v-for="tag in tags"
-                            size="small"
-                            color="primary"
-                            text-color="white"
-                            class="mt-1"
-                            style="width: fit-content;"
-                        >
-                            {{ tag.description }}
-                        </v-chip>
+                    </div>
+
+                    <!-- Other Forms -->
+                    <div v-if="hasOtherForms" class="other-forms mt-3">
+                        <div class="section-label">Other Forms</div>
+                        <div class="forms-list">
+                            <div v-for="(form, idx) in vocabulary.otherKanjiForms" :key="`kanji-${idx}`" class="form-item">
+                                <ruby v-if="getKanaForKanji(form.text)">
+                                    {{ form.text }}
+                                    <rt>{{ getKanaForKanji(form.text) }}</rt>
+                                </ruby>
+                                <span v-else>{{ form.text }}</span>
+                                <v-chip
+                                    v-if="form.isCommon"
+                                    size="x-small"
+                                    color="success"
+                                    variant="tonal"
+                                    class="ml-1"
+                                >
+                                    Common
+                                </v-chip>
+                            </div>
+                            <div v-for="(form, idx) in vocabulary.otherKanaForms" :key="`kana-${idx}`" class="form-item">
+                                {{ form.text }}
+                                <v-chip
+                                    v-if="form.isCommon"
+                                    size="x-small"
+                                    color="success"
+                                    variant="tonal"
+                                    class="ml-1"
+                                >
+                                    Common
+                                </v-chip>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tags -->
+                    <div v-if="tags.length > 0" class="tags-section mt-3">
+                        <div class="section-label">Tags</div>
+                        <div class="tags-list">
+                            <v-chip
+                                v-for="(tag, idx) in tags.slice(0, 5)"
+                                :key="idx"
+                                size="x-small"
+                                variant="outlined"
+                                class="mr-1 mb-1"
+                            >
+                                {{ tag.description }}
+                            </v-chip>
+                        </div>
                     </div>
                 </div>
             </v-col>
-            <v-col cols="8" class="text-left">
-                <div class="meanings">
+
+            <v-col cols="12" md="8" class="text-left">
+                <div class="meanings-section">
                     <div
-                        v-for="(sense, index) in vocabulary.senses"
+                        v-for="(sense, index) in filteredSenses"
                         :key="index"
+                        class="sense-item"
                     >
-                        {{ index + 1 }}. {{ getGlossaryText(sense) }}
+                        <div class="sense-header">
+                            <span class="sense-number">{{ index + 1 }}.</span>
+                            <div class="sense-content">
+                                <div class="glosses">
+                                    {{ getFilteredGlosses(sense) }}
+                                </div>
+                                <div v-if="sense.tags && sense.tags.length > 0" class="sense-tags mt-1">
+                                    <v-chip
+                                        v-for="(tag, idx) in sense.tags"
+                                        :key="idx"
+                                        size="x-small"
+                                        color="secondary"
+                                        variant="tonal"
+                                        class="mr-1"
+                                    >
+                                        {{ tag.description }}
+                                    </v-chip>
+                                </div>
+                                <div v-if="sense.info && sense.info.length > 0" class="sense-info mt-1">
+                                    <div v-for="(info, idx) in sense.info" :key="idx" class="info-text">
+                                        <v-icon size="x-small" class="mr-1">mdi-information-outline</v-icon>
+                                        {{ info }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </v-col>
         </v-row>
-        <div class="vocabulary-primary"></div>
-    </v-card>
+        </v-card>
+    </v-hover>
 </template>
 <script lang="ts" setup>
-import type { VocabularySummary } from '@/types/Vocabulary';
+import type { VocabularySummary } from '@/types/Vocabulary'
+import LanguageSelector from './LanguageSelector.vue'
+import { ref, computed } from 'vue'
+import { DEFAULT_LANGUAGE, languageMatches } from '@/utils/language'
 
 const props = defineProps<{
-    vocabulary: VocabularySummary;
-}>();
+    vocabulary: VocabularySummary
+}>()
+
+const selectedLanguage = ref<string>(DEFAULT_LANGUAGE)
+
+// Extract available languages from all senses
+const availableLanguages = computed(() => {
+    const languages = new Set<string>()
+    props.vocabulary.senses?.forEach(sense => {
+        sense.glosses?.forEach(gloss => {
+            if (gloss.language) {
+                languages.add(gloss.language)
+            }
+        })
+    })
+    return Array.from(languages)
+})
+
+const onLanguageChanged = (language: string) => {
+    selectedLanguage.value = language
+}
+
+// Filter senses to show only those with glosses in selected language
+const filteredSenses = computed(() => {
+    return props.vocabulary.senses?.map(sense => ({
+        ...sense,
+        glosses: sense.glosses?.filter(gloss => languageMatches(gloss.language, selectedLanguage.value)) || []
+    })).filter(sense => sense.glosses.length > 0) || []
+})
+
+const getFilteredGlosses = (sense: any) => {
+    return sense.glosses.map((gloss: any) => gloss.text).join(', ')
+}
+
+const hasOtherForms = computed(() => {
+    return (props.vocabulary.otherKanjiForms && props.vocabulary.otherKanjiForms.length > 0) ||
+           (props.vocabulary.otherKanaForms && props.vocabulary.otherKanaForms.length > 0)
+})
+
+const getKanaForKanji = (kanjiText: string): string | null => {
+    // Find matching kana form
+    const kanaForms = [
+        props.vocabulary.primaryKana,
+        ...(props.vocabulary.otherKanaForms || [])
+    ]
+    
+    for (const kana of kanaForms) {
+        if (kana && kana.appliesToKanji && kana.appliesToKanji.includes(kanjiText)) {
+            return kana.text
+        }
+    }
+    return null
+}
 
 const tags = computed(() => {
-    return [
+    const allTags = [
         ...props.vocabulary.primaryKanji?.tags || [],
-        ...props.vocabulary.primaryKana?.tags || [],
-        ...props.vocabulary.otherKanjiForms?.flatMap(kanji => kanji.tags) || [],
-        ...props.vocabulary.otherKanaForms?.flatMap(kana => kana.tags) || []
-    ];
-});
+        ...props.vocabulary.primaryKana?.tags || []
+    ]
+    // Remove duplicates based on code
+    const uniqueTags = allTags.filter((tag, index, self) =>
+        index === self.findIndex((t) => t.code === tag.code)
+    )
+    return uniqueTags
+})
 
-const getGlossaryText = (sense: any) => {
-    return sense.glosses.map((gloss: any) => gloss.text).join(', ');
-};
-
+const handleCardClick = () => {
+    console.log('[VocabularySummary] Card clicked', props.vocabulary.id)
+}
 </script>
 <style lang="scss" scoped>
 .vocabulary-primary {
-    display: flex;
-    flex-direction: column;
-    font-size: 1.3rem;
+    font-size: 2rem;
     font-weight: 500;
     text-align: left;
-    justify-content: left;
+    line-height: 1.2;
 
-    .furigana {
-        font-size: 0.8rem;
-        color: gray;
+    ruby {
+        rt {
+            font-size: 0.9rem;
+            color: #666;
+        }
     }
 
-    v-chip  {
-        &__content {
-            font-size: 0.5rem;
+    .vocabulary-text {
+        display: block;
+    }
+}
+
+.metadata-section {
+    .section-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #666;
+        text-transform: uppercase;
+        margin-bottom: 0.5rem;
+    }
+
+    .badges-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+
+    .other-forms {
+        .forms-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
         }
+
+        .form-item {
+            display: flex;
+            align-items: center;
+            font-size: 1.1rem;
+
+            ruby {
+                rt {
+                    font-size: 0.7rem;
+                    color: #666;
+                }
+            }
+        }
+    }
+
+    .tags-section {
+        .tags-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+    }
+}
+
+.meanings-section {
+    .sense-item {
+        margin-bottom: 1rem;
+
+        &:last-child {
+            margin-bottom: 0;
+        }
+    }
+
+    .sense-header {
+        display: flex;
+        gap: 0.5rem;
+        align-items: flex-start;
+    }
+
+    .sense-number {
+        font-weight: 600;
+        color: #666;
+        min-width: 1.5rem;
+    }
+
+    .sense-content {
+        flex: 1;
+    }
+
+    .glosses {
+        font-size: 1rem;
+        line-height: 1.5;
+    }
+
+    .sense-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+
+    .sense-info {
+        .info-text {
+            display: flex;
+            align-items: center;
+            font-size: 0.85rem;
+            color: #666;
+            font-style: italic;
+            margin-top: 0.25rem;
+        }
+    }
+}
+
+.interactive-card {
+    cursor: pointer;
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+
+    &:hover {
+        transform: translateY(-2px);
     }
 }
 </style>

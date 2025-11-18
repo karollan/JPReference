@@ -1143,7 +1143,7 @@ BEGIN
                             ),
                             'translations', (
                                 SELECT json_agg(json_build_object(
-                                    'lang', pnttxt.lang,
+                                    'language', pnttxt.lang,
                                     'text', pnttxt.text
                                 ))
                                 FROM jlpt.proper_noun_translation_text pnttxt
@@ -2041,7 +2041,7 @@ BEGIN
                             ),
                             'translations', (
                                 SELECT json_agg(json_build_object(
-                                    'lang', pnttxt.lang,
+                                    'language', pnttxt.lang,
                                     'text', pnttxt.text
                                 ))
                                 FROM jlpt.proper_noun_translation_text pnttxt

@@ -11,9 +11,13 @@ declare module 'vue' {
     AppFooter: typeof import('./components/AppFooter.vue')['default']
     AppHeader: typeof import('./components/AppHeader.vue')['default']
     KanjiSummary: typeof import('./components/search/KanjiSummary.vue')['default']
+    KanjiSummarySkeleton: typeof import('./components/search/KanjiSummarySkeleton.vue')['default']
+    LanguageSelector: typeof import('./components/search/LanguageSelector.vue')['default']
     ProperNounSummary: typeof import('./components/search/ProperNounSummary.vue')['default']
+    ProperNounSummarySkeleton: typeof import('./components/search/ProperNounSummarySkeleton.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     VocabularySummary: typeof import('./components/search/VocabularySummary.vue')['default']
+    VocabularySummarySkeleton: typeof import('./components/search/VocabularySummarySkeleton.vue')['default']
   }
 }

@@ -16,5 +16,5 @@ public class ProperNounSummaryDto
 
 public class TranslationSummaryDto {
     public List<TagInfoDto> Types { get; set; } = new();
-    public List<TranslationTextDto> Text { get; set; } = new();
+    public List<TranslationTextDto> Translations { get; set; } = new();
 }

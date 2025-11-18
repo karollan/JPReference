@@ -30,7 +30,7 @@ interface KanaForm {
 
 interface TranslationSummary {
     types: TagInfo[]
-    text: TranslationText[]
+    translations: TranslationText[]
 }
 
 interface TranslationText {
