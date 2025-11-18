@@ -7,7 +7,10 @@ const LANGUAGE_PAIRS: Array<[string, string, string]> = [
     ['spa', 'es', 'Spanish'],
     ['fre', 'fr', 'French'],
     ['swe', 'sv', 'Swedish'],
-    ['slv', 'sl', 'Slovenian']
+    ['slv', 'sl', 'Slovenian'],
+    ['por', 'pt', 'Portuguese'],
+    ['ita', 'it', 'Italian'],
+    ['jpn', 'ja', 'Japanese']
 ]
 
 const LANGUAGE_FLAGS: Record<string, string> = {
@@ -28,7 +31,13 @@ const LANGUAGE_FLAGS: Record<string, string> = {
     swe: '🇸🇪',
     sv: '🇸🇪',
     slv: '🇸🇮',
-    sl: '🇸🇮'
+    sl: '🇸🇮',
+    por: '🇵🇹',
+    pt: '🇵🇹',
+    ita: '🇮🇹',
+    it: '🇮🇹',
+    jpn: '🇯🇵',
+    ja: '🇯🇵'
 }
 
 const languageEntries = LANGUAGE_PAIRS.map(([three, two, name]) => ({ three, two, name }))

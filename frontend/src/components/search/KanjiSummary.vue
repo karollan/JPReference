@@ -2,13 +2,13 @@
     <v-hover v-slot="{ isHovering, props: hoverProps }">
         <v-card
             v-bind="hoverProps"
-            class="pa-4 mb-4 interactive-card"
+            class="pa-3 mb-3 interactive-card text-left"
             outlined
             :elevation="isHovering ? 8 : 2"
             v-ripple
             @click="handleCardClick"
         >
-            <div class="d-flex justify-space-between align-start mb-3">
+            <div class="d-flex justify-space-between align-start mb-2">
                 <div class="kanji-literal-container">
                     <div class="kanji-literal">{{ kanji.literal }}</div>
                     <div class="stroke-count">{{ kanji.strokeCount }} strokes</div>
@@ -21,87 +21,87 @@
                 />
             </div>
 
-        <!-- Metadata Chips -->
-        <div class="metadata-chips mb-3">
-            <v-chip
-                v-if="kanji.jlptLevel"
-                size="small"
-                color="primary"
-                variant="flat"
-                class="mr-1 mb-1"
-            >
-                JLPT N{{ kanji.jlptLevel }}
-            </v-chip>
-            <v-chip
-                v-if="kanji.grade"
-                size="small"
-                color="secondary"
-                variant="flat"
-                class="mr-1 mb-1"
-            >
-                Grade {{ kanji.grade }}
-            </v-chip>
-            <v-chip
-                v-if="kanji.frequency"
-                size="small"
-                color="info"
-                variant="tonal"
-                class="mr-1 mb-1"
-            >
-                Frequency: {{ kanji.frequency }}
-            </v-chip>
-        </div>
-
-        <!-- Readings -->
-        <div v-if="kanji.kunyomiReadings && kanji.kunyomiReadings.length > 0" class="readings-section mb-2">
-            <div class="readings-label">Kun:</div>
-            <div class="readings-content">
-                <span
-                    v-for="(reading, idx) in kanji.kunyomiReadings"
-                    :key="idx"
-                    class="reading-item"
-                >
-                    {{ reading.value }}{{ idx < kanji.kunyomiReadings!.length - 1 ? '、' : '' }}
-                </span>
-            </div>
-        </div>
-
-        <div v-if="kanji.onyomiReadings && kanji.onyomiReadings.length > 0" class="readings-section mb-3">
-            <div class="readings-label">On:</div>
-            <div class="readings-content">
-                <span
-                    v-for="(reading, idx) in kanji.onyomiReadings"
-                    :key="idx"
-                    class="reading-item"
-                >
-                    {{ reading.value }}{{ idx < kanji.onyomiReadings!.length - 1 ? '、' : '' }}
-                </span>
-            </div>
-        </div>
-
-        <!-- Meanings -->
-        <div v-if="filteredMeanings.length > 0" class="meanings-section mb-3">
-            <div class="meanings-label">Meanings:</div>
-            <div class="meanings-content">
-                {{ filteredMeanings.join(', ') }}
-            </div>
-        </div>
-
-        <!-- Radicals -->
-        <div v-if="kanji.radicals && kanji.radicals.length > 0" class="radicals-section">
-            <div class="radicals-label">Radicals:</div>
-            <div class="radicals-content">
+            <!-- Metadata Chips -->
+            <div class="metadata-chips mb-3">
                 <v-chip
-                    v-for="radical in kanji.radicals"
-                    :key="radical.id"
-                    size="small"
-                    variant="outlined"
+                    v-if="kanji.jlptLevel"
+                    size="x-small"
+                    color="primary"
+                    variant="flat"
                     class="mr-1 mb-1"
                 >
-                    {{ radical.literal }}
+                    N{{ kanji.jlptLevel }}
+                </v-chip>
+                <v-chip
+                    v-if="kanji.grade"
+                    size="x-small"
+                    color="secondary"
+                    variant="flat"
+                    class="mr-1 mb-1"
+                >
+                    Grade {{ kanji.grade }}
+                </v-chip>
+                <v-chip
+                    v-if="kanji.frequency"
+                    size="x-small"
+                    color="info"
+                    variant="tonal"
+                    class="mr-1 mb-1"
+                >
+                    Freq: {{ kanji.frequency }}
                 </v-chip>
             </div>
-        </div>
+
+            <!-- Info Grid -->
+            <div class="info-grid">
+                <template v-if="kanji.kunyomiReadings && kanji.kunyomiReadings.length > 0">
+                    <div class="info-label">Kun</div>
+                    <div class="info-content">
+                        <span
+                            v-for="(reading, idx) in kanji.kunyomiReadings"
+                            :key="idx"
+                            class="reading-item"
+                        >
+                            {{ reading.value }}{{ idx < kanji.kunyomiReadings!.length - 1 ? '、' : '' }}
+                        </span>
+                    </div>
+                </template>
+
+                <template v-if="kanji.onyomiReadings && kanji.onyomiReadings.length > 0">
+                    <div class="info-label">On</div>
+                    <div class="info-content">
+                        <span
+                            v-for="(reading, idx) in kanji.onyomiReadings"
+                            :key="idx"
+                            class="reading-item"
+                        >
+                            {{ reading.value }}{{ idx < kanji.onyomiReadings!.length - 1 ? '、' : '' }}
+                        </span>
+                    </div>
+                </template>
+
+                <template v-if="filteredMeanings.length > 0">
+                    <div class="info-label">Meaning</div>
+                    <div class="info-content meanings-text">
+                        {{ filteredMeanings.join(', ') }}
+                    </div>
+                </template>
+
+                <template v-if="kanji.radicals && kanji.radicals.length > 0">
+                    <div class="info-label">Radical</div>
+                    <div class="info-content radicals-content">
+                        <v-chip
+                            v-for="radical in kanji.radicals"
+                            :key="radical.id"
+                            size="x-small"
+                            variant="outlined"
+                            class="mr-1 mb-1"
+                        >
+                            {{ radical.literal }}
+                        </v-chip>
+                    </div>
+                </template>
+            </div>
         </v-card>
     </v-hover>
 </template>
@@ -163,16 +163,16 @@ const handleCardClick = () => {
 }
 
 .kanji-literal {
-    font-size: 4rem;
+    font-size: 3rem;
     font-weight: 500;
     line-height: 1;
-    color: #333;
+    color: rgba(var(--v-theme-on-surface), 0.87);
 }
 
 .stroke-count {
-    font-size: 0.85rem;
-    color: #666;
-    margin-top: 0.25rem;
+    font-size: 0.75rem;
+    color: rgba(var(--v-theme-on-surface), 0.6);
+    margin-top: 0.1rem;
 }
 
 .metadata-chips {
@@ -181,75 +181,50 @@ const handleCardClick = () => {
     gap: 4px;
 }
 
-.readings-section {
-    display: flex;
+.info-grid {
+    display: grid;
+    grid-template-columns: min-content 1fr;
+    column-gap: 12px;
+    row-gap: 6px;
     align-items: baseline;
-    gap: 0.5rem;
 }
 
-.readings-label {
-    font-size: 0.85rem;
+.info-label {
+    font-size: 0.75rem;
     font-weight: 600;
-    color: #666;
-    min-width: 40px;
+    color: rgba(var(--v-theme-on-surface), 0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    text-align: right;
+    white-space: nowrap;
+    align-self: baseline;
+    padding-top: 2px; 
 }
 
-.readings-content {
-    font-size: 1.1rem;
-    line-height: 1.5;
+.info-content {
+    font-size: 0.95rem;
+    line-height: 1.4;
+    color: rgba(var(--v-theme-on-surface), 0.87);
 }
 
-.reading-item {
-    color: #333;
-}
-
-.meanings-section {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.5rem;
-}
-
-.meanings-label {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: #666;
-    min-width: 80px;
-    margin-top: 0.1rem;
-}
-
-.meanings-content {
-    font-size: 1rem;
-    line-height: 1.5;
-    flex: 1;
-}
-
-.radicals-section {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.5rem;
-}
-
-.radicals-label {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: #666;
-    min-width: 80px;
-    margin-top: 0.1rem;
+.meanings-text {
+    font-weight: 500;
 }
 
 .radicals-content {
     display: flex;
     flex-wrap: wrap;
     gap: 4px;
-    flex: 1;
 }
 
 .interactive-card {
     cursor: pointer;
     transition: box-shadow 0.2s ease, transform 0.2s ease;
+    border-color: rgba(var(--v-border-color), var(--v-border-opacity));
 
     &:hover {
         transform: translateY(-2px);
+        border-color: rgba(var(--v-theme-primary), 0.5);
     }
 }
 </style>

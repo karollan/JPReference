@@ -2,7 +2,7 @@
     <v-hover v-slot="{ isHovering, props: hoverProps }">
         <v-card
             v-bind="hoverProps"
-            class="pa-4 mb-4 interactive-card"
+            class="pa-3 mb-3 interactive-card"
             outlined
             :elevation="isHovering ? 8 : 2"
             v-ripple
@@ -27,7 +27,7 @@
             </div>
 
         <v-row>
-            <v-col cols="12" md="4">
+            <v-col cols="12" md="3">
                 <div class="metadata-section">
                     <!-- Badges -->
                     <div class="badges-container">
@@ -47,7 +47,7 @@
                             variant="flat"
                             class="mr-1 mb-1"
                         >
-                            JLPT N{{ vocabulary.jlptLevel }}
+                            N{{ vocabulary.jlptLevel }}
                         </v-chip>
                     </div>
 
@@ -104,7 +104,7 @@
                 </div>
             </v-col>
 
-            <v-col cols="12" md="8" class="text-left">
+            <v-col cols="12" md="9" class="text-left">
                 <div class="meanings-section">
                     <div
                         v-for="(sense, index) in filteredSenses"
@@ -114,9 +114,6 @@
                         <div class="sense-header">
                             <span class="sense-number">{{ index + 1 }}.</span>
                             <div class="sense-content">
-                                <div class="glosses">
-                                    {{ getFilteredGlosses(sense) }}
-                                </div>
                                 <div v-if="sense.tags && sense.tags.length > 0" class="sense-tags mt-1">
                                     <v-chip
                                         v-for="(tag, idx) in sense.tags"
@@ -128,6 +125,9 @@
                                     >
                                         {{ tag.description }}
                                     </v-chip>
+                                </div>
+                                <div class="glosses">
+                                    {{ getFilteredGlosses(sense) }}
                                 </div>
                                 <div v-if="sense.info && sense.info.length > 0" class="sense-info mt-1">
                                     <div v-for="(info, idx) in sense.info" :key="idx" class="info-text">
@@ -223,15 +223,16 @@ const handleCardClick = () => {
 </script>
 <style lang="scss" scoped>
 .vocabulary-primary {
-    font-size: 2rem;
+    font-size: 1.75rem;
     font-weight: 500;
     text-align: left;
     line-height: 1.2;
+    color: rgba(var(--v-theme-on-surface), 0.87);
 
     ruby {
         rt {
-            font-size: 0.9rem;
-            color: #666;
+            font-size: 0.8rem;
+            color: rgba(var(--v-theme-on-surface), 0.6);
         }
     }
 
@@ -244,19 +245,16 @@ const handleCardClick = () => {
     .section-label {
         font-size: 0.75rem;
         font-weight: 600;
-        color: #666;
+        color: rgba(var(--v-theme-on-surface), 0.6);
         text-transform: uppercase;
         margin-bottom: 0.5rem;
     }
-
     .badges-container {
         display: flex;
         flex-wrap: wrap;
         gap: 4px;
-    }
 
-    .other-forms {
-        .forms-list {
+        .other-forms {
             display: flex;
             flex-direction: column;
             gap: 0.5rem;
@@ -265,12 +263,12 @@ const handleCardClick = () => {
         .form-item {
             display: flex;
             align-items: center;
-            font-size: 1.1rem;
+            font-size: 1rem;
 
             ruby {
                 rt {
-                    font-size: 0.7rem;
-                    color: #666;
+                    font-size: 0.6rem;
+                    color: rgba(var(--v-theme-on-surface), 0.6);
                 }
             }
         }
@@ -287,7 +285,7 @@ const handleCardClick = () => {
 
 .meanings-section {
     .sense-item {
-        margin-bottom: 1rem;
+        margin-bottom: 0.75rem;
 
         &:last-child {
             margin-bottom: 0;
@@ -302,8 +300,9 @@ const handleCardClick = () => {
 
     .sense-number {
         font-weight: 600;
-        color: #666;
-        min-width: 1.5rem;
+        color: rgba(var(--v-theme-on-surface), 0.87);
+        min-width: 1.2rem;
+        font-size: 0.9rem;
     }
 
     .sense-content {
@@ -312,7 +311,7 @@ const handleCardClick = () => {
 
     .glosses {
         font-size: 1rem;
-        line-height: 1.5;
+        line-height: 1.4;
     }
 
     .sense-tags {
@@ -326,7 +325,7 @@ const handleCardClick = () => {
             display: flex;
             align-items: center;
             font-size: 0.85rem;
-            color: #666;
+            color: rgba(var(--v-theme-on-surface), 0.6);
             font-style: italic;
             margin-top: 0.25rem;
         }
@@ -336,9 +335,11 @@ const handleCardClick = () => {
 .interactive-card {
     cursor: pointer;
     transition: box-shadow 0.2s ease, transform 0.2s ease;
+    border-color: rgba(var(--v-border-color), var(--v-border-opacity));
 
     &:hover {
         transform: translateY(-2px);
+        border-color: rgba(var(--v-theme-primary), 0.5);
     }
 }
 </style>

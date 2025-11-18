@@ -2,7 +2,7 @@
     <v-hover v-slot="{ isHovering, props: hoverProps }">
         <v-card
             v-bind="hoverProps"
-            class="pa-4 mb-4 interactive-card"
+            class="pa-3 mb-3 interactive-card text-left"
             outlined
             :elevation="isHovering ? 8 : 2"
             v-ripple
@@ -26,45 +26,42 @@
                 />
             </div>
 
-            <v-row>
-                <v-col cols="12" md="4">
-                    <div class="metadata-section">
-                        <!-- Other Forms -->
-                        <div v-if="hasOtherForms" class="other-forms">
-                            <div class="section-label">Other Forms</div>
-                            <div class="forms-list">
-                                <div v-for="(form, idx) in properNoun.otherKanjiForms" :key="`kanji-${idx}`" class="form-item">
-                                    <ruby v-if="getKanaForKanji(form.text)">
-                                        {{ form.text }}
-                                        <rt>{{ getKanaForKanji(form.text) }}</rt>
-                                    </ruby>
-                                    <span v-else>{{ form.text }}</span>
-                                </div>
-                                <div v-for="(form, idx) in properNoun.otherKanaForms" :key="`kana-${idx}`" class="form-item">
-                                    {{ form.text }}
-                                </div>
-                            </div>
-                        </div>
+            <div class="content-grid">
+                <!-- Metadata Column -->
+                <div class="metadata-col" v-if="hasOtherForms || allTags.length > 0">
+                     <!-- Tags -->
+                    <div v-if="allTags.length > 0" class="tags-section mb-2">
+                        <v-chip
+                            v-for="(tag, idx) in allTags.slice(0, 5)"
+                            :key="idx"
+                            size="x-small"
+                            variant="outlined"
+                            class="mr-1 mb-1"
+                        >
+                            {{ tag.description }}
+                        </v-chip>
+                    </div>
 
-                        <!-- Tags -->
-                        <div v-if="allTags.length > 0" class="tags-section" :class="{ 'mt-3': hasOtherForms }">
-                            <div class="section-label">Tags</div>
-                            <div class="tags-list">
-                                <v-chip
-                                    v-for="(tag, idx) in allTags.slice(0, 5)"
-                                    :key="idx"
-                                    size="x-small"
-                                    variant="outlined"
-                                    class="mr-1 mb-1"
-                                >
-                                    {{ tag.description }}
-                                </v-chip>
-                            </div>
+                    <!-- Other Forms -->
+                    <div v-if="hasOtherForms" class="other-forms">
+                        <div class="section-label">Also:</div>
+                        <div class="forms-list">
+                            <span v-for="(form, idx) in properNoun.otherKanjiForms" :key="`kanji-${idx}`" class="form-item mr-2">
+                                <ruby v-if="getKanaForKanji(form.text)">
+                                    {{ form.text }}
+                                    <rt>{{ getKanaForKanji(form.text) }}</rt>
+                                </ruby>
+                                <span v-else>{{ form.text }}</span>
+                            </span>
+                            <span v-for="(form, idx) in properNoun.otherKanaForms" :key="`kana-${idx}`" class="form-item mr-2">
+                                {{ form.text }}
+                            </span>
                         </div>
                     </div>
-                </v-col>
+                </div>
 
-                <v-col cols="12" md="8" class="text-left">
+                <!-- Translations Column -->
+                <div class="translations-col">
                     <div class="translations-section">
                         <div
                             v-for="(translation, index) in filteredTranslations"
@@ -93,11 +90,12 @@
                             </div>
                         </div>
                         <div v-if="filteredTranslations.length === 0" class="no-translations">
+                            <v-icon size="small" class="mr-1">mdi-translate-off</v-icon>
                             No translations available in selected language
                         </div>
                     </div>
-                </v-col>
-            </v-row>
+                </div>
+            </div>
         </v-card>
     </v-hover>
 </template>
@@ -185,15 +183,16 @@ const handleCardClick = () => {
 
 <style lang="scss" scoped>
 .proper-noun-primary {
-    font-size: 2rem;
+    font-size: 1.5rem;
     font-weight: 500;
     text-align: left;
     line-height: 1.2;
+    color: rgba(var(--v-theme-on-surface), 0.87);
 
     ruby {
         rt {
-            font-size: 0.9rem;
-            color: #666;
+            font-size: 0.7rem;
+            color: rgba(var(--v-theme-on-surface), 0.6);
         }
     }
 
@@ -202,46 +201,49 @@ const handleCardClick = () => {
     }
 }
 
-.metadata-section {
+.content-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.metadata-col {
     .section-label {
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         font-weight: 600;
-        color: #666;
+        color: rgba(var(--v-theme-on-surface), 0.6);
         text-transform: uppercase;
-        margin-bottom: 0.5rem;
+        display: inline-block;
+        margin-right: 0.5rem;
     }
 
     .other-forms {
+        display: flex;
+        align-items: baseline;
+        flex-wrap: wrap;
+        
         .forms-list {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
+            display: inline-flex;
+            flex-wrap: wrap;
         }
 
         .form-item {
-            font-size: 1.1rem;
+            font-size: 0.95rem;
+            color: rgba(var(--v-theme-on-surface), 0.87);
 
             ruby {
                 rt {
-                    font-size: 0.7rem;
-                    color: #666;
+                    font-size: 0.6rem;
+                    color: rgba(var(--v-theme-on-surface), 0.6);
                 }
             }
-        }
-    }
-
-    .tags-section {
-        .tags-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 4px;
         }
     }
 }
 
 .translations-section {
     .translation-item {
-        margin-bottom: 1rem;
+        margin-bottom: 0.5rem;
 
         &:last-child {
             margin-bottom: 0;
@@ -256,8 +258,10 @@ const handleCardClick = () => {
 
     .translation-number {
         font-weight: 600;
-        color: #666;
-        min-width: 1.5rem;
+        color: rgba(var(--v-theme-on-surface), 0.38);
+        font-size: 0.85rem;
+        min-width: 1.2rem;
+        margin-top: 0.1rem;
     }
 
     .translation-content {
@@ -266,7 +270,8 @@ const handleCardClick = () => {
 
     .translation-text {
         font-size: 1rem;
-        line-height: 1.5;
+        line-height: 1.4;
+        color: rgba(var(--v-theme-on-surface), 0.87);
     }
 
     .translation-types {
@@ -277,17 +282,21 @@ const handleCardClick = () => {
 
     .no-translations {
         font-size: 0.9rem;
-        color: #999;
+        color: rgba(var(--v-theme-on-surface), 0.6);
         font-style: italic;
+        display: flex;
+        align-items: center;
     }
 }
 
 .interactive-card {
     cursor: pointer;
-    transition: box-shadow 0.2s ease, transform 0.2s ease;
+    transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+    border-color: rgba(var(--v-border-color), var(--v-border-opacity));
 
     &:hover {
         transform: translateY(-2px);
+        border-color: rgba(var(--v-theme-primary), 0.5);
     }
 }
 </style>

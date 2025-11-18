@@ -7,26 +7,46 @@
     <v-row
       class="content d-flex flex-row"
       justify="center"
-      align="start"
+      style="align-content: flex-start;"
     >
       <!-- Search Bar -->
       <v-col
         ref="searchColumn"
         cols="12"
       >
-        <v-text-field
-          v-model="searchQuery"
-          bg-color="white"
-          icon-color="#00000066"
-          class="home__search mx-auto"
-          density="comfortable"
-          placeholder="Search"
-          prepend-inner-icon="mdi-magnify"
-          variant="outlined"
-          clearable
-          hide-details="auto"
-        >
-        </v-text-field>
+        <div class="d-flex align-center">
+          <v-text-field
+            v-model="searchQuery"
+            bg-color="white"
+            icon-color="#00000066"
+            class="home__search flex-grow-1"
+            density="comfortable"
+            placeholder="Search"
+            prepend-inner-icon="mdi-magnify"
+            variant="outlined"
+            clearable
+            hide-details="auto"
+          >
+          </v-text-field>
+
+          <v-tooltip location="bottom">
+            <template v-slot:activator="{ props }">
+              <v-btn
+                v-bind="props"
+                icon
+                variant="text"
+                class="ml-2"
+                color="primary"
+                @click="toggleViewMode"
+                :aria-label="searchStore.viewMode === 'unified' ? 'Switch to tab view' : 'Switch to quick view'"
+              >
+                <v-icon size="28">{{ searchStore.viewMode === 'unified' ? 'mdi-tab' : 'mdi-view-dashboard' }}</v-icon>
+              </v-btn>
+            </template>
+            <span>{{ searchStore.viewMode === 'unified' ? 'Switch to tab view' : 'Switch to quick view' }}</span>
+          </v-tooltip>
+        </div>
+
         <v-col
           v-if="searchStore.error"
           cols="12"
@@ -219,15 +239,6 @@
               </v-chip>
             </v-tab>
           </v-tabs>
-          <v-btn
-            class="tabbed-back-btn mt-2 mt-md-0"
-            variant="text"
-            color="primary"
-            prepend-icon="mdi-arrow-left"
-            @click="returnToUnifiedView"
-          >
-            Back to unified view
-          </v-btn>
         </div>
 
         <v-tabs-window v-model="currentTab">
@@ -423,8 +434,12 @@ const loadMore = (category: ActiveTab) => {
   searchStore.loadMoreResults(category)
 }
 
-const returnToUnifiedView = () => {
-  searchStore.setViewMode('unified')
+const toggleViewMode = () => {
+  if (searchStore.viewMode === 'unified') {
+    searchStore.setViewMode('tabbed', currentTab.value)
+  } else {
+    searchStore.setViewMode('unified')
+  }
   updateUrl()
 }
 
@@ -472,7 +487,7 @@ watch(searchQuery, (newQuery) => {
 .section-title {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #333;
+  color: rgba(var(--v-theme-on-surface), 0.87);
 }
 
 .results-container {
@@ -500,7 +515,8 @@ watch(searchQuery, (newQuery) => {
 .proper-noun-iterator,
 .tab-content {
   scrollbar-width: thin;
-  scrollbar-color: rgba(0, 0, 0, 0.3) transparent;
+  scrollbar-color: rgba(var(--v-theme-on-surface), 0.3) transparent;
+  padding: 12px;
   
   &::-webkit-scrollbar {
     width: 6px;
@@ -508,12 +524,12 @@ watch(searchQuery, (newQuery) => {
   }
   
   &::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.3);
+    background: rgba(var(--v-theme-on-surface), 0.3);
     border-radius: 3px;
   }
   
   &::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(var(--v-theme-on-surface), 0.5);
   }
 }
 </style>

@@ -1,27 +1,19 @@
 <template>
     <div class="language-selector" v-if="displayedLanguages.length > 0">
-        <v-tooltip
+        <v-btn
             v-for="lang in displayedLanguages"
             :key="lang"
-            location="bottom"
+            :color="selectedLanguage === lang ? 'primary' : 'default'"
+            :variant="selectedLanguage === lang ? 'tonal' : 'text'"
+            size="x-small"
+            density="compact"
+            class="language-btn"
+            @click="selectLanguage(lang)"
+            v-ripple
+            :aria-label="getLanguageName(lang)"
         >
-            <template #activator="{ props: tooltipProps }">
-                <v-btn
-                    v-bind="tooltipProps"
-                    :color="selectedLanguage === lang ? 'primary' : 'default'"
-                    :variant="selectedLanguage === lang ? 'tonal' : 'text'"
-                    size="x-small"
-                    density="compact"
-                    class="language-btn"
-                    @click="selectLanguage(lang)"
-                    v-ripple
-                    :aria-label="getLanguageName(lang)"
-                >
-                    {{ getLanguageFlag(lang) }}
-                </v-btn>
-            </template>
-            <span>{{ getLanguageName(lang) }}</span>
-        </v-tooltip>
+            {{ getLanguageFlag(lang) }}
+        </v-btn>
     </div>
 </template>
 
