@@ -12,153 +12,26 @@ namespace JLPTReference.Api.Repositories.Implementations;
 
 public class SearchRepository : ISearchRepository
 {
-    private readonly ApplicationDBContext _context;
+    private readonly string _connectionString;
 
-    public SearchRepository(ApplicationDBContext context)
+    public SearchRepository(IConfiguration configuration)
     {
-        _context = context;
+        _connectionString = configuration.GetConnectionString("DefaultConnection")!;
     }
 
     public async Task<GlobalSearchResponse> SearchAllAsync(GlobalSearchRequest request)
-    {
-        var sql = @"
-            SELECT * FROM jlpt.search_global_by_text(@queries, @relevanceThreshold, @pageSize, @offset);
-        ";
-        
-        var resultsKanji = new List<KanjiSummaryDto>();
-        var resultsVocabulary = new List<VocabularySummaryDto>();
-        var resultsProperNoun = new List<ProperNounSummaryDto>();
-        var totalCountKanji = 0;
-        var totalCountVocabulary = 0;
-        var totalCountProperNoun = 0;
+    {        
+        var kanjiTask = SearchKanjiAsync(request);
+        var vocabTask = SearchVocabularyAsync(request);
+        var properNounTask = SearchProperNounAsync(request);
 
-        await using var connection = _context.Database.GetDbConnection();
-        await connection.OpenAsync();
-
-        await using var command = connection.CreateCommand();
-        command.CommandText = sql;
-        command.Parameters.Add(new NpgsqlParameter("@queries", request.Queries.ToArray()));
-        command.Parameters.Add(new NpgsqlParameter("@pageSize", request.PageSize));
-        command.Parameters.Add(new NpgsqlParameter("@offset", (request.Page - 1) * request.PageSize));
-        command.Parameters.Add(new NpgsqlParameter("@relevanceThreshold", request.RelevanceThreshold));
-
-        await using var reader = await command.ExecuteReaderAsync();
-
-        var jsonOptions = new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true
-        };
-
-        while (await reader.ReadAsync())
-        {
-            totalCountVocabulary = reader.GetInt32(20);
-            totalCountProperNoun = reader.GetInt32(21);
-            totalCountKanji = reader.GetInt32(22);
-            
-            var entryType = reader.GetString(1);
-
-            switch (entryType)
-            {
-                case "vocabulary":
-                    resultsVocabulary.Add(new VocabularySummaryDto
-                    {
-                        Id = reader.GetGuid(0),
-                        DictionaryId = reader.GetString(2),
-                        JlptLevel = await reader.IsDBNullAsync(3) ? null : reader.GetInt32(3),
-                        RelevanceScore = reader.GetDouble(4),
-                        PrimaryKanji = await reader.IsDBNullAsync(5) ? null :
-                            JsonSerializer.Deserialize<DTOs.Vocabulary.KanjiFormDto>(reader.GetString(5), jsonOptions),
-                        PrimaryKana = await reader.IsDBNullAsync(7) ? null :
-                            JsonSerializer.Deserialize<DTOs.Vocabulary.KanaFormDto>(reader.GetString(7), jsonOptions),
-                        OtherKanjiForms = await reader.IsDBNullAsync(6) ? null :
-                            JsonSerializer.Deserialize<List<DTOs.Vocabulary.KanjiFormDto>>(reader.GetString(6), jsonOptions),
-                        OtherKanaForms = await reader.IsDBNullAsync(8) ? null :
-                            JsonSerializer.Deserialize<List<DTOs.Vocabulary.KanaFormDto>>(reader.GetString(8), jsonOptions),
-                        Senses = await reader.IsDBNullAsync(9) ? null :
-                            JsonSerializer.Deserialize<List<SenseSummaryDto>>(reader.GetString(9), jsonOptions),
-                        IsCommon = reader.GetBoolean(10)
-                    });
-                    break;
-                case "proper_noun":
-                    resultsProperNoun.Add(new ProperNounSummaryDto
-                    {
-                        Id = reader.GetGuid(0),
-                        DictionaryId = reader.GetString(2),
-                        RelevanceScore = reader.GetDouble(4),
-                        PrimaryKanji = await reader.IsDBNullAsync(5) ? null :
-                            JsonSerializer.Deserialize<DTOs.ProperNoun.KanjiFormDto>(reader.GetString(5), jsonOptions),
-                        PrimaryKana = await reader.IsDBNullAsync(7) ? null :
-                            JsonSerializer.Deserialize<DTOs.ProperNoun.KanaFormDto>(reader.GetString(7), jsonOptions),
-                        OtherKanjiForms = await reader.IsDBNullAsync(6) ? null :
-                            JsonSerializer.Deserialize<List<DTOs.ProperNoun.KanjiFormDto>>(reader.GetString(6), jsonOptions),
-                        OtherKanaForms = await reader.IsDBNullAsync(8) ? null :
-                            JsonSerializer.Deserialize<List<DTOs.ProperNoun.KanaFormDto>>(reader.GetString(8), jsonOptions),
-                        Translations = await reader.IsDBNullAsync(11) ? null :
-                            JsonSerializer.Deserialize<List<TranslationSummaryDto>>(reader.GetString(11), jsonOptions),
-
-                    });
-                    break;
-                case "kanji":
-                    resultsKanji.Add(new KanjiSummaryDto
-                    {
-                        Id = reader.GetGuid(0),
-                        Literal = reader.GetString(12),
-                        Grade = await reader.IsDBNullAsync(13) ? null : reader.GetInt32(13),
-                        StrokeCount = reader.GetInt32(14),
-                        Frequency = await reader.IsDBNullAsync(15) ? null : reader.GetInt32(15),
-                        JlptLevel = await reader.IsDBNullAsync(3) ? null : reader.GetInt32(3),
-                        RelevanceScore = reader.GetDouble(4),
-                        KunyomiReadings = await reader.IsDBNullAsync(16) ? null :
-                            JsonSerializer.Deserialize<List<KanjiReadingDto>>(reader.GetString(16), jsonOptions),
-                        OnyomiReadings = await reader.IsDBNullAsync(17) ? null :
-                            JsonSerializer.Deserialize<List<KanjiReadingDto>>(reader.GetString(17), jsonOptions),
-                        Meanings = await reader.IsDBNullAsync(18) ? null :
-                            JsonSerializer.Deserialize<List<KanjiMeaningDto>>(reader.GetString(18), jsonOptions),
-                        Radicals = await reader.IsDBNullAsync(19) ? null :
-                            JsonSerializer.Deserialize<List<RadicalSummaryDto>>(reader.GetString(19), jsonOptions),
-                    });
-                    break;
-                default:
-                    break;
-            }
-        }
-
-        var totalPagesVocabulary = totalCountVocabulary > 0 ? (int)Math.Ceiling((double)totalCountVocabulary / request.PageSize) : 0;
-        var totalPagesProperNoun = totalCountProperNoun > 0 ? (int)Math.Ceiling((double)totalCountProperNoun / request.PageSize) : 0;
-        var totalPagesKanji = totalCountKanji > 0 ? (int)Math.Ceiling((double)totalCountKanji / request.PageSize) : 0;
+        await Task.WhenAll(kanjiTask, vocabTask, properNounTask);
 
         return new GlobalSearchResponse
         {
-            KanjiResults = new SearchResultKanji
-            {
-                Data = resultsKanji,
-                Pagination = new PaginationMetadata{
-                    TotalCount = totalCountKanji,
-                    Page = request.Page,
-                    PageSize = request.PageSize,
-                    TotalPages = totalPagesKanji
-                }
-            },
-            VocabularyResults = new SearchResultVocabulary
-            {
-                Data = resultsVocabulary,
-                Pagination = new PaginationMetadata{
-                    TotalCount = totalCountVocabulary,
-                    Page = request.Page,
-                    PageSize = request.PageSize,
-                    TotalPages = totalPagesVocabulary
-                }
-            },
-            ProperNounResults = new SearchResultProperNoun
-            {
-                Data = resultsProperNoun,
-                Pagination = new PaginationMetadata{
-                    TotalCount = totalCountProperNoun,
-                    Page = request.Page,
-                    PageSize = request.PageSize,
-                    TotalPages = totalPagesProperNoun
-                }
-            }
+            KanjiResults = kanjiTask.Result,
+            VocabularyResults = vocabTask.Result,
+            ProperNounResults = properNounTask.Result
         };
     }
 
@@ -171,7 +44,7 @@ public class SearchRepository : ISearchRepository
         var results = new List<KanjiSummaryDto>();
         var totalCount = 0;
 
-        await using var connection = _context.Database.GetDbConnection();
+        await using var connection = new NpgsqlConnection(_connectionString);
         await connection.OpenAsync();
 
         await using var command = connection.CreateCommand();
@@ -237,7 +110,7 @@ public class SearchRepository : ISearchRepository
         var results = new List<ProperNounSummaryDto>();
         var totalCount = 0;
 
-        await using var connection = _context.Database.GetDbConnection();
+        await using var connection = new NpgsqlConnection(_connectionString);
         await connection.OpenAsync();
 
         await using var command = connection.CreateCommand();
@@ -302,7 +175,7 @@ public class SearchRepository : ISearchRepository
         var results = new List<VocabularySummaryDto>();
         var totalCount = 0;
 
-        await using var connection = _context.Database.GetDbConnection();
+        await using var connection = new NpgsqlConnection(_connectionString);
         await connection.OpenAsync();
 
         await using var command = connection.CreateCommand();

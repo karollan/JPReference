@@ -1650,140 +1650,79 @@ RETURNS TABLE (
     dict_id VARCHAR(30),
     jlpt_level INT,
     relevance_score FLOAT,
-    primary_kanji JSONB,
-    primary_kana JSONB,
-    other_kanji_forms JSONB,
-    other_kana_forms JSONB,
-    senses JSONB,
+    primary_kanji JSON,
+    primary_kana JSON,
+    other_kanji_forms JSON,
+    other_kana_forms JSON,
+    senses JSON,
     is_common BOOLEAN,
     total_count BIGINT
-) AS $$ BEGIN
+) AS $$
+BEGIN
+    -- We'll produce a ranked set by combining several indexed candidate sets.
     RETURN QUERY
-    -- Pre-aggregate all related data into JSONB to avoid N+1 subqueries.
-    -- This is the single most important optimization.
-    WITH kanji_json AS (
-        SELECT
-            vk.vocabulary_id,
-            jsonb_agg(
-                jsonb_build_object(
-                    'text', vk.text,
-                    'is_common', vk.is_common,
-                    'tags', COALESCE(
-                        (SELECT jsonb_agg(jsonb_build_object('code', t.code, 'description', t.description, 'category', t.category))
-                         FROM jlpt.vocabulary_kanji_tag vkt
-                         JOIN jlpt.tag t ON vkt.tag_code = t.code
-                         WHERE vkt.vocabulary_kanji_id = vk.id),
-                        '[]'::jsonb
-                    )
-                ) ORDER BY vk.is_common DESC, vk.created_at ASC
-            ) as kanji_forms
-        FROM jlpt.vocabulary_kanji vk
-        GROUP BY vk.vocabulary_id
-    ),
-    kana_json AS (
-        SELECT
-            vkn.vocabulary_id,
-            jsonb_agg(
-                jsonb_build_object(
-                    'text', vkn.text,
-                    'is_common', vkn.is_common,
-                    'applies_to_kanji', vkn.applies_to_kanji,
-                    'tags', COALESCE(
-                        (SELECT jsonb_agg(jsonb_build_object('code', t.code, 'description', t.description, 'category', t.category))
-                         FROM jlpt.vocabulary_kana_tag vknt
-                         JOIN jlpt.tag t ON vknt.tag_code = t.code
-                         WHERE vknt.vocabulary_kana_id = vkn.id),
-                        '[]'::jsonb
-                    )
-                ) ORDER BY vkn.is_common DESC, vkn.created_at ASC
-            ) as kana_forms
-        FROM jlpt.vocabulary_kana vkn
-        GROUP BY vkn.vocabulary_id
-    ),
-    senses_json AS (
-        SELECT
-            vs.vocabulary_id,
-            jsonb_agg(
-                jsonb_build_object(
-                    'applies_to_kanji', vs.applies_to_kanji,
-                    'applies_to_kana', vs.applies_to_kana,
-                    'info', vs.info,
-                    'glosses', (
-                        SELECT jsonb_agg(jsonb_build_object('language', vsg.lang, 'text', vsg.text, 'gender', vsg.gender, 'type', vsg.type))
-                        FROM jlpt.vocabulary_sense_gloss vsg
-                        WHERE vsg.sense_id = vs.id
-                    ),
-                    'tags', (
-                        SELECT jsonb_agg(jsonb_build_object('code', t.code, 'description', t.description, 'category', t.category, 'type', vst.tag_type))
-                        FROM jlpt.vocabulary_sense_tag vst
-                        JOIN jlpt.tag t ON vst.tag_code = t.code
-                        WHERE vst.sense_id = vs.id
-                    )
-                ) ORDER BY vs.created_at ASC
-            ) as senses
-        FROM jlpt.vocabulary_sense vs
-        GROUP BY vs.vocabulary_id
-    ),
-    -- FIX: The CASE statement that calculates relevance has been added back.
-    search_matches AS (
-        -- Search in kanji
-        SELECT
-            v.id as vocabulary_id,
-            'kanji' as match_type,
-            CASE
-                WHEN vk.text = q THEN 1.0
-                WHEN vk.text LIKE q || '%' THEN 0.95
-                WHEN vk.text LIKE '%' || q THEN 0.90
-                ELSE similarity(vk.text, q)
-            END as relevance
-        FROM jlpt.vocabulary v
-        JOIN jlpt.vocabulary_kanji vk ON v.id = vk.vocabulary_id
-        CROSS JOIN LATERAL unnest(queries) AS q
-        WHERE (vk.text % q AND similarity(vk.text, q) >= relevanceThreshold)
-            OR vk.text LIKE q || '%'
-            OR vk.text LIKE '%' || q
-        
-        UNION ALL
-        
-        -- Search in kana
-        SELECT
-            v.id as vocabulary_id,
-            'kana' as match_type,
-            CASE
-                WHEN vkn.text = q THEN 1.0
-                WHEN vkn.text LIKE q || '%' THEN 0.95
-                WHEN vkn.text LIKE '%' || q THEN 0.90
-                ELSE similarity(vkn.text, q)
-            END as relevance
-        FROM jlpt.vocabulary v
-        JOIN jlpt.vocabulary_kana vkn ON v.id = vkn.vocabulary_id
-        CROSS JOIN LATERAL unnest(queries) AS q
-        WHERE (vkn.text % q AND similarity(vkn.text, q) >= relevanceThreshold)
-            OR vkn.text LIKE q || '%'
-            OR vkn.text LIKE '%' || q
-        
-        UNION ALL
-        
-        -- Search in glosses
-        SELECT
-            v.id as vocabulary_id,
-            'gloss' as match_type,
-            CASE
-                WHEN vsg.text = q THEN 1.0
-                WHEN vsg.text LIKE q || '%' THEN 0.95
-                WHEN vsg.text LIKE '%' || q THEN 0.90
-                ELSE similarity(vsg.text, q)
-            END as relevance
-        FROM jlpt.vocabulary v
-        JOIN jlpt.vocabulary_sense vs ON v.id = vs.vocabulary_id
-        JOIN jlpt.vocabulary_sense_gloss vsg ON vs.id = vsg.sense_id
-        CROSS JOIN LATERAL unnest(queries) AS q
-        WHERE (vsg.text % q AND similarity(vsg.text, q) >= relevanceThreshold)
-            OR vsg.text LIKE q || '%'
-            OR vsg.text LIKE '%' || q
+    WITH search_matches AS (
+			-- Search in kanji
+       		SELECT DISTINCT
+                v.id as vocabulary_id,
+                vk.text as match_text,
+                'kanji' as match_type,
+                CASE
+				    WHEN vk.text = q THEN 1.0
+				    WHEN vk.text LIKE q || '%' THEN 0.95
+				    WHEN vk.text LIKE '%' || q THEN 0.90
+				    ELSE similarity(vk.text, q)
+				END as relevance
+	        FROM jlpt.vocabulary v
+	        JOIN jlpt.vocabulary_kanji vk ON v.id = vk.vocabulary_id
+			CROSS JOIN LATERAL unnest(queries) AS q
+	        WHERE (vk.text % q AND similarity(vk.text, q) >= relevanceThreshold)
+			    OR vk.text LIKE q || '%'
+			    OR vk.text LIKE '%' || q
+            
+            UNION ALL
+            
+            -- Search in kana
+            SELECT DISTINCT
+                v.id as vocabulary_id,
+                vkn.text as match_text,
+                'kana' as match_type,
+                CASE
+				    WHEN vkn.text = q THEN 1.0
+				    WHEN vkn.text LIKE q || '%' THEN 0.95
+				    WHEN vkn.text LIKE '%' || q THEN 0.90
+			    	ELSE similarity(vkn.text, q)
+				END as relevance
+	        FROM jlpt.vocabulary v
+	        JOIN jlpt.vocabulary_kana vkn ON v.id = vkn.vocabulary_id
+			CROSS JOIN LATERAL unnest(queries) AS q
+	        WHERE (vkn.text % q AND similarity(vkn.text, q) >= relevanceThreshold)
+			    OR vkn.text LIKE q || '%'
+			    OR vkn.text LIKE '%' || q
+            
+            UNION ALL
+            
+            -- Search in translations
+            SELECT DISTINCT
+                v.id as vocabulary_id,
+                vsg.text as match_text,
+                'gloss' as match_type,
+                CASE
+				    WHEN vsg.text = q THEN 1.0
+				    WHEN vsg.text LIKE q || '%' THEN 0.95
+				    WHEN vsg.text LIKE '%' || q THEN 0.90
+			    	ELSE similarity(vsg.text, q)
+				END as relevance
+	        FROM jlpt.vocabulary v
+	        JOIN jlpt.vocabulary_sense vs ON v.id = vs.vocabulary_id
+	        JOIN jlpt.vocabulary_sense_gloss vsg ON vs.id = vsg.sense_id
+			CROSS JOIN LATERAL unnest(queries) AS q
+	        WHERE (vsg.text % q AND similarity(vsg.text, q) >= relevanceThreshold)
+			    OR vsg.text LIKE q || '%'
+			    OR vsg.text LIKE '%' || q
     ),
     ranked_matches AS (
-        SELECT
+        SELECT 
             vocabulary_id,
             MAX(relevance)::double precision as max_relevance
         FROM search_matches
@@ -1793,38 +1732,170 @@ RETURNS TABLE (
         SELECT
             v.id,
             v.jmdict_id as dict_id,
-            v.jlpt_level_new as jlpt_level,
+			v.jlpt_level_new as jlpt_level,
             rm.max_relevance::double precision as relevance_score,
-            -- Extract primary and other forms from the pre-built JSONB arrays
-            kj.kanji_forms->0 as primary_kanji,
-            -- IMPROVEMENT: A clean way to get all other forms by removing the first element
-            (jsonb_set(kj.kanji_forms, '{0}', 'null'::jsonb) - 'null') as other_kanji_forms,
-            kn.kana_forms->0 as primary_kana,
-            (jsonb_set(kn.kana_forms, '{0}', 'null'::jsonb) - 'null') as other_kana_forms,
-            sj.senses as senses
+
+            
+            -- Get primary kanji (first common one, or first one)
+            (SELECT json_build_object(
+                    'text', vk.text,
+                    'is_common', vk.is_common,
+                    'tags', COALESCE(
+                        (SELECT json_agg(json_build_object(
+                            'code', t.code,
+                            'description', t.description,
+                            'category', t.category
+                        ))
+                        FROM jlpt.vocabulary_kanji_tag vkt
+                        JOIN jlpt.tag t ON vkt.tag_code = t.code
+                        WHERE vkt.vocabulary_kanji_id = vk.id),
+                        '[]'::json
+                    )
+                )
+                FROM jlpt.vocabulary_kanji vk
+                WHERE vk.vocabulary_id = v.id
+                ORDER BY vk.is_common DESC, vk.created_at ASC
+                LIMIT 1
+                ) as primary_kanji,
+            
+            -- Get primary kana (respecting applies_to_kanji)
+            (SELECT json_build_object(
+                    'text', vkn.text,
+                    'is_common', vkn.is_common,
+                    'applies_to_kanji', vkn.applies_to_kanji,
+                    'tags', COALESCE(
+                        (SELECT json_agg(json_build_object(
+                            'code', t.code,
+                            'description', t.description,
+                            'category', t.category
+                        ))
+                        FROM jlpt.vocabulary_kana_tag vknt
+                        JOIN jlpt.tag t ON vknt.tag_code = t.code
+                        WHERE vknt.vocabulary_kana_id = vkn.id),
+                        '[]'::json
+                    )
+                )
+                FROM jlpt.vocabulary_kana vkn
+                WHERE vkn.vocabulary_id = v.id
+                ORDER BY vkn.is_common DESC, vkn.created_at ASC
+                LIMIT 1
+                ) as primary_kana,
+            
+            -- Get all other kanji forms
+            (SELECT json_agg(json_build_object(
+                    'text', vk.text,
+                    'is_common', vk.is_common,
+                    'tags', COALESCE(
+                        (SELECT json_agg(json_build_object(
+                            'code', t.code,
+                            'description', t.description,
+                            'category', t.category
+                        ))
+                        FROM jlpt.vocabulary_kanji_tag vkt
+                        JOIN jlpt.tag t ON vkt.tag_code = t.code
+                        WHERE vkt.vocabulary_kanji_id = vk.id),
+                        '[]'::json
+                    )
+                ) ORDER BY vk.is_common DESC, vk.created_at ASC)
+                FROM jlpt.vocabulary_kanji vk
+                WHERE vk.vocabulary_id = v.id
+                OFFSET 1
+                ) as other_kanji_forms,
+            
+            -- Get all other kana forms
+            (SELECT json_agg(json_build_object(
+                    'text', vkn.text,
+                    'is_common', vkn.is_common,
+                    'applies_to_kanji', vkn.applies_to_kanji,
+                    'tags', COALESCE(
+                        (SELECT json_agg(json_build_object(
+                            'code', t.code,
+                            'description', t.description,
+                            'category', t.category
+                        ))
+                        FROM jlpt.vocabulary_kana_tag vknt
+                        JOIN jlpt.tag t ON vknt.tag_code = t.code
+                        WHERE vknt.vocabulary_kana_id = vkn.id),
+                        '[]'::json
+                    )
+                ) ORDER BY vkn.is_common DESC, vkn.created_at ASC)
+                FROM jlpt.vocabulary_kana vkn
+                WHERE vkn.vocabulary_id = v.id
+                OFFSET 1
+                ) as other_kana_forms,
+            
+            -- Get first 3 senses with their data
+            (SELECT json_agg(sense_data ORDER BY sense_order)
+                FROM (
+                    SELECT 
+                        vs.id,
+                        ROW_NUMBER() OVER (ORDER BY vs.created_at) as sense_order,
+                        json_build_object(
+                            'applies_to_kanji', vs.applies_to_kanji,
+                            'applies_to_kana', vs.applies_to_kana,
+                            'info', vs.info,
+                            'glosses', (
+                                SELECT json_agg(json_build_object(
+                                    'language', vsg.lang,
+                                    'text', vsg.text,
+                                    'gender', vsg.gender,
+                                    'type', vsg.type
+                                ))
+                                FROM jlpt.vocabulary_sense_gloss vsg
+                                WHERE vsg.sense_id = vs.id
+                            ),
+                            'tags', (
+                                SELECT json_agg(json_build_object(
+                                    'code', t.code,
+                                    'description', t.description,
+                                    'category', t.category,
+                                    'type', vst.tag_type
+                                ))
+                                FROM jlpt.vocabulary_sense_tag vst
+                                JOIN jlpt.tag t ON vst.tag_code = t.code
+                                WHERE vst.sense_id = vs.id
+                            )
+                        ) as sense_data
+                    FROM jlpt.vocabulary_sense vs
+                    WHERE vs.vocabulary_id = v.id
+                    ORDER BY vs.created_at
+                    LIMIT 3
+                ) senses
+                ) as senses,
+				CASE 
+                    WHEN (
+                        SELECT vk.is_common 
+                        FROM jlpt.vocabulary_kanji vk 
+                        WHERE vk.vocabulary_id = v.id 
+                        ORDER BY vk.is_common DESC, vk.created_at ASC 
+                        LIMIT 1
+                    ) = true 
+                    OR (
+                        SELECT vkn.is_common 
+                        FROM jlpt.vocabulary_kana vkn 
+                        WHERE vkn.vocabulary_id = v.id 
+                        ORDER BY vkn.is_common DESC, vkn.created_at ASC 
+                        LIMIT 1
+                    ) = true 
+                    THEN true 
+                    ELSE false 
+                END as is_common
+            
         FROM jlpt.vocabulary v
         JOIN ranked_matches rm ON v.id = rm.vocabulary_id
-        LEFT JOIN kanji_json kj ON v.id = kj.vocabulary_id
-        LEFT JOIN kana_json kn ON v.id = kn.vocabulary_id
-        LEFT JOIN senses_json sj ON v.id = sj.vocabulary_id
     ),
     all_results AS (
-        SELECT
+        SELECT 
             vd.id,
             vd.dict_id,
-            vd.jlpt_level,
+			vd.jlpt_level,
             vd.relevance_score,
             vd.primary_kanji,
             vd.primary_kana,
             vd.other_kanji_forms,
             vd.other_kana_forms,
             vd.senses,
-            CASE
-                WHEN (vd.primary_kanji->>'is_common')::boolean = true
-                     OR (vd.primary_kana->>'is_common')::boolean = true
-                THEN true
-                ELSE false
-            END as is_common
+			vd.is_common
         FROM vocabulary_data vd
         WHERE vd.relevance_score >= relevanceThreshold
         ORDER BY vd.relevance_score DESC
@@ -1841,7 +1912,7 @@ RETURNS TABLE (
         ar.relevance_score DESC
     LIMIT pageSize OFFSET page_offset;
 END;
- $$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 -- Function to get proper nouns by text
 CREATE OR REPLACE FUNCTION search_proper_noun_by_text(
