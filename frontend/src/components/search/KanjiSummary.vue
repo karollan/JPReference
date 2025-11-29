@@ -1,158 +1,158 @@
 <template>
-    <v-hover v-slot="{ isHovering, props: hoverProps }">
-        <v-card
-            v-bind="hoverProps"
-            class="pa-3 mb-3 interactive-card text-left"
-            outlined
-            :elevation="isHovering ? 8 : 2"
-            v-ripple
-            @click="handleCardClick"
+  <v-hover v-slot="{ isHovering, props: hoverProps }">
+    <v-card
+      v-ripple
+      v-bind="hoverProps"
+      class="pa-3 mb-3 interactive-card text-left"
+      :elevation="isHovering ? 8 : 2"
+      outlined
+      @click="handleCardClick"
+    >
+      <div class="d-flex justify-space-between align-start mb-2">
+        <div class="kanji-literal-container">
+          <div class="kanji-literal">{{ kanji.literal }}</div>
+          <div class="stroke-count">{{ kanji.strokeCount }} strokes</div>
+        </div>
+        <LanguageSelector
+          v-if="availableLanguages.length > 0"
+          :available-languages="availableLanguages"
+          :default-language="selectedLanguage"
+          @language-changed="onLanguageChanged"
+        />
+      </div>
+
+      <!-- Metadata Chips -->
+      <div class="metadata-chips mb-3">
+        <v-chip
+          v-if="kanji.jlptLevel"
+          class="mr-1 mb-1"
+          color="primary"
+          size="x-small"
+          variant="flat"
         >
-            <div class="d-flex justify-space-between align-start mb-2">
-                <div class="kanji-literal-container">
-                    <div class="kanji-literal">{{ kanji.literal }}</div>
-                    <div class="stroke-count">{{ kanji.strokeCount }} strokes</div>
-                </div>
-                <LanguageSelector
-                    v-if="availableLanguages.length > 0"
-                    :available-languages="availableLanguages"
-                    :default-language="selectedLanguage"
-                    @language-changed="onLanguageChanged"
-                />
-            </div>
+          N{{ kanji.jlptLevel }}
+        </v-chip>
+        <v-chip
+          v-if="kanji.grade"
+          class="mr-1 mb-1"
+          color="secondary"
+          size="x-small"
+          variant="flat"
+        >
+          Grade {{ kanji.grade }}
+        </v-chip>
+        <v-chip
+          v-if="kanji.frequency"
+          class="mr-1 mb-1"
+          color="info"
+          size="x-small"
+          variant="tonal"
+        >
+          Freq: {{ kanji.frequency }}
+        </v-chip>
+      </div>
 
-            <!-- Metadata Chips -->
-            <div class="metadata-chips mb-3">
-                <v-chip
-                    v-if="kanji.jlptLevel"
-                    size="x-small"
-                    color="primary"
-                    variant="flat"
-                    class="mr-1 mb-1"
-                >
-                    N{{ kanji.jlptLevel }}
-                </v-chip>
-                <v-chip
-                    v-if="kanji.grade"
-                    size="x-small"
-                    color="secondary"
-                    variant="flat"
-                    class="mr-1 mb-1"
-                >
-                    Grade {{ kanji.grade }}
-                </v-chip>
-                <v-chip
-                    v-if="kanji.frequency"
-                    size="x-small"
-                    color="info"
-                    variant="tonal"
-                    class="mr-1 mb-1"
-                >
-                    Freq: {{ kanji.frequency }}
-                </v-chip>
-            </div>
+      <!-- Info Grid -->
+      <div class="info-grid">
+        <template v-if="kanji.kunyomiReadings && kanji.kunyomiReadings.length > 0">
+          <div class="info-label">Kun</div>
+          <div class="info-content">
+            <span
+              v-for="(reading, idx) in kanji.kunyomiReadings"
+              :key="idx"
+              class="reading-item"
+            >
+              {{ reading.value }}{{ idx < kanji.kunyomiReadings!.length - 1 ? '、' : '' }}
+            </span>
+          </div>
+        </template>
 
-            <!-- Info Grid -->
-            <div class="info-grid">
-                <template v-if="kanji.kunyomiReadings && kanji.kunyomiReadings.length > 0">
-                    <div class="info-label">Kun</div>
-                    <div class="info-content">
-                        <span
-                            v-for="(reading, idx) in kanji.kunyomiReadings"
-                            :key="idx"
-                            class="reading-item"
-                        >
-                            {{ reading.value }}{{ idx < kanji.kunyomiReadings!.length - 1 ? '、' : '' }}
-                        </span>
-                    </div>
-                </template>
+        <template v-if="kanji.onyomiReadings && kanji.onyomiReadings.length > 0">
+          <div class="info-label">On</div>
+          <div class="info-content">
+            <span
+              v-for="(reading, idx) in kanji.onyomiReadings"
+              :key="idx"
+              class="reading-item"
+            >
+              {{ reading.value }}{{ idx < kanji.onyomiReadings!.length - 1 ? '、' : '' }}
+            </span>
+          </div>
+        </template>
 
-                <template v-if="kanji.onyomiReadings && kanji.onyomiReadings.length > 0">
-                    <div class="info-label">On</div>
-                    <div class="info-content">
-                        <span
-                            v-for="(reading, idx) in kanji.onyomiReadings"
-                            :key="idx"
-                            class="reading-item"
-                        >
-                            {{ reading.value }}{{ idx < kanji.onyomiReadings!.length - 1 ? '、' : '' }}
-                        </span>
-                    </div>
-                </template>
+        <template v-if="filteredMeanings.length > 0">
+          <div class="info-label">Meaning</div>
+          <div class="info-content meanings-text">
+            {{ filteredMeanings.join(', ') }}
+          </div>
+        </template>
 
-                <template v-if="filteredMeanings.length > 0">
-                    <div class="info-label">Meaning</div>
-                    <div class="info-content meanings-text">
-                        {{ filteredMeanings.join(', ') }}
-                    </div>
-                </template>
-
-                <template v-if="kanji.radicals && kanji.radicals.length > 0">
-                    <div class="info-label">Radical</div>
-                    <div class="info-content radicals-content">
-                        <v-chip
-                            v-for="radical in kanji.radicals"
-                            :key="radical.id"
-                            size="x-small"
-                            variant="outlined"
-                            class="mr-1 mb-1"
-                        >
-                            {{ radical.literal }}
-                        </v-chip>
-                    </div>
-                </template>
-            </div>
-        </v-card>
-    </v-hover>
+        <template v-if="kanji.radicals && kanji.radicals.length > 0">
+          <div class="info-label">Radical</div>
+          <div class="info-content radicals-content">
+            <v-chip
+              v-for="radical in kanji.radicals"
+              :key="radical.id"
+              class="mr-1 mb-1"
+              size="x-small"
+              variant="outlined"
+            >
+              {{ radical.literal }}
+            </v-chip>
+          </div>
+        </template>
+      </div>
+    </v-card>
+  </v-hover>
 </template>
 
 <script lang="ts" setup>
-import type { KanjiSummary } from '@/types/Kanji'
-import LanguageSelector from './LanguageSelector.vue'
-import { ref, computed } from 'vue'
-import { DEFAULT_LANGUAGE, languageMatches } from '@/utils/language'
+  import type { KanjiSummary } from '@/types/Kanji'
+  import { computed, ref } from 'vue'
+  import { DEFAULT_LANGUAGE, languageMatches } from '@/utils/language'
+  import LanguageSelector from './LanguageSelector.vue'
 
-const props = defineProps<{
+  const props = defineProps<{
     kanji: KanjiSummary
-}>()
+  }>()
 
-const selectedLanguage = ref<string>(DEFAULT_LANGUAGE)
+  const selectedLanguage = ref<string>(DEFAULT_LANGUAGE)
 
-// Extract available languages from meanings (handle both 2-letter and 3-letter codes)
-const availableLanguages = computed(() => {
+  // Extract available languages from meanings (handle both 2-letter and 3-letter codes)
+  const availableLanguages = computed(() => {
     const languages = new Set<string>()
-    props.kanji.meanings?.forEach(meaning => {
-        if (meaning.language) {
-            languages.add(meaning.language)
-        }
-    })
+    if (props.kanji.meanings) for (const meaning of props.kanji.meanings) {
+      if (meaning.language) {
+        languages.add(meaning.language)
+      }
+    }
     return Array.from(languages)
-})
+  })
 
-const onLanguageChanged = (language: string) => {
+  function onLanguageChanged (language: string): void {
     selectedLanguage.value = language
-}
+  }
 
-// Filter meanings based on selected language
-const filteredMeanings = computed(() => {
+  // Filter meanings based on selected language
+  const filteredMeanings = computed(() => {
     if (!props.kanji.meanings) return []
-    
+
     const preferredMeanings = props.kanji.meanings.filter(m => languageMatches(m.language, selectedLanguage.value))
     if (preferredMeanings.length > 0) {
-        return preferredMeanings.map(m => m.meaning)
+      return preferredMeanings.map(m => m.meaning)
     }
 
     const fallbackMeanings = props.kanji.meanings.filter(m => languageMatches(m.language, DEFAULT_LANGUAGE))
     if (fallbackMeanings.length > 0) {
-        return fallbackMeanings.map(m => m.meaning)
+      return fallbackMeanings.map(m => m.meaning)
     }
 
     return props.kanji.meanings.map(m => m.meaning)
-})
+  })
 
-const handleCardClick = () => {
+  function handleCardClick (): void {
     console.log('[KanjiSummary] Card clicked', props.kanji.id || props.kanji.literal)
-}
+  }
 </script>
 
 <style lang="scss" scoped>
@@ -198,7 +198,7 @@ const handleCardClick = () => {
     text-align: right;
     white-space: nowrap;
     align-self: baseline;
-    padding-top: 2px; 
+    padding-top: 2px;
 }
 
 .info-content {

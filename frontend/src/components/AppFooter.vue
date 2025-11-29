@@ -1,8 +1,8 @@
 <template>
   <v-footer
     app
-    color="background"
     border="t-sm"
+    color="background"
     height="40"
   >
     <a
@@ -44,7 +44,7 @@
       title: 'Github Repository',
       icon: `mdi-github`,
       href: 'https://github.com/karollan/JLPTReference',
-    }
+    },
   ]
 </script>
 

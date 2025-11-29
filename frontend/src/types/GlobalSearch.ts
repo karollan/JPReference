@@ -1,13 +1,13 @@
-import type { VocabularyResponse } from "@/types/Vocabulary"
-import type { ProperNounResponse } from "@/types/ProperNoun"
-import type { KanjiResponse } from "@/types/Kanji"
+import type { KanjiResponse } from '@/types/Kanji'
+import type { ProperNounResponse } from '@/types/ProperNoun'
+import type { VocabularyResponse } from '@/types/Vocabulary'
 
 export interface GlobalSearchResponse {
-    vocabularyResults: VocabularyResponse
-    properNounResults: ProperNounResponse
-    kanjiResults: KanjiResponse
+  vocabularyResults: VocabularyResponse
+  properNounResults: ProperNounResponse
+  kanjiResults: KanjiResponse
 }
 
 export interface GlobalSearchCache {
-    [key: string]: GlobalSearchResponse
+  [key: string]: GlobalSearchResponse
 }

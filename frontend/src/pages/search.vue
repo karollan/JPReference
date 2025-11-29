@@ -1,8 +1,8 @@
 <template>
   <v-container
-    :max-width="$vuetify.display.mdAndUp ? 1200 : '100%'"
     class="text-center main-container-layout"
     fluid
+    :max-width="$vuetify.display.mdAndUp ? 1200 : '100%'"
   >
     <v-row
       class="content d-flex flex-row"
@@ -18,27 +18,26 @@
           <v-text-field
             v-model="searchQuery"
             bg-color="white"
-            icon-color="#00000066"
             class="home__search flex-grow-1"
+            clearable
             density="comfortable"
+            hide-details="auto"
+            icon-color="#00000066"
             placeholder="Search"
             prepend-inner-icon="mdi-magnify"
             variant="outlined"
-            clearable
-            hide-details="auto"
-          >
-          </v-text-field>
+          />
 
           <v-tooltip location="bottom">
-            <template v-slot:activator="{ props }">
+            <template #activator="{ props }">
               <v-btn
                 v-bind="props"
-                icon
-                variant="text"
+                :aria-label="searchStore.viewMode === 'unified' ? 'Switch to tab view' : 'Switch to quick view'"
                 class="ml-2"
                 color="primary"
+                icon
+                variant="text"
                 @click="toggleViewMode"
-                :aria-label="searchStore.viewMode === 'unified' ? 'Switch to tab view' : 'Switch to quick view'"
               >
                 <v-icon size="28">{{ searchStore.viewMode === 'unified' ? 'mdi-tab' : 'mdi-view-dashboard' }}</v-icon>
               </v-btn>
@@ -49,13 +48,13 @@
 
         <v-col
           v-if="searchStore.error"
-          cols="12"
           class="pa-0 mt-4"
+          cols="12"
         >
           <v-alert
-            type="error"
             class="mb-4"
             closable
+            type="error"
           >
             {{ searchStore.error }}
           </v-alert>
@@ -65,15 +64,15 @@
       <!-- Unified View -->
       <v-col
         v-if="searchStore.viewMode === 'unified'"
-        cols="12"
         class="results-container"
+        cols="12"
       >
         <v-row>
           <!-- Vocabulary Column -->
           <v-col
+            class="d-flex flex-column"
             cols="12"
             md="8"
-            class="d-flex flex-column"
           >
             <div class="d-flex justify-space-between align-center mb-2">
               <div class="text-left section-title">
@@ -81,15 +80,15 @@
               </div>
               <v-btn
                 v-if="!searchStore.loading && vocabularyCount > 5"
+                color="primary"
                 size="small"
                 variant="text"
-                color="primary"
                 @click="showAllResults('vocabulary')"
               >
                 See All {{ vocabularyCount }} Results
               </v-btn>
             </div>
-            <v-divider class="mb-4 mt-2"></v-divider>
+            <v-divider class="mb-4 mt-2" />
             <div class="vocabulary-iterator overflow-y-auto" :style="{ maxHeight: resultColumnHeight }">
               <template v-if="searchStore.loading">
                 <VocabularySummarySkeleton v-for="i in 3" :key="i" />
@@ -103,7 +102,7 @@
               </template>
               <template v-else>
                 <v-card class="pa-8 text-center" variant="outlined">
-                  <v-icon size="64" color="grey-lighten-1">mdi-text-search</v-icon>
+                  <v-icon color="grey-lighten-1" size="64">mdi-text-search</v-icon>
                   <div class="text-h6 mt-4 text-grey">No vocabulary found</div>
                 </v-card>
               </template>
@@ -112,9 +111,9 @@
 
           <!-- Kanji & Proper Nouns Column -->
           <v-col
+            class="d-flex flex-column"
             cols="12"
             md="4"
-            class="d-flex flex-column"
           >
             <!-- Kanji Section -->
             <div class="d-flex justify-space-between align-center mb-2">
@@ -123,15 +122,15 @@
               </div>
               <v-btn
                 v-if="!searchStore.loading && kanjiCount > 5"
+                color="primary"
                 size="small"
                 variant="text"
-                color="primary"
                 @click="showAllResults('kanji')"
               >
                 See All {{ kanjiCount }}
               </v-btn>
             </div>
-            <v-divider class="mb-4 mt-2"></v-divider>
+            <v-divider class="mb-4 mt-2" />
             <div class="kanji-iterator overflow-y-auto mb-6" :style="{ maxHeight: sideColumnHeight }">
               <template v-if="searchStore.loading">
                 <KanjiSummarySkeleton v-for="i in 2" :key="i" />
@@ -145,7 +144,7 @@
               </template>
               <template v-else>
                 <v-card class="pa-6 text-center" variant="outlined">
-                  <v-icon size="48" color="grey-lighten-1">mdi-ideogram-cjk</v-icon>
+                  <v-icon color="grey-lighten-1" size="48">mdi-ideogram-cjk</v-icon>
                   <div class="text-body-2 mt-2 text-grey">No kanji found</div>
                 </v-card>
               </template>
@@ -158,15 +157,15 @@
               </div>
               <v-btn
                 v-if="!searchStore.loading && properNounCount > 5"
+                color="primary"
                 size="small"
                 variant="text"
-                color="primary"
                 @click="showAllResults('properNouns')"
               >
                 See All {{ properNounCount }}
               </v-btn>
             </div>
-            <v-divider class="mb-4 mt-2"></v-divider>
+            <v-divider class="mb-4 mt-2" />
             <div class="proper-noun-iterator overflow-y-auto" :style="{ maxHeight: sideColumnHeight }">
               <template v-if="searchStore.loading">
                 <ProperNounSummarySkeleton v-for="i in 2" :key="i" />
@@ -175,12 +174,12 @@
                 <ProperNounSummary
                   v-for="properNoun in limitedProperNouns"
                   :key="properNoun.id"
-                  :properNoun="properNoun"
+                  :proper-noun="properNoun"
                 />
               </template>
               <template v-else>
                 <v-card class="pa-6 text-center" variant="outlined">
-                  <v-icon size="48" color="grey-lighten-1">mdi-account</v-icon>
+                  <v-icon color="grey-lighten-1" size="48">mdi-account</v-icon>
                   <div class="text-body-2 mt-2 text-grey">No proper nouns found</div>
                 </v-card>
               </template>
@@ -192,23 +191,23 @@
       <!-- Tabbed View -->
       <v-col
         v-else
-        cols="12"
         class="results-container"
+        cols="12"
       >
         <div class="tab-header mb-4">
           <v-tabs
             v-model="currentTab"
-            show-arrows
-            color="primary"
             class="flex-grow-1 tab-nav"
+            color="primary"
+            show-arrows
           >
             <v-tab value="vocabulary">
               Vocabulary
               <v-chip
                 v-if="vocabularyCount > 0"
-                size="small"
                 class="ml-2"
                 color="primary"
+                size="small"
                 variant="flat"
               >
                 {{ vocabularyCount }}
@@ -218,9 +217,9 @@
               Kanji
               <v-chip
                 v-if="kanjiCount > 0"
-                size="small"
                 class="ml-2"
                 color="primary"
+                size="small"
                 variant="flat"
               >
                 {{ kanjiCount }}
@@ -230,9 +229,9 @@
               Proper Nouns
               <v-chip
                 v-if="properNounCount > 0"
-                size="small"
                 class="ml-2"
                 color="primary"
+                size="small"
                 variant="flat"
               >
                 {{ properNounCount }}
@@ -257,8 +256,8 @@
                 <div v-if="searchStore.vocabularyList.pagination.hasNext" class="text-center mt-4">
                   <v-btn
                     color="primary"
-                    variant="outlined"
                     :loading="searchStore.loadingMore"
+                    variant="outlined"
                     @click="loadMore('vocabulary')"
                   >
                     Load More
@@ -267,7 +266,7 @@
               </template>
               <template v-else>
                 <v-card class="pa-12 text-center" variant="outlined">
-                  <v-icon size="96" color="grey-lighten-1">mdi-text-search</v-icon>
+                  <v-icon color="grey-lighten-1" size="96">mdi-text-search</v-icon>
                   <div class="text-h5 mt-4 text-grey">No vocabulary found</div>
                 </v-card>
               </template>
@@ -289,8 +288,8 @@
                 <div v-if="searchStore.kanjiList.pagination.hasNext" class="text-center mt-4">
                   <v-btn
                     color="primary"
-                    variant="outlined"
                     :loading="searchStore.loadingMore"
+                    variant="outlined"
                     @click="loadMore('kanji')"
                   >
                     Load More
@@ -299,7 +298,7 @@
               </template>
               <template v-else>
                 <v-card class="pa-12 text-center" variant="outlined">
-                  <v-icon size="96" color="grey-lighten-1">mdi-ideogram-cjk</v-icon>
+                  <v-icon color="grey-lighten-1" size="96">mdi-ideogram-cjk</v-icon>
                   <div class="text-h5 mt-4 text-grey">No kanji found</div>
                 </v-card>
               </template>
@@ -316,13 +315,13 @@
                 <ProperNounSummary
                   v-for="properNoun in searchStore.properNounList.data"
                   :key="properNoun.id"
-                  :properNoun="properNoun"
+                  :proper-noun="properNoun"
                 />
                 <div v-if="searchStore.properNounList.pagination.hasNext" class="text-center mt-4">
                   <v-btn
                     color="primary"
-                    variant="outlined"
                     :loading="searchStore.loadingMore"
+                    variant="outlined"
                     @click="loadMore('properNouns')"
                   >
                     Load More
@@ -331,7 +330,7 @@
               </template>
               <template v-else>
                 <v-card class="pa-12 text-center" variant="outlined">
-                  <v-icon size="96" color="grey-lighten-1">mdi-account</v-icon>
+                  <v-icon color="grey-lighten-1" size="96">mdi-account</v-icon>
                   <div class="text-h5 mt-4 text-grey">No proper nouns found</div>
                 </v-card>
               </template>
@@ -344,139 +343,139 @@
 </template>
 
 <script lang="ts" setup>
-import KanjiSummary from '@/components/search/KanjiSummary.vue'
-import VocabularySummary from '@/components/search/VocabularySummary.vue'
-import ProperNounSummary from '@/components/search/ProperNounSummary.vue'
-import KanjiSummarySkeleton from '@/components/search/KanjiSummarySkeleton.vue'
-import VocabularySummarySkeleton from '@/components/search/VocabularySummarySkeleton.vue'
-import ProperNounSummarySkeleton from '@/components/search/ProperNounSummarySkeleton.vue'
-import { useSearchStore } from '@/stores/search'
-import type { ActiveTab } from '@/stores/search'
-import { ref, computed, watch, onMounted } from 'vue'
+  import type { ActiveTab } from '@/stores/search'
+  import { computed, onMounted, ref, watch } from 'vue'
+  import KanjiSummary from '@/components/search/KanjiSummary.vue'
+  import KanjiSummarySkeleton from '@/components/search/KanjiSummarySkeleton.vue'
+  import ProperNounSummary from '@/components/search/ProperNounSummary.vue'
+  import ProperNounSummarySkeleton from '@/components/search/ProperNounSummarySkeleton.vue'
+  import VocabularySummary from '@/components/search/VocabularySummary.vue'
+  import VocabularySummarySkeleton from '@/components/search/VocabularySummarySkeleton.vue'
+  import { useSearchStore } from '@/stores/search'
 
-const route = useRoute()
-const router = useRouter()
-const searchStore = useSearchStore()
+  const route = useRoute()
+  const router = useRouter()
+  const searchStore = useSearchStore()
 
-const pageSize = 50
-const searchColumn = ref<any | null>(null)
-const searchQuery = ref<string>(route.query.query as string || '')
-const currentTab = ref<ActiveTab>('vocabulary')
+  const pageSize = 50
+  const searchColumn = ref<any | null>(null)
+  const searchQuery = ref<string>(route.query.query as string || '')
+  const currentTab = ref<ActiveTab>('vocabulary')
 
-// Heights for different sections
-const resultColumnHeight = computed(() => {
-  return searchColumn.value ? `${window.innerHeight - searchColumn.value.$el.getBoundingClientRect().bottom - 100}px` : '500px'
-})
+  // Heights for different sections
+  const resultColumnHeight = computed(() => {
+    return searchColumn.value ? `${window.innerHeight - searchColumn.value.$el.getBoundingClientRect().bottom - 100}px` : '500px'
+  })
 
-const sideColumnHeight = computed(() => {
-  return searchColumn.value ? `${(window.innerHeight - searchColumn.value.$el.getBoundingClientRect().bottom - 100) / 2 - 60}px` : '250px'
-})
+  const sideColumnHeight = computed(() => {
+    return searchColumn.value ? `${(window.innerHeight - searchColumn.value.$el.getBoundingClientRect().bottom - 100) / 2 - 60}px` : '250px'
+  })
 
-const tabContentHeight = computed(() => {
-  return searchColumn.value ? `${window.innerHeight - searchColumn.value.$el.getBoundingClientRect().bottom - 150}px` : '600px'
-})
+  const tabContentHeight = computed(() => {
+    return searchColumn.value ? `${window.innerHeight - searchColumn.value.$el.getBoundingClientRect().bottom - 150}px` : '600px'
+  })
 
-// Result counts
-const vocabularyCount = computed(() => searchStore.vocabularyList?.pagination.totalCount || 0)
-const kanjiCount = computed(() => searchStore.kanjiList?.pagination.totalCount || 0)
-const properNounCount = computed(() => searchStore.properNounList?.pagination.totalCount || 0)
+  // Result counts
+  const vocabularyCount = computed(() => searchStore.vocabularyList?.pagination.totalCount || 0)
+  const kanjiCount = computed(() => searchStore.kanjiList?.pagination.totalCount || 0)
+  const properNounCount = computed(() => searchStore.properNounList?.pagination.totalCount || 0)
 
-// Limited results for unified view (5 items each)
-const limitedVocabulary = computed(() => searchStore.vocabularyList?.data?.slice(0, 5) || [])
-const limitedKanji = computed(() => searchStore.kanjiList?.data?.slice(0, 5) || [])
-const limitedProperNouns = computed(() => searchStore.properNounList?.data?.slice(0, 5) || [])
+  // Limited results for unified view (5 items each)
+  const limitedVocabulary = computed(() => searchStore.vocabularyList?.data?.slice(0, 5) || [])
+  const limitedKanji = computed(() => searchStore.kanjiList?.data?.slice(0, 5) || [])
+  const limitedProperNouns = computed(() => searchStore.properNounList?.data?.slice(0, 5) || [])
 
-// Simple debounce function
-const debounce = (func: Function, delay: number) => {
-  let timeoutId: number
-  return (...args: any[]) => {
-    clearTimeout(timeoutId)
-    timeoutId = setTimeout(() => func.apply(null, args), delay)
-  }
-}
-
-const loadInitialData = async () => {
-  if (!searchQuery.value.trim()) {
-    searchStore.clearResults()
-    return
-  }
-
-  await searchStore.performSearch(searchQuery.value, pageSize)
-}
-
-// Debounced search function
-const debouncedSearch = debounce(async () => {
-  await loadInitialData()
-}, 500)
-
-const updateUrl = () => {
-  const query: any = {}
-  
-  if (searchQuery.value) {
-    query.query = searchQuery.value
-  }
-  
-  if (searchStore.viewMode === 'tabbed') {
-    query.view = 'tabbed'
-    query.tab = searchStore.activeTab
-  }
-  
-  router.replace({ query })
-}
-
-const showAllResults = (tab: ActiveTab) => {
-  searchStore.setViewMode('tabbed', tab)
-  currentTab.value = tab
-  updateUrl()
-}
-
-const loadMore = (category: ActiveTab) => {
-  searchStore.loadMoreResults(category)
-}
-
-const toggleViewMode = () => {
-  if (searchStore.viewMode === 'unified') {
-    searchStore.setViewMode('tabbed', currentTab.value)
-  } else {
-    searchStore.setViewMode('unified')
-  }
-  updateUrl()
-}
-
-// Initialize view mode from URL
-onMounted(() => {
-  if (route.query.view === 'tabbed') {
-    searchStore.setViewMode('tabbed')
-    if (route.query.tab) {
-      const tab = route.query.tab as ActiveTab
-      searchStore.setActiveTab(tab)
-      currentTab.value = tab
+  // Simple debounce function
+  function debounce (func: Function, delay: number) {
+    let timeoutId: number
+    return (...args: any[]) => {
+      clearTimeout(timeoutId)
+      timeoutId = setTimeout(() => func(...args), delay)
     }
   }
-})
 
-// Watch for changes and update URL
-watch(() => searchStore.viewMode, () => {
-  updateUrl()
-})
+  async function loadInitialData () {
+    if (!searchQuery.value.trim()) {
+      searchStore.clearResults()
+      return
+    }
 
-watch(currentTab, (newTab) => {
-  searchStore.setActiveTab(newTab)
-  updateUrl()
-})
-
-watch(searchQuery, (newQuery) => {
-  searchStore.reset()
-  searchStore.setViewMode('unified')
-  updateUrl()
-
-  if (!newQuery.trim()) {
-    searchStore.clearResults()
-    return
+    await searchStore.performSearch(searchQuery.value, pageSize)
   }
 
-  debouncedSearch()
-}, { immediate: true })
+  // Debounced search function
+  const debouncedSearch = debounce(async () => {
+    await loadInitialData()
+  }, 500)
+
+  function updateUrl () {
+    const query: any = {}
+
+    if (searchQuery.value) {
+      query.query = searchQuery.value
+    }
+
+    if (searchStore.viewMode === 'tabbed') {
+      query.view = 'tabbed'
+      query.tab = searchStore.activeTab
+    }
+
+    router.replace({ query })
+  }
+
+  function showAllResults (tab: ActiveTab) {
+    searchStore.setViewMode('tabbed', tab)
+    currentTab.value = tab
+    updateUrl()
+  }
+
+  function loadMore (category: ActiveTab) {
+    searchStore.loadMoreResults(category)
+  }
+
+  function toggleViewMode () {
+    if (searchStore.viewMode === 'unified') {
+      searchStore.setViewMode('tabbed', currentTab.value)
+    } else {
+      searchStore.setViewMode('unified')
+    }
+    updateUrl()
+  }
+
+  // Initialize view mode from URL
+  onMounted(() => {
+    if (route.query.view === 'tabbed') {
+      searchStore.setViewMode('tabbed')
+      if (route.query.tab) {
+        const tab = route.query.tab as ActiveTab
+        searchStore.setActiveTab(tab)
+        currentTab.value = tab
+      }
+    }
+  })
+
+  // Watch for changes and update URL
+  watch(() => searchStore.viewMode, () => {
+    updateUrl()
+  })
+
+  watch(currentTab, newTab => {
+    searchStore.setActiveTab(newTab)
+    updateUrl()
+  })
+
+  watch(searchQuery, newQuery => {
+    searchStore.reset()
+    searchStore.setViewMode('unified')
+    updateUrl()
+
+    if (!newQuery.trim()) {
+      searchStore.clearResults()
+      return
+    }
+
+    debouncedSearch()
+  }, { immediate: true })
 </script>
 <style lang="scss" scoped>
 .content {
@@ -517,17 +516,17 @@ watch(searchQuery, (newQuery) => {
   scrollbar-width: thin;
   scrollbar-color: rgba(var(--v-theme-on-surface), 0.3) transparent;
   padding: 12px;
-  
+
   &::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
-  
+
   &::-webkit-scrollbar-thumb {
     background: rgba(var(--v-theme-on-surface), 0.3);
     border-radius: 3px;
   }
-  
+
   &::-webkit-scrollbar-thumb:hover {
     background: rgba(var(--v-theme-on-surface), 0.5);
   }

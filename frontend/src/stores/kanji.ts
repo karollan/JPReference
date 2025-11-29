@@ -1,6 +1,6 @@
+import type { KanjiListCache, KanjiSummary } from '@/types/Kanji'
 // Utilities
 import { defineStore } from 'pinia'
-import type { KanjiSummary, KanjiListCache } from '@/types/Kanji'
 import { KanjiService } from '@/services/kanji.service'
 
 export const useKanjiStore = defineStore('kanji', () => {
@@ -15,48 +15,48 @@ export const useKanjiStore = defineStore('kanji', () => {
     search: string | null
   }>({ jlptLevel: [], search: null })
 
-  //Utils
+  // Utils
   const flattenPages = (cache: KanjiListCache, key: string): KanjiSummary[] => {
-    if (!cache[key] || !cache[key].pages) {
-      return [];
+    if (!cache[key]?.pages) {
+      return []
     }
 
     // Get all page numbers and sort them numerically
     const pageNumbers = Object.keys(cache[key].pages)
       .map(Number)
-      .sort((a, b) => a - b);
+      .toSorted((a: number, b: number) => a - b)
 
     // Flatten pages into a single array
-    return pageNumbers.reduce<KanjiSummary[]>((acc, pageNum) => {
-      return acc.concat(cache[key]?.pages[pageNum] ?? []);
-    }, []);
+    return pageNumbers.reduce<KanjiSummary[]>((acc: KanjiSummary[], pageNum: number) => {
+      return acc.concat(cache[key]?.pages[pageNum] ?? [])
+    }, [])
   }
 
   const getLargestPageNumber = (cache: KanjiListCache, key: string): number | undefined => {
-    if (!cache[key] || !cache[key].pages) {
-      return undefined;
+    if (!cache[key]?.pages) {
+      return undefined
     }
 
-    const pageNumbers = Object.keys(cache[key].pages).map(Number);
+    const pageNumbers = Object.keys(cache[key].pages).map(Number)
     if (pageNumbers.length === 0) {
-      return undefined;
+      return undefined
     }
 
-    return Math.max(...pageNumbers);
+    return Math.max(...pageNumbers)
   }
 
-  const currentCacheKey = (pageSize: number = 50) => {
-    return JSON.stringify({search: currentFilters.search, jlptLevel: currentFilters.jlptLevel, pageSize: pageSize})
-  };
+  const currentCacheKey = (pageSize = 50) => {
+    return JSON.stringify({ search: currentFilters.search, jlptLevel: currentFilters.jlptLevel, pageSize })
+  }
 
-  //Actions
-  const fetchKanji = async(
-    jlptLevel: number[], 
-    search: string | null, 
-    pageSize: number = 50,
-    page: number = 1
+  // Actions
+  const fetchKanji = async (
+    jlptLevel: number[],
+    search: string | null,
+    pageSize = 50,
+    _page = 1,
   ) => {
-    currentFilters.jlptLevel = jlptLevel.sort()
+    currentFilters.jlptLevel = jlptLevel.toSorted((a: number, b: number) => a - b)
     currentFilters.search = search
 
     const key = currentCacheKey(pageSize)
@@ -70,75 +70,79 @@ export const useKanjiStore = defineStore('kanji', () => {
     loadingMore.value = false
 
     try {
-      const response = await KanjiService.fetchKanjis(search, 1, pageSize);
-      
+      const response = await KanjiService.fetchKanjis(search, 1, pageSize)
+
       // Validate response structure
       if (!response || !Array.isArray(response.data)) {
-        throw new Error('Invalid response structure from KanjiService');
+        throw new Error('Invalid response structure from KanjiService')
       }
 
-      //Cache hygiene
+      // Cache hygiene
       if (Object.keys(kanjiListCache).length > 10) {
         delete kanjiListCache[Object.keys(kanjiListCache)[0]!]
       }
 
-      //Cache the response
+      // Cache the response
       kanjiListCache[key] ??= { pages: {}, totalCount: response.pagination.totalCount, hasMorePages: true }
       kanjiListCache[key].pages[response.pagination.page] = response.data
       kanjiList.value = flattenPages(kanjiListCache, key)
       kanjiListCache[key].hasMorePages = kanjiList.value.length < kanjiListCache[key].totalCount
-    } catch(err: any) {
-      console.error('KanjiStore error:', err);
-      error.value = err.message ?? "Failed to fetch kanjis";
-      kanjiList.value = [];
+    } catch (error_: any) {
+      console.error('KanjiStore error:', error_)
+      error.value = error_.message ?? 'Failed to fetch kanjis'
+      kanjiList.value = []
     } finally {
-      loading.value = false;
+      loading.value = false
     }
   }
 
-  const fetchNextPage = async(pageSize: number = 50) => {
+  const fetchNextPage = async (pageSize = 50) => {
     const key = currentCacheKey(pageSize)
-    if (kanjiListCache[key] && (loadingMore.value || !kanjiListCache[key].hasMorePages || Object.keys(kanjiListCache[key].pages).length === 0)) return
+    if (kanjiListCache[key] && (loadingMore.value || !kanjiListCache[key].hasMorePages || Object.keys(kanjiListCache[key].pages).length === 0)) {
+      return
+    }
 
     const largestPageNumber = getLargestPageNumber(kanjiListCache, key)
-    const nextPage = largestPageNumber ? largestPageNumber + 1 : 1;
+    const nextPage = largestPageNumber ? largestPageNumber + 1 : 1
 
-    loadingMore.value = true;
-    error.value = null;
+    loadingMore.value = true
+    error.value = null
 
     try {
-        const response = await KanjiService.fetchKanjis(
-            currentFilters.search, 
-            nextPage, 
-            pageSize
-        );
-        
-        // Validate response structure
-        if (!response || !Array.isArray(response.data)) {
-            throw new Error('Invalid response structure from KanjiService');
-        }
-        
-        kanjiListCache[key]!.pages[nextPage] = response.data;
-        kanjiList.value = flattenPages(kanjiListCache, key);
-        kanjiListCache[key]!.hasMorePages = kanjiList.value.length < kanjiListCache[key]!.totalCount
-    } catch (err: any) {
-        console.error('KanjiStore fetchNextPage error:', err);
-        error.value = err.message ?? "Failed to fetch more kanjis";
+      const response = await KanjiService.fetchKanjis(
+        currentFilters.search,
+        nextPage,
+        pageSize,
+      )
+
+      // Validate response structure
+      if (!response || !Array.isArray(response.data)) {
+        throw new Error('Invalid response structure from KanjiService')
+      }
+
+      kanjiListCache[key]!.pages[nextPage] = response.data
+      kanjiList.value = flattenPages(kanjiListCache, key)
+      kanjiListCache[key]!.hasMorePages = kanjiList.value.length < kanjiListCache[key]!.totalCount
+    } catch (error_: any) {
+      console.error('KanjiStore fetchNextPage error:', error_)
+      error.value = error_.message ?? 'Failed to fetch more kanjis'
     } finally {
-        loadingMore.value = false;
+      loadingMore.value = false
     }
   }
 
   const getKanjiById = async (guid: string) => {
     const existing = kanjiList.value.find(k => k.id === guid)
-    if (existing) return existing
+    if (existing) {
+      return existing
+    }
     try {
-        const kanji = await KanjiService.fetchKanji(guid)
-        kanjiList.value.push(kanji)
-        return kanji ?? null
-    } catch (err: any) {
-        error.value = err.message ?? "Failed to fetch kanji"
-        return null
+      const kanji = await KanjiService.fetchKanji(guid)
+      kanjiList.value.push(kanji)
+      return kanji ?? null
+    } catch (error_: any) {
+      error.value = error_.message ?? 'Failed to fetch kanji'
+      return null
     }
   }
 
@@ -146,15 +150,15 @@ export const useKanjiStore = defineStore('kanji', () => {
   const hasMorePages = computed(() => {
     // Use the current filters to get the right cache
     const key = currentCacheKey(50)
-    let cache = kanjiListCache[key] ?? { hasMorePages: false, totalCount: 0 }
-    return cache.hasMorePages;
+    const cache = kanjiListCache[key] ?? { hasMorePages: false, totalCount: 0 }
+    return cache.hasMorePages
   })
 
   const totalCount = computed(() => {
     // Use the current filters to get the right cache
     const key = currentCacheKey(50)
-    let cache = kanjiListCache[key] ?? { totalCount: 0 }
-    return cache.totalCount;
+    const cache = kanjiListCache[key] ?? { totalCount: 0 }
+    return cache.totalCount
   })
 
   return {
@@ -167,6 +171,6 @@ export const useKanjiStore = defineStore('kanji', () => {
     totalCount,
     getKanjiById,
     fetchKanji,
-    fetchNextPage
+    fetchNextPage,
   }
 })

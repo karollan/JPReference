@@ -1,91 +1,91 @@
 <template>
-    <div class="language-selector" v-if="displayedLanguages.length > 0">
-        <v-btn
-            v-for="lang in displayedLanguages"
-            :key="lang"
-            :color="selectedLanguage === lang ? 'primary' : 'default'"
-            :variant="selectedLanguage === lang ? 'tonal' : 'text'"
-            size="x-small"
-            density="compact"
-            class="language-btn"
-            @click="selectLanguage(lang)"
-            v-ripple
-            :aria-label="getLanguageName(lang)"
-        >
-            {{ getLanguageFlag(lang) }}
-        </v-btn>
-    </div>
+  <div v-if="displayedLanguages.length > 0" class="language-selector">
+    <v-btn
+      v-for="lang in displayedLanguages"
+      :key="lang"
+      v-ripple
+      :aria-label="getLanguageName(lang)"
+      class="language-btn"
+      :color="selectedLanguage === lang ? 'primary' : 'default'"
+      density="compact"
+      size="x-small"
+      :variant="selectedLanguage === lang ? 'tonal' : 'text'"
+      @click="selectLanguage(lang)"
+    >
+      {{ getLanguageFlag(lang) }}
+    </v-btn>
+  </div>
 </template>
 
 <script lang="ts" setup>
-import { computed, ref, watch } from 'vue'
-import { DEFAULT_LANGUAGE, getLanguageFlag, getLanguageName, languageMatches } from '@/utils/language'
+  import { computed, ref, watch } from 'vue'
+  import { DEFAULT_LANGUAGE, getLanguageFlag, getLanguageName, languageMatches } from '@/utils/language'
 
-const props = defineProps<{
+  const props = defineProps<{
     availableLanguages: string[]
     defaultLanguage?: string
-}>()
+  }>()
 
-const emit = defineEmits<{
+  const emit = defineEmits<{
     'language-changed': [language: string]
-}>()
+  }>()
 
-const selectedLanguage = ref<string>(props.defaultLanguage || DEFAULT_LANGUAGE)
+  const selectedLanguage = ref<string>(props.defaultLanguage || DEFAULT_LANGUAGE)
 
-const displayedLanguages = computed(() => {
+  const displayedLanguages = computed(() => {
     const seen = new Set<string>()
-    return (props.availableLanguages || []).filter((lang) => {
-        if (!lang) {
-            return false
-        }
-        const normalized = lang.toLowerCase()
-        if (seen.has(normalized)) {
-            return false
-        }
-        seen.add(normalized)
-        return true
+    return (props.availableLanguages || []).filter(lang => {
+      if (!lang) {
+        return false
+      }
+      const normalized = lang.toLowerCase()
+      if (seen.has(normalized)) {
+        return false
+      }
+      seen.add(normalized)
+      return true
     })
-})
+  })
 
-const emitSelection = (language: string) => {
+  function emitSelection (language: string) {
     selectedLanguage.value = language
     emit('language-changed', language)
-}
+  }
 
-const synchronizeLanguage = (languages: string[]) => {
+  function synchronizeLanguage (languages: string[]) {
     if (languages.length === 0) {
-        return
+      return
     }
 
     const exactMatch = languages.find(lang => languageMatches(lang, selectedLanguage.value))
     if (exactMatch) {
-        if (selectedLanguage.value !== exactMatch) {
-            emitSelection(exactMatch)
-        }
-        return
+      if (selectedLanguage.value !== exactMatch) {
+        emitSelection(exactMatch)
+      }
+      return
     }
 
     const fallback = languages.find(lang => languageMatches(lang, DEFAULT_LANGUAGE)) || languages[0]
     if (fallback) {
-        emitSelection(fallback)
+      emitSelection(fallback)
     }
-}
+  }
 
-watch(() => props.availableLanguages, (newLangs) => {
+  watch(() => props.availableLanguages, newLangs => {
     synchronizeLanguage(newLangs || [])
-}, { immediate: true })
+  }, { immediate: true })
 
-watch(() => props.defaultLanguage, (newDefault) => {
+  watch(() => props.defaultLanguage, newDefault => {
     if (!newDefault) {
-        return
+      return
     }
     selectedLanguage.value = newDefault
     synchronizeLanguage(props.availableLanguages || [])
-})
+  })
 
-const selectLanguage = (lang: string) => {
+  function selectLanguage (lang: string) {
     emitSelection(lang)
-}
+  }
 </script>
 
 <style lang="scss" scoped>

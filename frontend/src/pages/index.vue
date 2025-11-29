@@ -2,7 +2,7 @@
   <v-container
     class="text-center home"
   >
-    <v-row justify="center" dense>
+    <v-row dense justify="center">
       <v-col cols="12">
         <h1
           class="home__title"
@@ -21,24 +21,23 @@
         <v-text-field
           v-model="searchQuery"
           bg-color="white"
-          icon-color="#00000066"
           class="home__search mx-auto"
           density="comfortable"
+          icon-color="#00000066"
           placeholder="Search for vocabulary or kanji"
           prepend-inner-icon="mdi-magnify"
           variant="outlined"
-        >
-        </v-text-field>
+        />
       </v-col>
       <v-col
+        class="home__actions"
         cols="12"
-        class="home__actions"  
       >
         <v-btn
-          elevation="0"
           class="text-none"
           color="primary"
           :disabled="disabled"
+          elevation="0"
           :to="`/search/?query=${encodeURIComponent(searchQuery)}`"
         >
           Explore
@@ -49,9 +48,9 @@
 </template>
 
 <script lang="ts" setup>
-const searchQuery = ref('');
+  const searchQuery = ref('')
 
-const disabled = computed(() => searchQuery.value.trim().length === 0);
+  const disabled = computed(() => searchQuery.value.trim().length === 0)
 </script>
 <style lang="scss" scoped>
 .home {

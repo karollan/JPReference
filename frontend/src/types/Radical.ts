@@ -1,5 +1,4 @@
-
 export interface RadicalSummary {
-    id: string
-    literal: string
+  id: string
+  literal: string
 }
