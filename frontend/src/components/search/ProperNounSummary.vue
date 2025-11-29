@@ -110,6 +110,7 @@
     properNoun: ProperNounSummary
   }>()
 
+  const router = useRouter()
   const selectedLanguage = ref<string>(DEFAULT_LANGUAGE)
 
   // Extract available languages from all translations
@@ -179,7 +180,8 @@
   })
 
   function handleCardClick () {
-    console.log('[ProperNounSummary] Card clicked', props.properNoun.id)
+    const routePath = props.properNoun.primaryKanji?.text || props.properNoun.primaryKana?.text
+    router.push(`/proper-noun/${routePath}`)
   }
 </script>
 

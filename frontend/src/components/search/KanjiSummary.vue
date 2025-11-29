@@ -112,6 +112,7 @@
   import { DEFAULT_LANGUAGE, languageMatches } from '@/utils/language'
   import LanguageSelector from './LanguageSelector.vue'
 
+  const router = useRouter()
   const props = defineProps<{
     kanji: KanjiSummary
   }>()
@@ -151,7 +152,7 @@
   })
 
   function handleCardClick (): void {
-    console.log('[KanjiSummary] Card clicked', props.kanji.id || props.kanji.literal)
+    router.push(`/kanji/${props.kanji.literal}`)
   }
 </script>
 

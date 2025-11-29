@@ -41,6 +41,8 @@ builder.Services.AddCors(options => {
 // Add services
 builder.Services.AddScoped<ISearchService, SearchService>();
 builder.Services.AddScoped<ISearchRepository, SearchRepository>();
+builder.Services.AddScoped<IKanjiService, KanjiService>();
+builder.Services.AddScoped<IKanjiRepository, KanjiRepository>();
 
 var app = builder.Build();
 

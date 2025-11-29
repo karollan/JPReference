@@ -40,15 +40,15 @@
               <div class="d-flex align-center justify-space-between">
                 <div class="d-flex align-center">
                   <span class="text-h4 font-weight-bold primary--text mr-4">
-                    {{ kanji.character }}
+                    {{ kanji.literal }}
                   </span>
                   <v-chip
-                    v-if="kanji.jlptNew"
+                    v-if="kanji.jlptLevel"
                     class="mr-2"
-                    :color="getJllptColor(kanji.jlptNew)"
+                    :color="getJllptColor(kanji.jlptLevel)"
                     size="large"
                   >
-                    N{{ kanji.jlptNew }}
+                    N{{ kanji.jlptLevel }}
                   </v-chip>
                   <v-chip
                     v-if="kanji.grade"
@@ -72,7 +72,7 @@
           <!-- Character Display -->
           <div class="character-display mb-6">
             <div class="text-center">
-              <div class="kanji-large kanji-animate">{{ kanji.character }}</div>
+              <div class="kanji-large kanji-animate">{{ kanji.literal }}</div>
               <div class="text-caption text-grey mt-2">
                 {{ kanji.strokeCount }} strokes
               </div>
@@ -134,12 +134,12 @@
                   <v-list-item-subtitle>#{{ kanji.frequency }}</v-list-item-subtitle>
                 </v-list-item>
 
-                <v-list-item v-if="kanji.jlptOld">
+                <v-list-item v-if="kanji.jlptLevel">
                   <template #prepend>
                     <v-icon>mdi-school</v-icon>
                   </template>
                   <v-list-item-title>Old JLPT Level</v-list-item-title>
-                  <v-list-item-subtitle>N{{ kanji.jlptOld }}</v-list-item-subtitle>
+                  <v-list-item-subtitle>N{{ kanji.jlptLevel }}</v-list-item-subtitle>
                 </v-list-item>
               </v-list>
             </v-card-text>
@@ -168,7 +168,7 @@
           </v-card>
 
           <!-- Nanori -->
-          <v-card v-if="kanji.nanori && kanji.nanori.length > 0" class="mt-4" variant="outlined">
+          <!-- <v-card v-if="kanji.nanori && kanji.nanori.length > 0" class="mt-4" variant="outlined">
             <v-card-title class="text-h6 pa-4 pb-2">
               <v-icon start>mdi-account</v-icon>
               Nanori (Name Readings)
@@ -176,7 +176,7 @@
             <v-card-text class="pt-0">
               <div class="nanori-list">
                 <v-chip
-                  v-for="(nanori, index) in kanji.nanori"
+                  v-for="(nanori, index) in kanji.nanoriReadings"
                   :key="index"
                   class="ma-1"
                   color="teal"
@@ -187,10 +187,10 @@
                 </v-chip>
               </div>
             </v-card-text>
-          </v-card>
+          </v-card> -->
 
           <!-- Codepoints -->
-          <v-card v-if="kanji.codepoints && kanji.codepoints.length > 0" class="mt-4" variant="outlined">
+          <!-- <v-card v-if="kanji.codePoints && kanji.codePoints.length > 0" class="mt-4" variant="outlined">
             <v-card-title class="text-h6 pa-4 pb-2">
               <v-icon start>mdi-code-braces</v-icon>
               Unicode Codepoints
@@ -198,7 +198,7 @@
             <v-card-text class="pt-0">
               <div class="codepoints-list">
                 <v-chip
-                  v-for="(codepoint, index) in kanji.codepoints"
+                  v-for="(codepoint, index) in kanji.codePoints"
                   :key="index"
                   class="ma-1"
                   color="grey"
@@ -210,8 +210,8 @@
               </div>
             </v-card-text>
           </v-card>
+        </v-col> -->
         </v-col>
-
         <!-- Right Column - Readings -->
         <v-col cols="12" md="6">
           <!-- On Readings -->
@@ -221,44 +221,21 @@
               On Readings (音読み)
             </v-card-title>
             <v-card-text class="pt-0">
-              <div v-if="kanji.readingsOn?.length" class="readings-list">
+              <div v-if="kanji.readings?.length" class="readings-list">
                 <v-chip
-                  v-for="(reading, index) in kanji.readingsOn"
+                  v-for="(reading, index) in kanji.readings"
                   :key="index"
                   class="ma-1"
                   color="orange"
                   size="small"
                   variant="outlined"
                 >
-                  {{ reading }}
+                  {{ reading.value }}
                 </v-chip>
               </div>
               <div v-else class="text-grey">No on readings available</div>
             </v-card-text>
-          </v-card>
-
-          <!-- Kun Readings -->
-          <v-card class="mb-4" variant="outlined">
-            <v-card-title class="text-h6 pa-4 pb-2">
-              <v-icon start>mdi-format-text</v-icon>
-              Kun Readings (訓読み)
-            </v-card-title>
-            <v-card-text class="pt-0">
-              <div v-if="kanji.readingsKun?.length" class="readings-list">
-                <v-chip
-                  v-for="(reading, index) in kanji.readingsKun"
-                  :key="index"
-                  class="ma-1"
-                  color="green"
-                  size="small"
-                  variant="outlined"
-                >
-                  {{ reading }}
-                </v-chip>
-              </div>
-              <div v-else class="text-grey">No kun readings available</div>
-            </v-card-text>
-          </v-card>
+          </v-card>f
 
           <!-- Study Actions -->
           <v-card variant="outlined">
@@ -305,7 +282,7 @@
 </template>
 
 <script lang="ts" setup>
-  import type { Kanji } from '@/types/Kanji'
+  import type { KanjiDetails } from '@/types/Kanji'
   import { useKanjiStore } from '@/stores/kanji'
 
   // Get route params
@@ -316,10 +293,10 @@
   // Reactive state
   const loading = ref(true)
   const error = ref<string | null>(null)
-  const kanji = ref<Kanji | null>(null)
+  const kanji = ref<KanjiDetails | null>(null)
 
   // Get kanji ID from route params
-  const kanjiId = computed(() => (route.params as any).id as string)
+  const kanjiLiteral = computed(() => (route.params as any).literal as string)
 
   function getJllptColor (level: number) {
     const colors = {
@@ -338,30 +315,24 @@
 
   function showStrokeOrder () {
     // TODO: Implement stroke order animation
-    console.log('Show stroke order for:', kanji.value?.character)
+    console.log('Show stroke order for:', kanji.value?.literal)
     // For now, show a simple alert
-    alert(`Stroke order for ${kanji.value?.character} would be displayed here. This feature can be enhanced with a stroke order animation library.`)
+    alert(`Stroke order for ${kanji.value?.literal} would be displayed here. This feature can be enhanced with a stroke order animation library.`)
   }
 
   function playPronunciation () {
     // Basic text-to-speech implementation
-    if (kanji.value?.readingsOn?.length) {
-      const utterance = new SpeechSynthesisUtterance(kanji.value.readingsOn[0])
+    if (kanji.value?.readings?.length) {
+      const utterance = new SpeechSynthesisUtterance(kanji.value.readings[0]?.value ?? '')
       utterance.lang = 'ja-JP'
       speechSynthesis.speak(utterance)
-    } else if (kanji.value?.readingsKun?.length) {
-      const utterance = new SpeechSynthesisUtterance(kanji.value.readingsKun[0])
-      utterance.lang = 'ja-JP'
-      speechSynthesis.speak(utterance)
-    } else {
-      alert('No readings available for pronunciation')
     }
   }
 
   function addToFavorites () {
     // TODO: Implement favorites functionality with store
-    console.log('Add to favorites:', kanji.value?.character)
-    alert(`${kanji.value?.character} added to favorites! (This feature can be connected to a favorites store)`)
+    console.log('Add to favorites:', kanji.value?.literal)
+    alert(`${kanji.value?.literal} added to favorites! (This feature can be connected to a favorites store)`)
   }
 
   // Load kanji data
@@ -371,14 +342,14 @@
       error.value = null
 
       // Try to get kanji by ID from the store first
-      const foundKanji = kanjiStore.kanjiList.find(k => k.id === kanjiId.value)
+      const foundKanji = kanjiStore.kanjiDetailsCache[kanjiLiteral.value]
 
       if (foundKanji) {
         kanji.value = foundKanji
       } else {
         // If not found in store, try to fetch from API using store method
-        kanji.value = await kanjiStore.getKanjiById(kanjiId.value)
-        // This would require implementing a getKanjiById method in the store
+        kanji.value = await kanjiStore.getKanjiByLiteral(kanjiLiteral.value) ?? null
+
         if (!kanji.value) {
           error.value = 'Kanji not found'
         }

@@ -6,6 +6,23 @@ export interface KanjiResponse {
   pagination: PaginationMetadata
 }
 
+export interface KanjiDetails {
+  id: string
+  literal: string
+  strokeCount: number
+  frequency?: number
+  grade?: number
+  jlptLevel?: number
+  readings: KanjiReading[] | null
+  meanings: KanjiMeaning[] | null
+  codepoints: KanjiCodepoint[] | null
+  dictionaryReferences: KanjiDictionaryReference[] | null
+  queryCodes: KanjiQueryCode[] | null
+  nanori: KanjiNanori[] | null
+  radicals: RadicalSummary[] | null
+  vocabularyReferences: KanjiVocabulary[] | null
+}
+
 // Used to represent a summary of a kanji in search lists
 export interface KanjiSummary {
   id: string
@@ -33,6 +50,28 @@ interface KanjiMeaning {
   meaning: string
 }
 
+interface KanjiCodepoint {
+  type: string
+  value: string
+}
+
+interface KanjiQueryCode {
+  type: string
+  value: string
+  skipMisclassification?: string
+}
+
+interface KanjiNanori {
+  value: string
+}
+
+interface KanjiDictionaryReference {
+  type: string
+  value: string
+  morohashiVolume?: number
+  morohashiPage?: number
+}
+
 export interface KanjiListCache {
   [key: string]: {
     pages: {
@@ -41,4 +80,11 @@ export interface KanjiListCache {
     totalCount: number
     hasMorePages: boolean
   }
+}
+
+interface KanjiVocabulary {
+  id: string
+  kanjiId?: string
+  vocabularyId?: string
+  term: string
 }

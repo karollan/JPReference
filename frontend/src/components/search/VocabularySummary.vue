@@ -154,6 +154,7 @@
     vocabulary: VocabularySummary
   }>()
 
+  const router = useRouter()
   const selectedLanguage = ref<string>(DEFAULT_LANGUAGE)
 
   // Extract available languages from all senses
@@ -218,7 +219,8 @@
   })
 
   function handleCardClick () {
-    console.log('[VocabularySummary] Card clicked', props.vocabulary.id)
+    const routePath = props.vocabulary.primaryKanji?.text || props.vocabulary.primaryKana?.text
+    router.push(`/vocabulary/${routePath}`)
   }
 </script>
 <style lang="scss" scoped>

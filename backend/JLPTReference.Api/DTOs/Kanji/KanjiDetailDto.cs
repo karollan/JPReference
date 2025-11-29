@@ -21,15 +21,21 @@ public class KanjiDetailDto
 
 public class KanjiVocabularyDto {
     public Guid Id { get; set; }
+    public Guid? KanjiId { get; set; }
+    public Guid? VocabularyId { get; set; }
     public required string Term { get; set; }
 }
 
 public class KanjiMeaningDto {
+    public Guid Id { get; set; }
+    public string? KanjiId { get; set; }
     public required string Language { get; set; }
     public required string Meaning { get; set; }
 }
 
 public class KanjiReadingDto {
+    public Guid Id { get; set; }
+    public string? KanjiId { get; set; }
     public required string Type { get; set; }
     public required string Value { get; set; }
     public string? Status { get; set; }
@@ -37,11 +43,15 @@ public class KanjiReadingDto {
 }
 
 public class KanjiCodepointDto {
+    public Guid Id { get; set; }
+    public string? KanjiId { get; set; }
     public required string Type { get; set; }
     public required string Value { get; set; }
 }
 
 public class KanjiDictionaryReferenceDto {
+    public Guid Id { get; set; }
+    public string? KanjiId { get; set; }
     public required string Type { get; set; }
     public required string Value { get; set; }
     public int? MorohashiVolume { get; set; }
@@ -49,11 +59,15 @@ public class KanjiDictionaryReferenceDto {
 }
 
 public class KanjiQueryCodeDto {
+    public Guid Id { get; set; }
+    public string? KanjiId { get; set; }
     public required string Type { get; set; }
     public required string Value { get; set; }
     public string? SkipMisclassification { get; set; }
 }
 
 public class KanjiNanoriDto {
+    public Guid Id { get; set; }
+    public string? KanjiId { get; set; }
     public required string Value { get; set; }
 }
