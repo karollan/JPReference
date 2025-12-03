@@ -5,6 +5,16 @@ export interface VocabularyResponse {
   pagination: PaginationMetadata
 }
 
+export interface VocabularyDetails {
+  id: string
+  jmdictId: string
+  kanjiForms: KanjiForm[]
+  kanaForms: KanaForm[]
+  senses: SenseDetails[]
+  jlptLevel?: number
+  containedKanji: KanjiInfo[]
+}
+
 // Used to represent a summary of a vocabulary in search lists
 export interface VocabularySummary {
   id: string
@@ -19,30 +29,73 @@ export interface VocabularySummary {
   isCommon: boolean
 }
 
-interface KanjiForm {
+export interface KanjiInfo {
+  id: string
+  literal: string
+}
+
+export interface KanjiForm {
   text: string
   isCommon: boolean
   tags: TagInfo[]
 }
 
-interface KanaForm {
+export interface KanaForm {
   text: string
   isCommon: boolean
   tags: TagInfo[]
   appliesToKanji: string[]
 }
 
-interface SenseSummary {
+export interface SenseSummary {
+  appliesToKanji: string[]
+  appliesToKana: string[]
+  glosses: SenseGloss[]
+  info: string[]
+  tags: TagInfo[]
+}
+
+export interface SenseDetails {
   appliesToKanji: string[]
   appliesToKana: string[]
   info: string[]
   glosses: SenseGloss[]
+  relations: SenseRelation[]
+  languageSources: SenseLanguageSource[]
+  examples: SenseExample[]
   tags: TagInfo[]
 }
 
-interface SenseGloss {
+export interface SenseGloss {
   language: string
   text: string
   gender?: string
   type?: string
+}
+
+export interface SenseRelation {
+  relationId: string
+  relationSenseId: string
+  term: string
+  reading?: string
+  relationType: string
+}
+
+export interface SenseLanguageSource {
+  language: string
+  text: string
+  isFull?: boolean
+  isWaei?: boolean
+}
+
+export interface SenseExample {
+  sourceType: string
+  sourceValue: string
+  text: string
+  sentences: SenseExampleSentence[]
+}
+
+export interface SenseExampleSentence {
+  language: string
+  text: string
 }

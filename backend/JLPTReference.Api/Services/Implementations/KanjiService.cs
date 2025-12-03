@@ -1,6 +1,8 @@
 using JLPTReference.Api.DTOs.Kanji;
 using JLPTReference.Api.DTOs.Vocabulary;
 using JLPTReference.Api.Services.Interfaces;
+using JLPTReference.Api.Repositories.Interfaces;
+namespace JLPTReference.Api.Services.Implementations;
 public class KanjiService : IKanjiService {
     private readonly IKanjiRepository _kanjiRepository;
 

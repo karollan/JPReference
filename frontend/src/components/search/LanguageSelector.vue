@@ -10,7 +10,7 @@
       density="compact"
       size="x-small"
       :variant="selectedLanguage === lang ? 'tonal' : 'text'"
-      @click="selectLanguage(lang)"
+      @click.stop="selectLanguage(lang)"
     >
       {{ getLanguageFlag(lang) }}
     </v-btn>

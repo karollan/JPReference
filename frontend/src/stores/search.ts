@@ -56,6 +56,14 @@ export const useSearchStore = defineStore('search', () => {
     }
 
     try {
+      const cache = getSearchCache(query, pageSize.value)
+      if (cache) {
+        kanjiList.value = cache.kanjiResults
+        vocabularyList.value = cache.vocabularyResults
+        properNounList.value = cache.properNounResults
+        return
+      }
+
       const response = await SearchService.fetchGlobalSearch(query, 1, pageSize.value)
 
       // Validate response structure
@@ -140,6 +148,9 @@ export const useSearchStore = defineStore('search', () => {
   }
 
   // Getters
+  const getSearchCache = (query: string, pageSize: number) => {
+    return searchCache[query.trim().toLowerCase() + `_${pageSize}`]
+  }
 
   return {
     searchCache,
@@ -160,5 +171,6 @@ export const useSearchStore = defineStore('search', () => {
     pageSize,
     reset,
     clearResults,
+    getSearchCache,
   }
 })

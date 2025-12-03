@@ -4,7 +4,7 @@ public class VocabularySenseRelation
 {
     public Guid Id {get; set;}
     public required Guid SourceSenseId {get; set;}
-    public Guid? TargetVocabularyId {get; set;}
+    public Guid? TargetVocabId {get; set;}
     public Guid? TargetSenseId {get; set;}
     public required string TargetTerm {get; set;}
     public string? TargetReading {get; set;}

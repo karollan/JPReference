@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using JLPTReference.Api.Services.Interfaces;
-
+namespace JLPTReference.Api.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 public class KanjiController : ControllerBase {

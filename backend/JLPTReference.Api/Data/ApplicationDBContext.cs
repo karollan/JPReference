@@ -181,7 +181,7 @@ public class ApplicationDBContext : DbContext
             }
         }
 
-        // Special case: "full" is a PostgreSQL reserved word and must be quoted
-        modelBuilder.Entity<VocabularySenseLanguageSource>().Property(vsls => vsls.Full).HasColumnName("\"full\"");
+        // Special case: "full" is a PostgreSQL reserved word - Npgsql handles quoting automatically
+        modelBuilder.Entity<VocabularySenseLanguageSource>().Property(vsls => vsls.Full).HasColumnName("full");
     }
 }

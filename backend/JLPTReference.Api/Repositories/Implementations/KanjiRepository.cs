@@ -2,7 +2,8 @@ using JLPTReference.Api.Data;
 using JLPTReference.Api.DTOs.Kanji;
 using JLPTReference.Api.DTOs.Radical;
 using Microsoft.EntityFrameworkCore;
-
+using JLPTReference.Api.Repositories.Interfaces;
+namespace JLPTReference.Api.Repositories.Implementations;
 public class KanjiRepository : IKanjiRepository {
 
     private readonly ApplicationDBContext _context;
@@ -11,7 +12,7 @@ public class KanjiRepository : IKanjiRepository {
     }
 
     public async Task<KanjiDetailDto> GetKanjiDetailByLiteralAsync(string literal) {
-                var kanji = await _context.Kanji
+        var kanji = await _context.Kanji
             .AsNoTracking()
             .FirstOrDefaultAsync(k => k.Literal == literal);
 

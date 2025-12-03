@@ -23,6 +23,7 @@ declare module 'vue-router/auto-routes' {
     '/api': RouteRecordInfo<'/api', '/api', Record<never, never>, Record<never, never>>,
     '/kanji/[literal]': RouteRecordInfo<'/kanji/[literal]', '/kanji/:literal', { literal: ParamValue<true> }, { literal: ParamValue<false> }>,
     '/search': RouteRecordInfo<'/search', '/search', Record<never, never>, Record<never, never>>,
+    '/vocabulary/[term]': RouteRecordInfo<'/vocabulary/[term]', '/vocabulary/:term', { term: ParamValue<true> }, { term: ParamValue<false> }>,
   }
 
   /**
@@ -54,6 +55,10 @@ declare module 'vue-router/auto-routes' {
     }
     'src/pages/search.vue': {
       routes: '/search'
+      views: never
+    }
+    'src/pages/vocabulary/[term].vue': {
+      routes: '/vocabulary/[term]'
       views: never
     }
   }
