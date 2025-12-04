@@ -45,6 +45,8 @@ builder.Services.AddScoped<IKanjiService, KanjiService>();
 builder.Services.AddScoped<IKanjiRepository, KanjiRepository>();
 builder.Services.AddScoped<IVocabularyService, VocabularyService>();
 builder.Services.AddScoped<IVocabularyRepository, VocabularyRepository>();
+builder.Services.AddScoped<IProperNounService, ProperNounService>();
+builder.Services.AddScoped<IProperNounRepository, ProperNounRepository>();
 
 var app = builder.Build();
 

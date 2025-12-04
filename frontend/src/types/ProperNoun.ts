@@ -5,6 +5,15 @@ export interface ProperNounResponse {
   pagination: PaginationMetadata
 }
 
+export interface ProperNounDetails {
+  id: string
+  jmnedictId: string
+  kanjiForms: KanjiForm[]
+  kanaForms: KanaForm[]
+  translations: TranslationDetails[]
+  containedKanji: KanjiInfo[]
+}
+
 // Used to represent a summary of a proper noun in search lists
 export interface ProperNounSummary {
   id: string
@@ -17,23 +26,41 @@ export interface ProperNounSummary {
   translations: TranslationSummary[] | null
 }
 
-interface KanjiForm {
+export interface KanjiInfo {
+  id: string
+  literal: string
+}
+
+export interface KanjiForm {
   text: string
   tags: TagInfo[]
 }
 
-interface KanaForm {
+export interface KanaForm {
   text: string
   tags: TagInfo[]
   appliesToKanji: string[]
 }
 
-interface TranslationSummary {
+export interface TranslationDetails {
+  types: TagInfo[]
+  related: TranslationRelated[]
+  text: TranslationText[]
+}
+
+export interface TranslationRelated {
+  term: string
+  reading: string | null
+  referenceProperNounId: string | null
+  referenceProperNounTranslationId: string | null
+}
+
+export interface TranslationSummary {
   types: TagInfo[]
   translations: TranslationText[]
 }
 
-interface TranslationText {
+export interface TranslationText {
   language: string
   text: string
 }

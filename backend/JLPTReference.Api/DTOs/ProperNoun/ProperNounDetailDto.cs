@@ -9,10 +9,6 @@ public class ProperNounDetailDto
     public List<KanjiFormDto> KanjiForms { get; set; } = new();
     public List<KanaFormDto> KanaForms { get; set; } = new();
     public List<TranslationDto> Translations { get; set; } = new();
-    public int? JlptLevel { get; set; }
-    public int? Frequency { get; set; }
-    public int? Grade { get; set; }
-
     public List<KanjiInfoDto> ContainedKanji { get; set; } = new();
 }
 

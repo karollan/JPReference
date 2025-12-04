@@ -16,9 +16,10 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
   const getVocabularyDetails = async (
     term: string,
   ) => {
-    const existing = vocabularyDetailsCache[term]
-    if (existing) {
-      return existing
+    const foundVocabulary = getVocabularyCache(term)
+    if (foundVocabulary) {
+      vocabularyDetails.value = foundVocabulary
+      return foundVocabulary
     }
     loading.value = true
     error.value = null
@@ -50,6 +51,9 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
   }
 
   // Getters
+  const getVocabularyCache = (term: string) => {
+    return vocabularyDetailsCache[term]
+  }
 
   return {
     // Expose state, actions, getters here

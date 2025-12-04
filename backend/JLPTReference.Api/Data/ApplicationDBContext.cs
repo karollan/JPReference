@@ -43,7 +43,7 @@ public class ApplicationDBContext : DbContext
     public DbSet<VocabularySenseExampleSentence> VocabularySenseExampleSentences { get; set; }
 
     // Proper Nouns
-    public DbSet<ProperNoun> ProperNouns { get; set; }
+    public DbSet<ProperNoun> ProperNoun { get; set; }
     public DbSet<ProperNounKanji> ProperNounKanji { get; set; }
     public DbSet<ProperNounKanjiTag> ProperNounKanjiTags { get; set; }
     public DbSet<ProperNounKana> ProperNounKana { get; set; }

@@ -16,9 +16,10 @@ export const useKanjiStore = defineStore('kanji', () => {
   const getKanjiByLiteral = async (
     literal: string,
   ) => {
-    const existing = kanjiDetailsCache[literal]
-    if (existing) {
-      return existing
+    const foundKanji = getKanjiCache(literal)
+    if (foundKanji) {
+      kanjiDetails.value = foundKanji
+      return foundKanji
     }
     loading.value = true
     error.value = null
@@ -50,6 +51,9 @@ export const useKanjiStore = defineStore('kanji', () => {
   }
 
   // Getters
+  const getKanjiCache = (literal: string) => {
+    return kanjiDetailsCache[literal]
+  }
 
   return {
     // Expose state, actions, getters here
