@@ -29,6 +29,7 @@ public class SearchRepository : ISearchRepository
 
         return new GlobalSearchResponse
         {
+            SearchedTerms = request.Queries,
             KanjiResults = kanjiTask.Result,
             VocabularyResults = vocabTask.Result,
             ProperNounResults = properNounTask.Result

@@ -15,6 +15,7 @@ export const useSearchStore = defineStore('search', () => {
   const kanjiList = shallowRef<KanjiResponse>()
   const vocabularyList = shallowRef<VocabularyResponse>()
   const properNounList = shallowRef<ProperNounResponse>()
+  const searchedTerms = ref<string[]>([])
 
   const loading = ref<boolean>(false)
   const loadingMore = ref<boolean>(false)
@@ -35,6 +36,7 @@ export const useSearchStore = defineStore('search', () => {
     kanjiList.value = undefined
     vocabularyList.value = undefined
     properNounList.value = undefined
+    searchedTerms.value = []
     currentQuery.value = ''
     currentPage.value = 1
     loading.value = false
@@ -61,13 +63,13 @@ export const useSearchStore = defineStore('search', () => {
         kanjiList.value = cache.kanjiResults
         vocabularyList.value = cache.vocabularyResults
         properNounList.value = cache.properNounResults
+        searchedTerms.value = cache.searchedTerms
         return
       }
 
       const response = await SearchService.fetchGlobalSearch(query, 1, pageSize.value)
 
       // Validate response structure
-      console.log(response)
       if (!response?.vocabularyResults || !response?.properNounResults || !response?.kanjiResults) {
         error.value = 'Invalid response structure from SearchService'
         throw new Error('Invalid response structure from SearchService')
@@ -86,6 +88,7 @@ export const useSearchStore = defineStore('search', () => {
       kanjiList.value = response.kanjiResults
       vocabularyList.value = response.vocabularyResults
       properNounList.value = response.properNounResults
+      searchedTerms.value = response.searchedTerms
     } catch (error_: any) {
       error.value = `Search error: ${error_.message}`
     } finally {
@@ -169,6 +172,7 @@ export const useSearchStore = defineStore('search', () => {
     currentQuery,
     currentPage,
     pageSize,
+    searchedTerms,
     reset,
     clearResults,
     getSearchCache,

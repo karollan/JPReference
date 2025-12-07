@@ -12,17 +12,41 @@ public interface ITransliterationService
 
         if (IsRomaji(text))
         {
-            variants.Add(ToHiragana(text));
-            variants.Add(ToKatakana(text));
+            string hiragana = ToHiragana(text);
+            if (IsHiragana(hiragana))
+            {
+                variants.Add(hiragana);
+            }
+            string katakana = ToKatakana(text);
+            if (IsKatakana(katakana))
+            {
+                variants.Add(katakana);
+            }
         } else if (IsHiragana(text))
         {
-            variants.Add(ToKatakana(text));
-            variants.Add(ToRomaji(text));
+            string katakana = ToKatakana(text);
+            if (IsKatakana(katakana))
+            {
+                variants.Add(katakana);
+            }
+            string romaji = ToRomaji(text);
+            if (IsRomaji(romaji))
+            {
+                variants.Add(romaji);
+            }
         }
         else if (IsKatakana(text))
         {
-            variants.Add(ToHiragana(text));
-            variants.Add(ToRomaji(text));
+            string hiragana = ToHiragana(text);
+            if (IsHiragana(hiragana))
+            {
+                variants.Add(hiragana);
+            }
+            string romaji = ToRomaji(text);
+            if (IsRomaji(romaji))
+            {
+                variants.Add(romaji);
+            }
         }
         else if (IsKanji(text))
         {

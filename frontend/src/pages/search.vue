@@ -45,6 +45,12 @@
             <span>{{ searchStore.viewMode === 'unified' ? 'Switch to tab view' : 'Switch to quick view' }}</span>
           </v-tooltip>
         </div>
+        <div
+          v-if="searchStore.searchedTerms.length > 0"
+          class="d-flex justify-left mt-1"
+        >
+          <span class="text-body-2 text-grey">Searched for: {{ searchStore.searchedTerms.join(', ') }}</span>
+        </div>
 
         <v-col
           v-if="searchStore.error"
