@@ -1,6 +1,7 @@
 using JLPTReference.Api.DTOs.Search;
 using JLPTReference.Api.Services.Interfaces;
 using JLPTReference.Api.Repositories.Interfaces;
+using JLPTReference.Api.Services.Search.Variants;
 
 namespace JLPTReference.Api.Services.Implementations;
 
