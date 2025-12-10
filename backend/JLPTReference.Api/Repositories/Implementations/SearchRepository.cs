@@ -1,22 +1,29 @@
 using System.Text.Json;
-using JLPTReference.Api.Data;
+
 using JLPTReference.Api.DTOs.Search;
+using JLPTReference.Api.Entities.Kanji;
 using JLPTReference.Api.DTOs.Vocabulary;
 using JLPTReference.Api.DTOs.ProperNoun;
 using JLPTReference.Api.DTOs.Kanji;
 using JLPTReference.Api.DTOs.Radical;
 using JLPTReference.Api.Repositories.Interfaces;
+using JLPTReference.Api.Services.Search.QueryBuilder;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using JLPTReference.Api.Data;
+using Microsoft.EntityFrameworkCore.Storage.Internal;
 namespace JLPTReference.Api.Repositories.Implementations;
 
 public class SearchRepository : ISearchRepository
 {
     private readonly string _connectionString;
-
-    public SearchRepository(IConfiguration configuration)
+    private readonly ISearchQueryBuilder<Kanji> _kanjiQueryBuilder;
+    private readonly ApplicationDBContext _context;
+    public SearchRepository(IConfiguration configuration, ISearchQueryBuilder<Kanji> kanjiQueryBuilder, ApplicationDBContext context)
     {
         _connectionString = configuration.GetConnectionString("DefaultConnection")!;
+        _kanjiQueryBuilder = kanjiQueryBuilder;
+        _context = context;
     }
 
     public async Task<GlobalSearchResponse> SearchAllAsync(GlobalSearchRequest request)
@@ -36,8 +43,68 @@ public class SearchRepository : ISearchRepository
         };
     }
 
+    public async Task<SearchResultKanji> SearchKanjiAsync(SearchSpec spec, int pageSize, int page)
+    {
+        var baseQuery = _context.Kanji
+            .Include(k => k.Readings)
+            .Include(k => k.Meanings)
+            .Include(k => k.Radicals)
+            .ThenInclude(r => r.Radical)
+            .AsQueryable();
+        var query = _kanjiQueryBuilder.BuildQuery(
+            baseQuery,
+            spec
+        );
+        query = query.Skip((page - 1) * pageSize).Take(pageSize);
+
+        var results = await query.ToListAsync();
+        var totalCount = results.Count;
+        var totalPages = totalCount > 0 ? (int)Math.Ceiling((double)totalCount / pageSize) : 0;
+
+        return new SearchResultKanji
+        {
+            Data = results.Select(r => new KanjiSummaryDto
+            {
+                Id = r.Id,
+                Literal = r.Literal,
+                Grade = r.Grade ?? null,
+                StrokeCount = r.StrokeCount,
+                Frequency = r.Frequency ?? null,
+                JlptLevel = r.JlptLevelNew ?? null,
+                RelevanceScore = 0,
+                KunyomiReadings = r.Readings
+                    .Where(k => r.Id == k.KanjiId && k.Type == "ja_kun")
+                    .Select(k => new KanjiReadingDto {
+                        Type = k.Type,
+                        Value = k.Value,
+                        Status = k.Status
+                     }).ToList(),
+                OnyomiReadings = r.Readings
+                    .Where(k => r.Id == k.KanjiId && k.Type == "ja_on")
+                    .Select(k => new KanjiReadingDto {
+                        Type = k.Type,
+                        Value = k.Value,
+                        Status = k.Status,
+                        OnType = k.OnType
+                     }).ToList(),
+                Meanings = r.Meanings
+                    .Select(m => new KanjiMeaningDto { Meaning = m.Value, Language = m.Lang }).ToList(),
+                Radicals = r.Radicals
+                    .Select(r => new RadicalSummaryDto { Id = r.Id, Literal = r.Radical.Literal }).ToList(),
+            }).ToList(),
+            Pagination = new PaginationMetadata
+            {
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize,
+                TotalPages = totalPages,
+            }
+        };
+    }
+
     public async Task<SearchResultKanji> SearchKanjiAsync(GlobalSearchRequest request)
     {
+        
         var sql = @"
           SELECT * FROM jlpt.search_kanji_by_text(@queries, @relevanceThreshold, @pageSize, @offset);
         ";

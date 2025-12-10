@@ -19,6 +19,13 @@ public class QueryParser : IQueryParser {
         {
             char c = query[i];
 
+            if (IQueryParser.POSTGRE_WILDCARD_CHARS.Contains(c))
+            {
+                currentToken.Append('\\');
+                currentToken.Append(c);
+                continue;
+            }
+
             if (c == IQueryParser.MULTI_WORD_CHAR)
             {
                 isMultiWord = !isMultiWord;
@@ -33,7 +40,7 @@ public class QueryParser : IQueryParser {
             {
                 if (currentToken.Length > 0)
                 {
-                    IQueryParser.FinalizeTokenOrTag(ref filters, tokens, currentToken.ToString(), isTag, hasWildcard, isTransliterationblocked);
+                    FinalizeTokenOrTag(ref filters, tokens, currentToken.ToString(), isTag, hasWildcard, isTransliterationblocked);
                 }
                 currentToken.Clear();
                 hasWildcard = false;
@@ -52,7 +59,7 @@ public class QueryParser : IQueryParser {
 
         if (currentToken.Length > 0)
         {
-            IQueryParser.FinalizeTokenOrTag(ref filters, tokens, currentToken.ToString(), isTag, hasWildcard, isTransliterationblocked);
+            FinalizeTokenOrTag(ref filters, tokens, currentToken.ToString(), isTag, hasWildcard, isTransliterationblocked);
         }
 
         return new SearchSpec
@@ -60,5 +67,46 @@ public class QueryParser : IQueryParser {
             Tokens = tokens,
             Filters = filters
         };
+    }
+
+    // helper methods
+    private void FinalizeTokenOrTag(ref SearchFilters filters, List<SearchToken> tokens, string rawValue, bool isTag, bool hasWildcard, bool isTransliterationblocked)
+    {
+        if (isTag)
+        {
+            AddTagToTagList(ref filters, rawValue);
+        } else 
+        {
+            tokens.Add(new SearchToken {
+                RawValue = rawValue,
+                Variants = new (),
+                HasWildcard = hasWildcard,
+                TransliterationBlocked = isTransliterationblocked
+            });
+        }
+    }
+
+    private void AddTagToTagList(ref SearchFilters filters, string tag)
+    {
+        if (string.IsNullOrEmpty(tag)) return;
+
+        string lowerTag = tag.ToLower();
+        string[] parts = lowerTag.Split(IQueryParser.TAG_SPLIT_CHAR);
+        string key = parts[0];
+        string value = parts.Length > 1 ? parts[1].Trim() : string.Empty;
+
+        try
+        {
+            if (FilterParser.TryApplyFilter(filters, key, value))
+            {
+                return;
+            }
+        } catch (Exception ex)
+        {
+            Console.WriteLine($"Error applying filter {key}: {ex.Message}");
+            return;
+        }
+
+        (filters.Tags ??= new List<string>()).Add(tag);
     }
 }

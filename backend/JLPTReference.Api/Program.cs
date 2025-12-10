@@ -5,6 +5,10 @@ using JLPTReference.Api.Services.Interfaces;
 using JLPTReference.Api.Services.Implementations;
 using JLPTReference.Api.Repositories.Interfaces;
 using JLPTReference.Api.Repositories.Implementations;
+using JLPTReference.Api.Services.Search.Parser;
+using JLPTReference.Api.Services.Search.Variants;
+using JLPTReference.Api.Services.Search.QueryBuilder;
+using JLPTReference.Api.Entities.Kanji;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -47,6 +51,10 @@ builder.Services.AddScoped<IVocabularyService, VocabularyService>();
 builder.Services.AddScoped<IVocabularyRepository, VocabularyRepository>();
 builder.Services.AddScoped<IProperNounService, ProperNounService>();
 builder.Services.AddScoped<IProperNounRepository, ProperNounRepository>();
+
+builder.Services.AddScoped<IQueryParser, QueryParser>();
+builder.Services.AddScoped<IVariantGenerator, VariantGenerator>();
+builder.Services.AddScoped<ISearchQueryBuilder<Kanji>, EfCoreKanjiQueryBuilder>();
 
 var app = builder.Build();
 
