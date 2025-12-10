@@ -9,6 +9,8 @@ using JLPTReference.Api.Services.Search.Parser;
 using JLPTReference.Api.Services.Search.Variants;
 using JLPTReference.Api.Services.Search.QueryBuilder;
 using JLPTReference.Api.Entities.Kanji;
+using JLPTReference.Api.Entities.ProperNoun;
+using JLPTReference.Api.Entities.Vocabulary;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,9 +28,14 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-// Add DbContext
-builder.Services.AddDbContext<ApplicationDBContext>(options =>
+// Add DbContext with pooled factory (allows both direct injection and factory pattern)
+builder.Services.AddPooledDbContextFactory<ApplicationDBContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Allow direct DbContext injection (creates context from the pool)
+builder.Services.AddScoped<ApplicationDBContext>(sp => 
+    sp.GetRequiredService<IDbContextFactory<ApplicationDBContext>>().CreateDbContext());
+
 
 // Add CORS
 builder.Services.AddCors(options => {
@@ -55,8 +62,12 @@ builder.Services.AddScoped<IProperNounRepository, ProperNounRepository>();
 builder.Services.AddScoped<IQueryParser, QueryParser>();
 builder.Services.AddScoped<IVariantGenerator, VariantGenerator>();
 builder.Services.AddScoped<ISearchQueryBuilder<Kanji>, EfCoreKanjiQueryBuilder>();
+builder.Services.AddScoped<ISearchQueryBuilder<ProperNoun>, EfCoreProperNounQueryBuilder>();
+builder.Services.AddScoped<ISearchQueryBuilder<Vocabulary>, EfCoreVocabularyQueryBuilder>();
 
 var app = builder.Build();
+
+Log.Init(app.Services.GetRequiredService<ILoggerFactory>());
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

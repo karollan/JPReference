@@ -28,6 +28,10 @@ public class QueryParser : IQueryParser {
 
             if (c == IQueryParser.MULTI_WORD_CHAR)
             {
+                if (!isMultiWord)
+                {
+                    isTransliterationblocked = true;
+                }
                 isMultiWord = !isMultiWord;
                 continue;
             }
@@ -35,6 +39,13 @@ public class QueryParser : IQueryParser {
             {
                 hasWildcard = true;
                 isTransliterationblocked = true;
+                if (c == IQueryParser.MULTI_WILDCARD_CHAR)
+                {
+                    currentToken.Append('%');
+                } else {
+                    currentToken.Append('_');
+                }
+                continue;
             }
             if (c == IQueryParser.BREAK_CHAR && !isMultiWord)
             {

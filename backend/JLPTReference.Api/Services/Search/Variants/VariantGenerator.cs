@@ -7,6 +7,7 @@ public class VariantGenerator : IVariantGenerator, ITransliterationService
     {
         foreach (var token in spec.Tokens)
         {
+            if (token.HasWildcard || token.TransliterationBlocked) continue;
             token.Variants = ITransliterationService.GetAllSearchVariants(token.RawValue);
         }
     }

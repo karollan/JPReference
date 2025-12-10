@@ -8,4 +8,6 @@ public class VocabularyKanji
     public bool IsCommon {get; set;}
     public DateTime CreatedAt {get; set;}
     public DateTime UpdatedAt {get; set;}
+
+    public List<VocabularyKanjiTag> Tags {get; set;} = new();
 }

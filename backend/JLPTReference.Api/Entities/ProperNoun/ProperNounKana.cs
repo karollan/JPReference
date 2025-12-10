@@ -8,4 +8,6 @@ public class ProperNounKana
     public string[]? AppliesToKanji {get; set;}
     public DateTime CreatedAt {get; set;}
     public DateTime UpdatedAt {get; set;}
+
+    public List<ProperNounKanaTag> Tags {get; set;} = new();
 }

@@ -2,6 +2,8 @@ using System.Text.Json;
 
 using JLPTReference.Api.DTOs.Search;
 using JLPTReference.Api.Entities.Kanji;
+using JLPTReference.Api.Entities.ProperNoun;
+using JLPTReference.Api.Entities.Vocabulary;
 using JLPTReference.Api.DTOs.Vocabulary;
 using JLPTReference.Api.DTOs.ProperNoun;
 using JLPTReference.Api.DTOs.Kanji;
@@ -11,19 +13,28 @@ using JLPTReference.Api.Services.Search.QueryBuilder;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using JLPTReference.Api.Data;
-using Microsoft.EntityFrameworkCore.Storage.Internal;
 namespace JLPTReference.Api.Repositories.Implementations;
 
 public class SearchRepository : ISearchRepository
 {
     private readonly string _connectionString;
     private readonly ISearchQueryBuilder<Kanji> _kanjiQueryBuilder;
-    private readonly ApplicationDBContext _context;
-    public SearchRepository(IConfiguration configuration, ISearchQueryBuilder<Kanji> kanjiQueryBuilder, ApplicationDBContext context)
+    private readonly ISearchQueryBuilder<ProperNoun> _properNounQueryBuilder;
+    private readonly ISearchQueryBuilder<Vocabulary> _vocabularyQueryBuilder;
+    private readonly IDbContextFactory<ApplicationDBContext> _contextFactory;
+    public SearchRepository(
+        IConfiguration configuration,
+        ISearchQueryBuilder<Kanji> kanjiQueryBuilder,
+        ISearchQueryBuilder<ProperNoun> properNounQueryBuilder,
+        ISearchQueryBuilder<Vocabulary> vocabularyQueryBuilder,
+        IDbContextFactory<ApplicationDBContext> contextFactory
+    )
     {
         _connectionString = configuration.GetConnectionString("DefaultConnection")!;
         _kanjiQueryBuilder = kanjiQueryBuilder;
-        _context = context;
+        _properNounQueryBuilder = properNounQueryBuilder;
+        _vocabularyQueryBuilder = vocabularyQueryBuilder;
+        _contextFactory = contextFactory;
     }
 
     public async Task<GlobalSearchResponse> SearchAllAsync(GlobalSearchRequest request)
@@ -45,7 +56,8 @@ public class SearchRepository : ISearchRepository
 
     public async Task<SearchResultKanji> SearchKanjiAsync(SearchSpec spec, int pageSize, int page)
     {
-        var baseQuery = _context.Kanji
+        await using var context = _contextFactory.CreateDbContext();
+        var baseQuery = context.Kanji
             .Include(k => k.Readings)
             .Include(k => k.Meanings)
             .Include(k => k.Radicals)
@@ -55,10 +67,11 @@ public class SearchRepository : ISearchRepository
             baseQuery,
             spec
         );
+        var totalCount = await query.CountAsync();
+
         query = query.Skip((page - 1) * pageSize).Take(pageSize);
 
         var results = await query.ToListAsync();
-        var totalCount = results.Count;
         var totalPages = totalCount > 0 ? (int)Math.Ceiling((double)totalCount / pageSize) : 0;
 
         return new SearchResultKanji
@@ -169,6 +182,74 @@ public class SearchRepository : ISearchRepository
 
     }
 
+    public async Task<SearchResultProperNoun> SearchProperNounAsync(SearchSpec spec, int pageSize, int page)
+    {
+        await using var context = _contextFactory.CreateDbContext();
+        var baseQuery = context.ProperNoun
+            .Include(p => p.KanjiForms)
+            .ThenInclude(k => k.Tags)
+            .Include(p => p.KanaForms)
+            .ThenInclude(k => k.Tags)
+            .Include(p => p.Translations)
+            .ThenInclude(t => t.Types)
+            .Include(p => p.Translations)
+            .ThenInclude(t => t.Texts)
+            .Include(p => p.Translations)
+            .ThenInclude(t => t.RelatedTerms)
+            .AsQueryable();
+        var query = _properNounQueryBuilder.BuildQuery(
+            baseQuery,
+            spec
+        );
+        var totalCount = await query.CountAsync();
+
+        query = query.Skip((page - 1) * pageSize).Take(pageSize);
+
+        var results = await query.ToListAsync();
+        var totalPages = totalCount > 0 ? (int)Math.Ceiling((double)totalCount / pageSize) : 0;
+
+        return new SearchResultProperNoun
+        {
+            Data = results.Select(r => new ProperNounSummaryDto
+            {
+                Id = r.Id,
+                DictionaryId = r.JmnedictId,
+                RelevanceScore = 0,
+                PrimaryKanji = new DTOs.ProperNoun.KanjiFormDto
+                {
+                    Text = r.KanjiForms.FirstOrDefault()?.Text ?? string.Empty,
+                    Tags = r.KanjiForms.FirstOrDefault()?.Tags.Select(t => new TagInfoDto { Code = t.TagCode, Description = t.TagCode, Category = "proper_noun" }).ToList() ?? new List<TagInfoDto>(),
+                },
+                PrimaryKana = new DTOs.ProperNoun.KanaFormDto
+                {
+                    Text = r.KanaForms.FirstOrDefault()?.Text ?? string.Empty,
+                    Tags = r.KanaForms.FirstOrDefault()?.Tags.Select(t => new TagInfoDto { Code = t.TagCode, Description = t.TagCode, Category = "proper_noun" }).ToList() ?? new List<TagInfoDto>(),
+                },
+                OtherKanjiForms = r.KanjiForms.Skip(1).Select(k => new DTOs.ProperNoun.KanjiFormDto
+                {
+                    Text = k.Text,
+                    Tags = k.Tags.Select(t => new TagInfoDto { Code = t.TagCode, Description = t.TagCode, Category = "proper_noun" }).ToList(),
+                }).ToList(),
+                OtherKanaForms = r.KanaForms.Skip(1).Select(k => new DTOs.ProperNoun.KanaFormDto
+                {
+                    Text = k.Text,
+                    Tags = k.Tags.Select(t => new TagInfoDto { Code = t.TagCode, Description = t.TagCode, Category = "proper_noun" }).ToList(),
+                }).ToList(),
+                Translations = r.Translations.Select(t => new TranslationSummaryDto
+                {
+                    Types = t.Types.Select(t => new TagInfoDto { Code = t.TagCode, Description = t.TagCode, Category = "proper_noun" }).ToList(),
+                    Translations = t.Texts.Select(t => new TranslationTextDto { Language = t.Lang, Text = t.Text }).ToList(),
+                }).ToList(),
+            }).ToList(),
+            Pagination = new PaginationMetadata
+            {
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize,
+                TotalPages = totalPages,
+            }
+        };
+    }
     public async Task<SearchResultProperNoun> SearchProperNounAsync(GlobalSearchRequest request)
     {
         var sql = @"
@@ -227,6 +308,81 @@ public class SearchRepository : ISearchRepository
                 TotalCount = totalCount,
                 Page = request.Page,
                 PageSize = request.PageSize,
+                TotalPages = totalPages,
+            }
+        };
+    }
+
+    public async Task<SearchResultVocabulary> SearchVocabularyAsync(SearchSpec spec, int pageSize, int page)
+    {
+        await using var context = _contextFactory.CreateDbContext();
+        var baseQuery = context.Vocabulary
+            .Include(v => v.Kana)
+            .ThenInclude(k => k.Tags)
+            .Include(v => v.Kanji)
+            .ThenInclude(k => k.Tags)
+            .Include(v => v.Senses)
+            .ThenInclude(s => s.Tags)
+            .Include(v => v.Senses)
+            .ThenInclude(s => s.Relations)
+            .Include(v => v.Senses)
+            .ThenInclude(s => s.LanguageSources)
+            .Include(v => v.Senses)
+            .ThenInclude(s => s.Glosses)
+            .AsQueryable();
+        var query = _vocabularyQueryBuilder.BuildQuery(
+            baseQuery,
+            spec
+        );
+        var totalCount = await query.CountAsync();
+
+        query = query.Skip((page - 1) * pageSize).Take(pageSize);
+
+        var results = await query.ToListAsync();
+        var totalPages = totalCount > 0 ? (int)Math.Ceiling((double)totalCount / pageSize) : 0;
+
+        return new SearchResultVocabulary
+        {
+            Data = results.Select(r => new VocabularySummaryDto
+            {
+                Id = r.Id,
+                DictionaryId = r.JmdictId,
+                JlptLevel = r.JlptLevelNew ?? null,
+                RelevanceScore = 0,
+                PrimaryKanji = new DTOs.Vocabulary.KanjiFormDto
+                {
+                    Text = r.Kanji.FirstOrDefault()?.Text ?? string.Empty,
+                    Tags = r.Kanji.FirstOrDefault()?.Tags.Select(t => new TagInfoDto { Code = t.TagCode, Description = t.TagCode, Category = "vocabulary" }).ToList() ?? new List<TagInfoDto>(),
+                },
+                PrimaryKana = new DTOs.Vocabulary.KanaFormDto
+                {
+                    Text = r.Kana.FirstOrDefault()?.Text ?? string.Empty,
+                    Tags = r.Kana.FirstOrDefault()?.Tags.Select(t =>new TagInfoDto { Code = t.TagCode, Description = t.TagCode, Category = "vocabulary" }).ToList() ?? new List<TagInfoDto>(),
+                },
+                OtherKanjiForms = r.Kanji.Skip(1).Select(k => new DTOs.Vocabulary.KanjiFormDto
+                {
+                    Text = k.Text,
+                    Tags = k.Tags.Select(t => new TagInfoDto { Code = t.TagCode, Description = t.TagCode, Category = "vocabulary" }).ToList(),
+                }).ToList(),
+                OtherKanaForms = r.Kana.Skip(1).Select(k => new DTOs.Vocabulary.KanaFormDto
+                {
+                    Text = k.Text,
+                    Tags = k.Tags.Select(t => new TagInfoDto { Code = t.TagCode, Description = t.TagCode, Category = "vocabulary" }).ToList(),
+                }).ToList(),
+                Senses = r.Senses.Take(3).Select(s => new SenseSummaryDto
+                {
+                    AppliesToKanji = s.AppliesToKanji?.ToList(),
+                    AppliesToKana = s.AppliesToKana?.ToList(),
+                    Info = s.Info?.ToList(),
+                    Glosses = s.Glosses.Select(g => new SenseGlossDto { Language = g.Lang, Text = g.Text }).ToList(),
+                    Tags = s.Tags.Select(t => new TagInfoDto { Code = t.TagCode, Description = t.TagCode, Category = "vocabulary" }).ToList(),
+                }).ToList(),
+            }).ToList(),
+            Pagination = new PaginationMetadata
+            {
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize,
                 TotalPages = totalPages,
             }
         };

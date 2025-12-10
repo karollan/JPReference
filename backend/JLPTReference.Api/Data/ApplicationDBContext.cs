@@ -110,6 +110,11 @@ public class ApplicationDBContext : DbContext
 
         modelBuilder.Entity<VocabularySense>().ToTable("vocabulary_sense", schema: "jlpt");
         modelBuilder.Entity<VocabularySense>().HasKey(vs => vs.Id);
+        modelBuilder.Entity<VocabularySense>().HasMany(vs => vs.Tags).WithOne().HasForeignKey(vst => vst.SenseId);
+        modelBuilder.Entity<VocabularySense>().HasMany(vs => vs.Relations).WithOne().HasForeignKey(vsr => vsr.SourceSenseId);
+        modelBuilder.Entity<VocabularySense>().HasMany(vs => vs.LanguageSources).WithOne().HasForeignKey(vsls => vsls.SenseId);
+        modelBuilder.Entity<VocabularySense>().HasMany(vs => vs.Glosses).WithOne().HasForeignKey(vsg => vsg.SenseId);
+        modelBuilder.Entity<VocabularySense>().HasMany(vs => vs.Examples).WithOne().HasForeignKey(vse => vse.SenseId);
 
         modelBuilder.Entity<VocabularySenseTag>().ToTable("vocabulary_sense_tag", schema: "jlpt");
         modelBuilder.Entity<VocabularySenseTag>().HasKey(vst => vst.Id);
@@ -126,6 +131,7 @@ public class ApplicationDBContext : DbContext
 
         modelBuilder.Entity<VocabularySenseExample>().ToTable("vocabulary_sense_example", schema: "jlpt");
         modelBuilder.Entity<VocabularySenseExample>().HasKey(vse => vse.Id);
+        modelBuilder.Entity<VocabularySenseExample>().HasMany(vse => vse.Sentences).WithOne().HasForeignKey(vses => vses.ExampleId);
 
         modelBuilder.Entity<VocabularySenseExampleSentence>().ToTable("vocabulary_sense_example_sentence", schema: "jlpt");
         modelBuilder.Entity<VocabularySenseExampleSentence>().HasKey(vses => vses.Id);
@@ -149,6 +155,20 @@ public class ApplicationDBContext : DbContext
 
         modelBuilder.Entity<ProperNounTranslation>().ToTable("proper_noun_translation", schema: "jlpt");
         modelBuilder.Entity<ProperNounTranslation>().HasKey(pnt => pnt.Id);
+        modelBuilder.Entity<ProperNounTranslation>()
+            .HasMany(t => t.Types)
+            .WithOne()
+            .HasForeignKey(t => t.TranslationId);
+
+        modelBuilder.Entity<ProperNounTranslation>()
+            .HasMany(t => t.Texts)
+            .WithOne()
+            .HasForeignKey(t => t.TranslationId);
+
+        modelBuilder.Entity<ProperNounTranslation>()
+            .HasMany(t => t.RelatedTerms)
+            .WithOne()
+            .HasForeignKey(t => t.TranslationId);
 
         modelBuilder.Entity<ProperNounTranslationType>().ToTable("proper_noun_translation_type", schema: "jlpt");
         modelBuilder.Entity<ProperNounTranslationType>().HasKey(pntt => pntt.Id);

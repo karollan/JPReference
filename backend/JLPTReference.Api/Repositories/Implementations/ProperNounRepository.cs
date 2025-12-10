@@ -16,13 +16,13 @@ public class ProperNounRepository : IProperNounRepository {
             throw new ArgumentException("Proper noun term is required");
         }
 
-        var properNounId = await this._context.ProperNounKanji
+        var properNounId = await _context.ProperNounKanji
             .Where(p => p.Text == term)
             .Select(p => p.ProperNounId)
             .FirstOrDefaultAsync();
 
         if (properNounId == Guid.Empty) {
-            properNounId = await this._context.ProperNounKana
+            properNounId = await _context.ProperNounKana
                 .Where(p => p.Text == term)
                 .Select(p => p.ProperNounId)
                 .FirstOrDefaultAsync();

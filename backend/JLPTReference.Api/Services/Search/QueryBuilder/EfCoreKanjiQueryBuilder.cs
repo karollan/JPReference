@@ -1,3 +1,4 @@
+using System.Text.Json;
 using JLPTReference.Api.DTOs.Search;
 using JLPTReference.Api.Entities.Kanji;
 using Microsoft.EntityFrameworkCore;
@@ -17,32 +18,20 @@ public class EfCoreKanjiQueryBuilder : ISearchQueryBuilder<Kanji>
     {
         if (tokens == null || tokens.Count == 0) return query;
 
-        foreach (var token in tokens)
-        {
-            if (token.TransliterationBlocked)
-            {
-                if (token.HasWildcard)
-                {
-                    token.RawValue = token.RawValue.Replace('*', '%');
-                    token.RawValue = token.RawValue.Replace('?', '_');
-                }
-                query = query.Where(k => 
-                    EF.Functions.ILike(k.Literal, token.RawValue) ||
-                    k.Readings.Any(r => EF.Functions.ILike(r.Value, token.RawValue)) ||
-                    k.Meanings.Any(m => m.Lang == "en" && EF.Functions.ILike(m.Value, token.RawValue))
-                );
-            }
-            else {
-                foreach (var variant in token.Variants)
-                {
-                    query = query.Where(k =>
-                        EF.Functions.ILike(k.Literal, variant + '%') ||
-                        k.Readings.Any(r => EF.Functions.ILike(r.Value, variant + '%')) ||
-                        k.Meanings.Any(m => m.Lang == "en" && EF.Functions.ILike(m.Value, variant + '%'))
-                    );
-                }
-            }
-        }
+        var patterns = tokens
+            .Select(t => t.TransliterationBlocked ? [t.RawValue] : t.Variants)
+            .Aggregate(
+                new List<string> { "" },
+                (acc, variants) =>
+                    acc.SelectMany(prefix => variants.Select(v => prefix + v + '%')).ToList()
+            )
+            .ToList();
+
+        query = query.Where(k =>
+            patterns.Any(p => EF.Functions.ILike(k.Literal, p)) ||
+            k.Readings.Any(r => patterns.Any(p => EF.Functions.ILike(r.Value, p))) ||
+            k.Meanings.Any(m => m.Lang == "en" && patterns.Any(p => EF.Functions.ILike(m.Value, p)))
+        );
 
         return query;
     }
