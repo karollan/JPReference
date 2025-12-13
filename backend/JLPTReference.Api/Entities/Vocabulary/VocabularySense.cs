@@ -15,5 +15,4 @@ public class VocabularySense
     public List<VocabularySenseLanguageSource> LanguageSources {get; set;} = new();
     public List<VocabularySenseGloss> Glosses {get; set;} = new();
     public List<VocabularySenseExample> Examples {get; set;} = new();
-    public List<VocabularySenseExampleSentence> ExampleSentences {get; set;} = new();
 }

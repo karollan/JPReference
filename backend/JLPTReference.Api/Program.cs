@@ -8,6 +8,7 @@ using JLPTReference.Api.Repositories.Implementations;
 using JLPTReference.Api.Services.Search.Parser;
 using JLPTReference.Api.Services.Search.Variants;
 using JLPTReference.Api.Services.Search.QueryBuilder;
+using JLPTReference.Api.Services.Search.Ranking;
 using JLPTReference.Api.Entities.Kanji;
 using JLPTReference.Api.Entities.ProperNoun;
 using JLPTReference.Api.Entities.Vocabulary;
@@ -61,9 +62,26 @@ builder.Services.AddScoped<IProperNounRepository, ProperNounRepository>();
 
 builder.Services.AddScoped<IQueryParser, QueryParser>();
 builder.Services.AddScoped<IVariantGenerator, VariantGenerator>();
+
+// Rankers
+builder.Services.AddScoped<IVocabularyRanker, VocabularyRanker>();
+builder.Services.AddScoped<IKanjiRanker, KanjiRanker>();
+builder.Services.AddScoped<IProperNounRanker, ProperNounRanker>();
+
+// Query builders (basic)
 builder.Services.AddScoped<ISearchQueryBuilder<Kanji>, EfCoreKanjiQueryBuilder>();
 builder.Services.AddScoped<ISearchQueryBuilder<ProperNoun>, EfCoreProperNounQueryBuilder>();
 builder.Services.AddScoped<ISearchQueryBuilder<Vocabulary>, EfCoreVocabularyQueryBuilder>();
+
+// Ranked query builders
+builder.Services.AddScoped<IRankedQueryBuilder<Vocabulary, VocabularyRankingProfile>, EfCoreVocabularyQueryBuilder>();
+builder.Services.AddScoped<IRankedQueryBuilder<Kanji, KanjiRankingProfile>, EfCoreKanjiQueryBuilder>();
+builder.Services.AddScoped<IRankedQueryBuilder<ProperNoun, ProperNounRankingProfile>, EfCoreProperNounQueryBuilder>();
+
+// Ranking profiles
+builder.Services.AddSingleton(VocabularyRankingProfile.Default);
+builder.Services.AddSingleton(KanjiRankingProfile.Default);
+builder.Services.AddSingleton(ProperNounRankingProfile.Default);
 
 var app = builder.Build();
 
