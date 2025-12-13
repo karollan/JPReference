@@ -83,6 +83,22 @@ builder.Services.AddSingleton(VocabularyRankingProfile.Default);
 builder.Services.AddSingleton(KanjiRankingProfile.Default);
 builder.Services.AddSingleton(ProperNounRankingProfile.Default);
 
+// Search services - switch between EF Core and SQL implementations
+// Set "Search:UseSqlSearch" to true in appsettings to use the optimized SQL functions
+var useSqlSearch = builder.Configuration.GetValue<bool>("Search:UseSqlSearch", false);
+if (useSqlSearch)
+{
+    builder.Services.AddScoped<IVocabularySearchService, SqlVocabularySearchService>();
+    builder.Services.AddScoped<IKanjiSearchService, SqlKanjiSearchService>();
+    builder.Services.AddScoped<IProperNounSearchService, SqlProperNounSearchService>();
+}
+else
+{
+    builder.Services.AddScoped<IVocabularySearchService, EfCoreVocabularySearchService>();
+    builder.Services.AddScoped<IKanjiSearchService, EfCoreKanjiSearchService>();
+    builder.Services.AddScoped<IProperNounSearchService, EfCoreProperNounSearchService>();
+}
+
 var app = builder.Build();
 
 Log.Init(app.Services.GetRequiredService<ILoggerFactory>());
