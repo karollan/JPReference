@@ -101,12 +101,14 @@ public class ApplicationDBContext : DbContext
 
         modelBuilder.Entity<VocabularyKanjiTag>().ToTable("vocabulary_kanji_tag", schema: "jlpt");
         modelBuilder.Entity<VocabularyKanjiTag>().HasKey(vkt => vkt.Id);
+        modelBuilder.Entity<VocabularyKanjiTag>().HasOne(vkt => vkt.Tag).WithMany().HasForeignKey(vkt => vkt.TagCode);
 
         modelBuilder.Entity<VocabularyKana>().ToTable("vocabulary_kana", schema: "jlpt");
         modelBuilder.Entity<VocabularyKana>().HasKey(vka => vka.Id);
 
         modelBuilder.Entity<VocabularyKanaTag>().ToTable("vocabulary_kana_tag", schema: "jlpt");
         modelBuilder.Entity<VocabularyKanaTag>().HasKey(vkat => vkat.Id);
+        modelBuilder.Entity<VocabularyKanaTag>().HasOne(vkat => vkat.Tag).WithMany().HasForeignKey(vkat => vkat.TagCode);
 
         modelBuilder.Entity<VocabularySense>().ToTable("vocabulary_sense", schema: "jlpt");
         modelBuilder.Entity<VocabularySense>().HasKey(vs => vs.Id);
@@ -119,6 +121,7 @@ public class ApplicationDBContext : DbContext
         modelBuilder.Entity<VocabularySenseTag>().ToTable("vocabulary_sense_tag", schema: "jlpt");
         modelBuilder.Entity<VocabularySenseTag>().HasKey(vst => vst.Id);
         modelBuilder.Entity<VocabularySenseTag>().HasIndex(vst => new { vst.SenseId, vst.TagCode, vst.TagType }).IsUnique();
+        modelBuilder.Entity<VocabularySenseTag>().HasOne(vst => vst.Tag).WithMany().HasForeignKey(vst => vst.TagCode);
 
         modelBuilder.Entity<VocabularySenseRelation>().ToTable("vocabulary_sense_relation", schema: "jlpt");
         modelBuilder.Entity<VocabularySenseRelation>().HasKey(vsr => vsr.Id);
@@ -146,12 +149,14 @@ public class ApplicationDBContext : DbContext
 
         modelBuilder.Entity<ProperNounKanjiTag>().ToTable("proper_noun_kanji_tag", schema: "jlpt");
         modelBuilder.Entity<ProperNounKanjiTag>().HasKey(pnkt => pnkt.Id);
+        modelBuilder.Entity<ProperNounKanjiTag>().HasOne(pnkt => pnkt.Tag).WithMany().HasForeignKey(pnkt => pnkt.TagCode);
 
         modelBuilder.Entity<ProperNounKana>().ToTable("proper_noun_kana", schema: "jlpt");
         modelBuilder.Entity<ProperNounKana>().HasKey(pnka => pnka.Id);
 
         modelBuilder.Entity<ProperNounKanaTag>().ToTable("proper_noun_kana_tag", schema: "jlpt");
         modelBuilder.Entity<ProperNounKanaTag>().HasKey(pnkat => pnkat.Id);
+        modelBuilder.Entity<ProperNounKanaTag>().HasOne(pnkat => pnkat.Tag).WithMany().HasForeignKey(pnkat => pnkat.TagCode);
 
         modelBuilder.Entity<ProperNounTranslation>().ToTable("proper_noun_translation", schema: "jlpt");
         modelBuilder.Entity<ProperNounTranslation>().HasKey(pnt => pnt.Id);
@@ -172,6 +177,7 @@ public class ApplicationDBContext : DbContext
 
         modelBuilder.Entity<ProperNounTranslationType>().ToTable("proper_noun_translation_type", schema: "jlpt");
         modelBuilder.Entity<ProperNounTranslationType>().HasKey(pntt => pntt.Id);
+        modelBuilder.Entity<ProperNounTranslationType>().HasOne(pntt => pntt.Tag).WithMany().HasForeignKey(pntt => pntt.TagCode);
 
         modelBuilder.Entity<ProperNounTranslationText>().ToTable("proper_noun_translation_text", schema: "jlpt");
         modelBuilder.Entity<ProperNounTranslationText>().HasKey(pntt => pntt.Id);

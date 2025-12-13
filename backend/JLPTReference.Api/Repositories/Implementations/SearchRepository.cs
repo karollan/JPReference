@@ -58,25 +58,48 @@ public class SearchRepository : ISearchRepository
     {
         await using var context = _contextFactory.CreateDbContext();
         var baseQuery = context.Kanji
-            .Include(k => k.Readings)
-            .Include(k => k.Meanings)
-            .Include(k => k.Radicals)
-            .ThenInclude(r => r.Radical)
+            .AsNoTracking()
             .AsQueryable();
-        var query = _kanjiQueryBuilder.BuildQuery(
-            baseQuery,
-            spec
-        );
-        var totalCount = await query.CountAsync();
 
-        query = query.Skip((page - 1) * pageSize).Take(pageSize);
+        var filteredQuery = _kanjiQueryBuilder.BuildQuery(baseQuery, spec);
+        var totalCount = await filteredQuery.CountAsync();
 
-        var results = await query.ToListAsync();
+        var pagedQuery = filteredQuery
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize);
+
+        var rows = await pagedQuery.Select(k => new
+        {
+            k.Id,
+            k.Literal,
+            k.Grade,
+            k.StrokeCount,
+            k.Frequency,
+            k.JlptLevelNew,
+            Kunyomi = k.Readings
+                .Where(r => r.Type == "ja_kun")
+                .OrderBy(r => r.Id)
+                .Select(r => new { r.Id, r.Type, r.Value, r.Status, r.OnType })
+                .ToList(),
+            Onyomi = k.Readings
+                .Where(r => r.Type == "ja_on")
+                .OrderBy(r => r.Id)
+                .Select(r => new { r.Id, r.Type, r.Value, r.Status, r.OnType })
+                .ToList(),
+            Meanings = k.Meanings
+                .OrderBy(m => m.Id)
+                .Select(m => new { m.Id, m.Lang, m.Value })
+                .ToList(),
+            Radicals = k.Radicals
+                .OrderBy(r => r.Id)
+                .Select(r => new { r.Id, Literal = r.Radical.Literal })
+                .ToList()
+        }).ToListAsync();
         var totalPages = totalCount > 0 ? (int)Math.Ceiling((double)totalCount / pageSize) : 0;
 
         return new SearchResultKanji
         {
-            Data = results.Select(r => new KanjiSummaryDto
+            Data = rows.Select(r => new KanjiSummaryDto
             {
                 Id = r.Id,
                 Literal = r.Literal,
@@ -85,25 +108,33 @@ public class SearchRepository : ISearchRepository
                 Frequency = r.Frequency ?? null,
                 JlptLevel = r.JlptLevelNew ?? null,
                 RelevanceScore = 0,
-                KunyomiReadings = r.Readings
-                    .Where(k => r.Id == k.KanjiId && k.Type == "ja_kun")
-                    .Select(k => new KanjiReadingDto {
-                        Type = k.Type,
-                        Value = k.Value,
-                        Status = k.Status
-                     }).ToList(),
-                OnyomiReadings = r.Readings
-                    .Where(k => r.Id == k.KanjiId && k.Type == "ja_on")
-                    .Select(k => new KanjiReadingDto {
-                        Type = k.Type,
-                        Value = k.Value,
-                        Status = k.Status,
-                        OnType = k.OnType
-                     }).ToList(),
-                Meanings = r.Meanings
-                    .Select(m => new KanjiMeaningDto { Meaning = m.Value, Language = m.Lang }).ToList(),
-                Radicals = r.Radicals
-                    .Select(r => new RadicalSummaryDto { Id = r.Id, Literal = r.Radical.Literal }).ToList(),
+                KunyomiReadings = r.Kunyomi.Select(k => new KanjiReadingDto
+                {
+                    Id = k.Id,
+                    Type = k.Type,
+                    Value = k.Value,
+                    Status = k.Status,
+                    OnType = k.OnType
+                }).ToList(),
+                OnyomiReadings = r.Onyomi.Select(k => new KanjiReadingDto
+                {
+                    Id = k.Id,
+                    Type = k.Type,
+                    Value = k.Value,
+                    Status = k.Status,
+                    OnType = k.OnType
+                }).ToList(),
+                Meanings = r.Meanings.Select(m => new KanjiMeaningDto
+                {
+                    Id = m.Id,
+                    Language = m.Lang,
+                    Meaning = m.Value
+                }).ToList(),
+                Radicals = r.Radicals.Select(rad => new RadicalSummaryDto
+                {
+                    Id = rad.Id,
+                    Literal = rad.Literal
+                }).ToList(),
             }).ToList(),
             Pagination = new PaginationMetadata
             {
@@ -186,59 +217,130 @@ public class SearchRepository : ISearchRepository
     {
         await using var context = _contextFactory.CreateDbContext();
         var baseQuery = context.ProperNoun
-            .Include(p => p.KanjiForms)
-            .ThenInclude(k => k.Tags)
-            .Include(p => p.KanaForms)
-            .ThenInclude(k => k.Tags)
-            .Include(p => p.Translations)
-            .ThenInclude(t => t.Types)
-            .Include(p => p.Translations)
-            .ThenInclude(t => t.Texts)
-            .Include(p => p.Translations)
-            .ThenInclude(t => t.RelatedTerms)
+            .AsNoTracking()
             .AsQueryable();
-        var query = _properNounQueryBuilder.BuildQuery(
-            baseQuery,
-            spec
-        );
-        var totalCount = await query.CountAsync();
 
-        query = query.Skip((page - 1) * pageSize).Take(pageSize);
+        var filteredQuery = _properNounQueryBuilder.BuildQuery(baseQuery, spec);
+        var totalCount = await filteredQuery.CountAsync();
 
-        var results = await query.ToListAsync();
+        var pagedQuery = filteredQuery
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize);
+
+        var rows = await pagedQuery.Select(p => new
+        {
+            p.Id,
+            p.JmnedictId,
+            PrimaryKanji = p.KanjiForms
+                .OrderBy(k => k.CreatedAt)
+                .ThenBy(k => k.Id)
+                .Select(k => new
+                {
+                    k.Text,
+                    Tags = k.Tags.Select(t => new TagInfoDto
+                    {
+                        Code = t.TagCode,
+                        Description = t.Tag.Description,
+                        Category = t.Tag.Category
+                    }).ToList()
+                })
+                .FirstOrDefault(),
+            PrimaryKana = p.KanaForms
+                .OrderBy(k => k.CreatedAt)
+                .ThenBy(k => k.Id)
+                .Select(k => new
+                {
+                    k.Text,
+                    k.AppliesToKanji,
+                    Tags = k.Tags.Select(t => new TagInfoDto
+                    {
+                        Code = t.TagCode,
+                        Description = t.Tag.Description,
+                        Category = t.Tag.Category
+                    }).ToList()
+                })
+                .FirstOrDefault(),
+            OtherKanji = p.KanjiForms
+                .OrderBy(k => k.CreatedAt)
+                .ThenBy(k => k.Id)
+                .Skip(1)
+                .Select(k => new
+                {
+                    k.Text,
+                    Tags = k.Tags.Select(t => new TagInfoDto
+                    {
+                        Code = t.TagCode,
+                        Description = t.Tag.Description,
+                        Category = t.Tag.Category
+                    }).ToList()
+                })
+                .ToList(),
+            OtherKana = p.KanaForms
+                .OrderBy(k => k.CreatedAt)
+                .ThenBy(k => k.Id)
+                .Skip(1)
+                .Select(k => new
+                {
+                    k.Text,
+                    k.AppliesToKanji,
+                    Tags = k.Tags.Select(t => new TagInfoDto
+                    {
+                        Code = t.TagCode,
+                        Description = t.Tag.Description,
+                        Category = t.Tag.Category
+                    }).ToList()
+                })
+                .ToList(),
+            Translations = p.Translations
+                .OrderBy(t => t.Id)
+                .Select(t => new
+                {
+                    Types = t.Types
+                        .Select(tt => new TagInfoDto
+                        {
+                            Code = tt.TagCode,
+                            Description = tt.Tag.Description,
+                            Category = tt.Tag.Category
+                        }).ToList(),
+                    Texts = t.Texts.OrderBy(x => x.Id).Select(x => new { x.Lang, x.Text }).ToList()
+                })
+                .ToList()
+        }).ToListAsync();
         var totalPages = totalCount > 0 ? (int)Math.Ceiling((double)totalCount / pageSize) : 0;
 
         return new SearchResultProperNoun
         {
-            Data = results.Select(r => new ProperNounSummaryDto
+            Data = rows.Select(r => new ProperNounSummaryDto
             {
                 Id = r.Id,
                 DictionaryId = r.JmnedictId,
                 RelevanceScore = 0,
                 PrimaryKanji = new DTOs.ProperNoun.KanjiFormDto
                 {
-                    Text = r.KanjiForms.FirstOrDefault()?.Text ?? string.Empty,
-                    Tags = r.KanjiForms.FirstOrDefault()?.Tags.Select(t => new TagInfoDto { Code = t.TagCode, Description = t.TagCode, Category = "proper_noun" }).ToList() ?? new List<TagInfoDto>(),
+                    Text = r.PrimaryKanji?.Text ?? string.Empty,
+                    Tags = r.PrimaryKanji?.Tags ?? new List<TagInfoDto>(),
                 },
                 PrimaryKana = new DTOs.ProperNoun.KanaFormDto
                 {
-                    Text = r.KanaForms.FirstOrDefault()?.Text ?? string.Empty,
-                    Tags = r.KanaForms.FirstOrDefault()?.Tags.Select(t => new TagInfoDto { Code = t.TagCode, Description = t.TagCode, Category = "proper_noun" }).ToList() ?? new List<TagInfoDto>(),
+                    Text = r.PrimaryKana?.Text ?? string.Empty,
+                    AppliesToKanji = r.PrimaryKana?.AppliesToKanji?.ToList() ?? new List<string>(),
+                    Tags = r.PrimaryKana?.Tags ?? new List<TagInfoDto>(),
                 },
-                OtherKanjiForms = r.KanjiForms.Skip(1).Select(k => new DTOs.ProperNoun.KanjiFormDto
+                OtherKanjiForms = r.OtherKanji.Select(k => new DTOs.ProperNoun.KanjiFormDto
                 {
                     Text = k.Text,
-                    Tags = k.Tags.Select(t => new TagInfoDto { Code = t.TagCode, Description = t.TagCode, Category = "proper_noun" }).ToList(),
+                    Tags = k.Tags,
                 }).ToList(),
-                OtherKanaForms = r.KanaForms.Skip(1).Select(k => new DTOs.ProperNoun.KanaFormDto
+                OtherKanaForms = r.OtherKana.Select(k => new DTOs.ProperNoun.KanaFormDto
                 {
                     Text = k.Text,
-                    Tags = k.Tags.Select(t => new TagInfoDto { Code = t.TagCode, Description = t.TagCode, Category = "proper_noun" }).ToList(),
+                    AppliesToKanji = k.AppliesToKanji?.ToList() ?? new List<string>(),
+                    Tags = k.Tags,
                 }).ToList(),
                 Translations = r.Translations.Select(t => new TranslationSummaryDto
                 {
-                    Types = t.Types.Select(t => new TagInfoDto { Code = t.TagCode, Description = t.TagCode, Category = "proper_noun" }).ToList(),
-                    Translations = t.Texts.Select(t => new TranslationTextDto { Language = t.Lang, Text = t.Text }).ToList(),
+                    Types = t.Types,
+                    Translations = t.Texts.Select(tt => new TranslationTextDto { Language = tt.Lang, Text = tt.Text }).ToList(),
                 }).ToList(),
             }).ToList(),
             Pagination = new PaginationMetadata
@@ -316,66 +418,165 @@ public class SearchRepository : ISearchRepository
     public async Task<SearchResultVocabulary> SearchVocabularyAsync(SearchSpec spec, int pageSize, int page)
     {
         await using var context = _contextFactory.CreateDbContext();
+
         var baseQuery = context.Vocabulary
-            .Include(v => v.Kana)
-            .ThenInclude(k => k.Tags)
-            .Include(v => v.Kanji)
-            .ThenInclude(k => k.Tags)
-            .Include(v => v.Senses)
-            .ThenInclude(s => s.Tags)
-            .Include(v => v.Senses)
-            .ThenInclude(s => s.Relations)
-            .Include(v => v.Senses)
-            .ThenInclude(s => s.LanguageSources)
-            .Include(v => v.Senses)
-            .ThenInclude(s => s.Glosses)
+            .AsNoTracking()
             .AsQueryable();
-        var query = _vocabularyQueryBuilder.BuildQuery(
-            baseQuery,
-            spec
-        );
-        var totalCount = await query.CountAsync();
 
-        query = query.Skip((page - 1) * pageSize).Take(pageSize);
+        var filteredQuery = _vocabularyQueryBuilder.BuildQuery(baseQuery, spec);
+        var totalCount = await filteredQuery.CountAsync();
 
-        var results = await query.ToListAsync();
+        // Stable ordering is required for consistent paging.
+        var pagedQuery = filteredQuery
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize);
+
+        var rows = await pagedQuery.Select(v => new
+        {
+            v.Id,
+            v.JmdictId,
+            v.JlptLevelNew,
+            IsCommon = v.Kana.Any(k => k.IsCommon) && v.Kanji.Any(k => k.IsCommon),
+
+            PrimaryKanji = v.Kanji
+                .OrderByDescending(k => k.IsCommon)
+                .ThenBy(k => k.CreatedAt)
+                .ThenBy(k => k.Id)
+                .Select(k => new
+                {
+                    k.Text,
+                    k.IsCommon,
+                    Tags = k.Tags
+                        .Select(t => new TagInfoDto
+                        {
+                            Code = t.TagCode,
+                            Description = t.Tag.Description,
+                            Category = t.Tag.Category
+                        }).ToList()
+                })
+                .FirstOrDefault(),
+            PrimaryKana = v.Kana
+                .OrderByDescending(k => k.IsCommon)
+                .ThenBy(k => k.CreatedAt)
+                .ThenBy(k => k.Id)
+                .Select(k => new
+                {
+                    k.Text,
+                    k.IsCommon,
+                    Tags = k.Tags
+                        .Select(t => new TagInfoDto
+                        {
+                            Code = t.TagCode,
+                            Description = t.Tag.Description,
+                            Category = t.Tag.Category
+                    }).ToList()
+                })
+                .FirstOrDefault(),
+
+            OtherKanji = v.Kanji
+                .OrderByDescending(k => k.IsCommon)
+                .ThenBy(k => k.CreatedAt)
+                .ThenBy(k => k.Id)
+                .Skip(1)
+                .Select(k => new
+                {
+                    k.Text,
+                    k.IsCommon,
+                    Tags = k.Tags
+                        .Select(t => new TagInfoDto
+                        {
+                            Code = t.TagCode,
+                            Description = t.Tag.Description,
+                            Category = t.Tag.Category
+                    }).ToList()
+                })
+                .ToList(),
+            OtherKana = v.Kana
+                .OrderByDescending(k => k.IsCommon)
+                .ThenBy(k => k.CreatedAt)
+                .ThenBy(k => k.Id)
+                .Skip(1)
+                .Select(k => new
+                {
+                    k.Text,
+                    k.IsCommon,
+                    Tags = k.Tags
+                        .Select(t => new TagInfoDto
+                        {
+                            Code = t.TagCode,
+                                Description = t.Tag.Description,
+                                Category = t.Tag.Category
+                        }).ToList()
+                })
+                .ToList(),
+
+            Senses = v.Senses
+                .OrderBy(s => s.Id)
+                .Take(3)
+                .Select(s => new
+                {
+                    s.AppliesToKanji,
+                    s.AppliesToKana,
+                    s.Info,
+                    Tags = s.Tags
+                        .Select(t => new TagInfoDto
+                        {
+                            Code = t.TagCode,
+                            Description = t.Tag.Description,
+                            Category = t.Tag.Category,
+                            Type = t.TagType
+                        }).ToList(),
+                    Glosses = s.Glosses
+                        .OrderBy(g => g.Id)
+                        .Select(g => new { g.Lang, g.Text })
+                        .ToList()
+                })
+                .ToList()
+        }).ToListAsync();
+
         var totalPages = totalCount > 0 ? (int)Math.Ceiling((double)totalCount / pageSize) : 0;
 
         return new SearchResultVocabulary
         {
-            Data = results.Select(r => new VocabularySummaryDto
+            Data = rows.Select(r => new VocabularySummaryDto
             {
                 Id = r.Id,
                 DictionaryId = r.JmdictId,
-                JlptLevel = r.JlptLevelNew ?? null,
+                JlptLevel = r.JlptLevelNew,
                 RelevanceScore = 0,
+                IsCommon = r.IsCommon,
                 PrimaryKanji = new DTOs.Vocabulary.KanjiFormDto
                 {
-                    Text = r.Kanji.FirstOrDefault()?.Text ?? string.Empty,
-                    Tags = r.Kanji.FirstOrDefault()?.Tags.Select(t => new TagInfoDto { Code = t.TagCode, Description = t.TagCode, Category = "vocabulary" }).ToList() ?? new List<TagInfoDto>(),
+                    Text = r.PrimaryKanji?.Text ?? string.Empty,
+                    IsCommon = r.PrimaryKanji?.IsCommon ?? false,
+                    Tags = r.PrimaryKanji?.Tags ?? new List<TagInfoDto>(),
                 },
                 PrimaryKana = new DTOs.Vocabulary.KanaFormDto
                 {
-                    Text = r.Kana.FirstOrDefault()?.Text ?? string.Empty,
-                    Tags = r.Kana.FirstOrDefault()?.Tags.Select(t =>new TagInfoDto { Code = t.TagCode, Description = t.TagCode, Category = "vocabulary" }).ToList() ?? new List<TagInfoDto>(),
+                    Text = r.PrimaryKana?.Text ?? string.Empty,
+                    IsCommon = r.PrimaryKana?.IsCommon ?? false,
+                    Tags = r.PrimaryKana?.Tags ?? new List<TagInfoDto>(),
                 },
-                OtherKanjiForms = r.Kanji.Skip(1).Select(k => new DTOs.Vocabulary.KanjiFormDto
+                OtherKanjiForms = r.OtherKanji.Select(k => new DTOs.Vocabulary.KanjiFormDto
                 {
                     Text = k.Text,
-                    Tags = k.Tags.Select(t => new TagInfoDto { Code = t.TagCode, Description = t.TagCode, Category = "vocabulary" }).ToList(),
+                    IsCommon = k.IsCommon,
+                    Tags = k.Tags,
                 }).ToList(),
-                OtherKanaForms = r.Kana.Skip(1).Select(k => new DTOs.Vocabulary.KanaFormDto
+                OtherKanaForms = r.OtherKana.Select(k => new DTOs.Vocabulary.KanaFormDto
                 {
                     Text = k.Text,
-                    Tags = k.Tags.Select(t => new TagInfoDto { Code = t.TagCode, Description = t.TagCode, Category = "vocabulary" }).ToList(),
+                    IsCommon = k.IsCommon,
+                    Tags = k.Tags,
                 }).ToList(),
-                Senses = r.Senses.Take(3).Select(s => new SenseSummaryDto
+                Senses = r.Senses.Select(s => new SenseSummaryDto
                 {
+                    // NOTE: underlying storage is string[]?; convert after materialization.
                     AppliesToKanji = s.AppliesToKanji?.ToList(),
                     AppliesToKana = s.AppliesToKana?.ToList(),
                     Info = s.Info?.ToList(),
                     Glosses = s.Glosses.Select(g => new SenseGlossDto { Language = g.Lang, Text = g.Text }).ToList(),
-                    Tags = s.Tags.Select(t => new TagInfoDto { Code = t.TagCode, Description = t.TagCode, Category = "vocabulary" }).ToList(),
+                    Tags = s.Tags,
                 }).ToList(),
             }).ToList(),
             Pagination = new PaginationMetadata
