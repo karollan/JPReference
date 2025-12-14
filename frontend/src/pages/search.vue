@@ -26,6 +26,7 @@
             placeholder="Search"
             prepend-inner-icon="mdi-magnify"
             variant="outlined"
+            @click:clear="searchQuery = ''"
           />
 
           <v-tooltip location="bottom">
@@ -49,7 +50,24 @@
           v-if="searchStore.searchedTerms.length > 0"
           class="d-flex justify-left mt-1"
         >
-          <span class="text-body-2 text-grey">Searched for: {{ searchStore.searchedTerms.join(', ') }}</span>
+          <span class="text-body-2 text-grey">
+            Searched for: {{ searchStore.searchedTerms.join(', ') }}. You can also search for
+            <v-hover
+              v-for="term in searchStore.searchedTerms"
+              :key="term"
+            >
+              <template #default="{ isHovering, props }">
+                <span
+                  v-bind="props"
+                  class="text-primary cursor-pointer"
+                  :class="{ 'text-secondary': isHovering }"
+                  @click="replaceTermBySuggestion(term)"
+                >
+                  "{{ term }}"
+                </span>
+              </template>
+            </v-hover>
+          </span>
         </div>
 
         <v-col
@@ -446,6 +464,10 @@
       searchStore.setViewMode('unified')
     }
     updateUrl()
+  }
+
+  function replaceTermBySuggestion (term: string) {
+    searchQuery.value = `"${term}"`
   }
 
   // Initialize view mode from URL

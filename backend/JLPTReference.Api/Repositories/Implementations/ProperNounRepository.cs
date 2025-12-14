@@ -58,7 +58,17 @@ public class ProperNounRepository : IProperNounRepository {
                 .FirstOrDefaultAsync();
         }
 
-        // Fallback: find proper noun where term is the PRIMARY kana form
+        // Fallback: find KANA-ONLY proper noun (no primary kanji) where term is the PRIMARY kana form
+        // This ensures "しゅか" kana-only entry is found before "朱架" (しゅか)
+        if (properNounId == Guid.Empty) {
+            properNounId = await _context.ProperNounKana
+                .Where(p => p.Text == searchTerm && p.IsPrimary)
+                .Where(p => !_context.ProperNounKanji.Any(pk => pk.ProperNounId == p.ProperNounId && pk.IsPrimary))
+                .Select(p => p.ProperNounId)
+                .FirstOrDefaultAsync();
+        }
+
+        // Fallback: find proper noun where term is the PRIMARY kana form (including entries with kanji)
         if (properNounId == Guid.Empty) {
             properNounId = await _context.ProperNounKana
                 .Where(p => p.Text == searchTerm && p.IsPrimary)

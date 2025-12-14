@@ -52,7 +52,7 @@
             </div>
 
             <!-- Other Forms -->
-            <div v-if="hasOtherForms" class="other-forms mt-3">
+            <div v-if="hasOtherForms" class="other-forms text-left mt-3">
               <div class="section-label">Other Forms</div>
               <div class="forms-list">
                 <div v-for="(form, idx) in vocabulary.otherKanjiForms" :key="`kanji-${idx}`" class="form-item">

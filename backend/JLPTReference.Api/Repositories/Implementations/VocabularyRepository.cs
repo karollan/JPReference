@@ -60,7 +60,18 @@ public class VocabularyRepository : IVocabularyRepository {
                 .FirstOrDefaultAsync();
         }
 
-        // Fallback: find vocabulary where term is the PRIMARY kana form
+        // Fallback: find KANA-ONLY vocabulary (no primary kanji) where term is the PRIMARY kana form
+        // This ensures "ちゅう" (kiss) is found before "籌" (ちゅう - wooden skewer)
+        if (vocabularyId == Guid.Empty)
+        {
+            vocabularyId = await _context.VocabularyKana
+                .Where(vka => vka.Text == searchTerm && vka.IsPrimary)
+                .Where(vka => !_context.VocabularyKanji.Any(vk => vk.VocabularyId == vka.VocabularyId && vk.IsPrimary))
+                .Select(vka => vka.VocabularyId)
+                .FirstOrDefaultAsync();
+        }
+
+        // Fallback: find vocabulary where term is the PRIMARY kana form (including entries with kanji)
         if (vocabularyId == Guid.Empty)
         {
             vocabularyId = await _context.VocabularyKana
