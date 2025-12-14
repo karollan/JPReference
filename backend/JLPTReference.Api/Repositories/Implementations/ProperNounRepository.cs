@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using JLPTReference.Api.Data;
 using JLPTReference.Api.DTOs.ProperNoun;
 using JLPTReference.Api.Repositories.Interfaces;
@@ -6,9 +7,26 @@ using Microsoft.EntityFrameworkCore;
 namespace JLPTReference.Api.Repositories.Implementations;
 public class ProperNounRepository : IProperNounRepository {
     private readonly ApplicationDBContext _context;
+    
+    // Pattern to match term(reading) format, e.g., "中(なか)"
+    private static readonly Regex TermWithReadingPattern = new(@"^(.+)\(([^)]+)\)$", RegexOptions.Compiled);
 
     public ProperNounRepository(ApplicationDBContext context) {
         this._context = context;
+    }
+
+    /// <summary>
+    /// Parses a term that may include a reading in parentheses.
+    /// Examples: "田中" -> ("田中", null), "中(なか)" -> ("中", "なか")
+    /// </summary>
+    private static (string term, string? reading) ParseTermWithReading(string input)
+    {
+        var match = TermWithReadingPattern.Match(input);
+        if (match.Success)
+        {
+            return (match.Groups[1].Value, match.Groups[2].Value);
+        }
+        return (input, null);
     }
 
     public async Task<ProperNounDetailDto> GetProperNounDetailByTermAsync(string term) {
@@ -16,14 +34,50 @@ public class ProperNounRepository : IProperNounRepository {
             throw new ArgumentException("Proper noun term is required");
         }
 
-        var properNounId = await _context.ProperNounKanji
-            .Where(p => p.Text == term)
-            .Select(p => p.ProperNounId)
-            .FirstOrDefaultAsync();
+        // Parse term to extract optional reading: "中(なか)" -> term="中", reading="なか"
+        var (searchTerm, reading) = ParseTermWithReading(term);
+        
+        Guid properNounId = Guid.Empty;
 
+        // If reading is provided, find proper noun with matching primary kanji AND primary kana
+        if (reading != null)
+        {
+            properNounId = await _context.ProperNounKanji
+                .Where(p => p.Text == searchTerm && p.IsPrimary)
+                .Where(p => _context.ProperNounKana
+                    .Any(pk => pk.ProperNounId == p.ProperNounId && pk.Text == reading && pk.IsPrimary))
+                .Select(p => p.ProperNounId)
+                .FirstOrDefaultAsync();
+        }
+
+        // If no reading or not found with reading, try primary kanji only
+        if (properNounId == Guid.Empty) {
+            properNounId = await _context.ProperNounKanji
+                .Where(p => p.Text == searchTerm && p.IsPrimary)
+                .Select(p => p.ProperNounId)
+                .FirstOrDefaultAsync();
+        }
+
+        // Fallback: find proper noun where term is the PRIMARY kana form
         if (properNounId == Guid.Empty) {
             properNounId = await _context.ProperNounKana
-                .Where(p => p.Text == term)
+                .Where(p => p.Text == searchTerm && p.IsPrimary)
+                .Select(p => p.ProperNounId)
+                .FirstOrDefaultAsync();
+        }
+
+        // Fallback: find any proper noun containing the term as kanji
+        if (properNounId == Guid.Empty) {
+            properNounId = await _context.ProperNounKanji
+                .Where(p => p.Text == searchTerm)
+                .Select(p => p.ProperNounId)
+                .FirstOrDefaultAsync();
+        }
+
+        // Fallback: find any proper noun containing the term as kana
+        if (properNounId == Guid.Empty) {
+            properNounId = await _context.ProperNounKana
+                .Where(p => p.Text == searchTerm)
                 .Select(p => p.ProperNounId)
                 .FirstOrDefaultAsync();
         }

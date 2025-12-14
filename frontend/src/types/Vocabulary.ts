@@ -27,6 +27,7 @@ export interface VocabularySummary {
   senses: SenseSummary[] | null
   jlptLevel?: number
   isCommon: boolean
+  slug: string
 }
 
 export interface KanjiInfo {

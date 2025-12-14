@@ -437,10 +437,11 @@ class ParallelJLPTDataProcessor:
         kanji_batch = []
         kanji_tag_batch = []
         
-        for kanji in word_data.get('kanji', []):
+        for idx, kanji in enumerate(word_data.get('kanji', [])):
             kanji_text = kanji.get('text', '')
             is_common = kanji.get('common', False)
-            kanji_batch.append((vocabulary_id, kanji_text, is_common))
+            is_primary = (idx == 0)  # First element is primary
+            kanji_batch.append((vocabulary_id, kanji_text, is_common, is_primary))
             
             for tag in kanji.get('tags', []):
                 self.ensure_tag_exists(cursor, tag, 'kanji')
@@ -448,8 +449,8 @@ class ParallelJLPTDataProcessor:
         
         if kanji_batch:
             cursor.executemany("""
-                INSERT INTO jlpt.vocabulary_kanji (vocabulary_id, text, is_common)
-                VALUES (%s, %s, %s)
+                INSERT INTO jlpt.vocabulary_kanji (vocabulary_id, text, is_common, is_primary)
+                VALUES (%s, %s, %s, %s)
                 ON CONFLICT DO NOTHING
             """, kanji_batch)
         
@@ -465,11 +466,12 @@ class ParallelJLPTDataProcessor:
         kana_batch = []
         kana_tag_batch = []
         
-        for kana in word_data.get('kana', []):
+        for idx, kana in enumerate(word_data.get('kana', [])):
             kana_text = kana.get('text', '')
             is_common = kana.get('common', False)
             applies_to_kanji = kana.get('appliesToKanji', [])
-            kana_batch.append((vocabulary_id, kana_text, applies_to_kanji, is_common))
+            is_primary = (idx == 0)  # First element is primary
+            kana_batch.append((vocabulary_id, kana_text, applies_to_kanji, is_common, is_primary))
             
             for tag in kana.get('tags', []):
                 self.ensure_tag_exists(cursor, tag, 'kana')
@@ -477,8 +479,8 @@ class ParallelJLPTDataProcessor:
         
         if kana_batch:
             cursor.executemany("""
-                INSERT INTO jlpt.vocabulary_kana (vocabulary_id, text, applies_to_kanji, is_common)
-                VALUES (%s, %s, %s, %s)
+                INSERT INTO jlpt.vocabulary_kana (vocabulary_id, text, applies_to_kanji, is_common, is_primary)
+                VALUES (%s, %s, %s, %s, %s)
                 ON CONFLICT DO NOTHING
             """, kana_batch)
         
@@ -1016,9 +1018,10 @@ class ParallelJLPTDataProcessor:
         kanji_batch = []
         kanji_tag_batch = []
         
-        for kanji in name_data.get('kanji', []):
+        for idx, kanji in enumerate(name_data.get('kanji', [])):
             kanji_text = kanji.get('text', '')
-            kanji_batch.append((proper_noun_id, kanji_text))
+            is_primary = (idx == 0)  # First element is primary
+            kanji_batch.append((proper_noun_id, kanji_text, is_primary))
             
             for tag in kanji.get('tags', []):
                 self.ensure_tag_exists(cursor, tag, 'proper_noun')
@@ -1026,8 +1029,8 @@ class ParallelJLPTDataProcessor:
         
         if kanji_batch:
             cursor.executemany("""
-                INSERT INTO jlpt.proper_noun_kanji (proper_noun_id, text)
-                VALUES (%s, %s)
+                INSERT INTO jlpt.proper_noun_kanji (proper_noun_id, text, is_primary)
+                VALUES (%s, %s, %s)
                 ON CONFLICT DO NOTHING
             """, kanji_batch)
         
@@ -1043,10 +1046,11 @@ class ParallelJLPTDataProcessor:
         kana_batch = []
         kana_tag_batch = []
         
-        for kana in name_data.get('kana', []):
+        for idx, kana in enumerate(name_data.get('kana', [])):
             kana_text = kana.get('text', '')
             applies_to_kanji = kana.get('appliesToKanji', [])
-            kana_batch.append((proper_noun_id, kana_text, applies_to_kanji))
+            is_primary = (idx == 0)  # First element is primary
+            kana_batch.append((proper_noun_id, kana_text, applies_to_kanji, is_primary))
             
             for tag in kana.get('tags', []):
                 self.ensure_tag_exists(cursor, tag, 'proper_noun')
@@ -1054,8 +1058,8 @@ class ParallelJLPTDataProcessor:
         
         if kana_batch:
             cursor.executemany("""
-                INSERT INTO jlpt.proper_noun_kana (proper_noun_id, text, applies_to_kanji)
-                VALUES (%s, %s, %s)
+                INSERT INTO jlpt.proper_noun_kana (proper_noun_id, text, applies_to_kanji, is_primary)
+                VALUES (%s, %s, %s, %s)
                 ON CONFLICT DO NOTHING
             """, kana_batch)
         

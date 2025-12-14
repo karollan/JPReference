@@ -167,7 +167,7 @@ public class SearchRepository : ISearchRepository
 
         while (await reader.ReadAsync())
         {
-            totalCount = reader.GetInt32(8);
+            totalCount = reader.GetInt32(9);
             var result = new ProperNounSummaryDto
             {
                 Id = reader.GetGuid(0),
@@ -183,6 +183,7 @@ public class SearchRepository : ISearchRepository
                     JsonSerializer.Deserialize<List<DTOs.ProperNoun.KanaFormDto>>(reader.GetString(6), jsonOptions),
                 Translations = await reader.IsDBNullAsync(7) ? null :
                     JsonSerializer.Deserialize<List<TranslationSummaryDto>>(reader.GetString(7), jsonOptions),
+                Slug = await reader.IsDBNullAsync(8) ? null : reader.GetString(8)
             };
             results.Add(result);
         }
@@ -244,7 +245,7 @@ public class SearchRepository : ISearchRepository
 
         while (await reader.ReadAsync())
         {
-            totalCount = reader.GetInt32(10);
+            totalCount = reader.GetInt32(11);
             var result = new VocabularySummaryDto
             {
                 Id = reader.GetGuid(0),
@@ -261,7 +262,8 @@ public class SearchRepository : ISearchRepository
                     JsonSerializer.Deserialize<List<DTOs.Vocabulary.KanaFormDto>>(reader.GetString(7), jsonOptions),
                 Senses = await reader.IsDBNullAsync(8) ? null :
                     JsonSerializer.Deserialize<List<SenseSummaryDto>>(reader.GetString(8), jsonOptions),
-                IsCommon = reader.GetBoolean(9)
+                IsCommon = reader.GetBoolean(9),
+                Slug = await reader.IsDBNullAsync(10) ? null : reader.GetString(10)
             };
             results.Add(result);
         }

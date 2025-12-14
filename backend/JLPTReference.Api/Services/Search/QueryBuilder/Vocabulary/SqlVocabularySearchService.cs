@@ -122,8 +122,9 @@ public class SqlVocabularySearchService : IVocabularySearchService
             dto.OtherKanjiForms = await ReadJsonColumn<List<KanjiFormDto>>(reader, 14) ?? new List<KanjiFormDto>();
             dto.OtherKanaForms = await ReadJsonColumn<List<KanaFormDto>>(reader, 15) ?? new List<KanaFormDto>();
             dto.Senses = await ReadJsonColumn<List<SenseSummaryDto>>(reader, 16) ?? new List<SenseSummaryDto>();
+            dto.Slug = await reader.IsDBNullAsync(17) ? null : reader.GetString(17);
 
-            totalCount = reader.GetInt64(17);
+            totalCount = reader.GetInt64(18);
 
             // Compute final ranking score using the ranker
             var matchInfo = new VocabularyMatchInfo

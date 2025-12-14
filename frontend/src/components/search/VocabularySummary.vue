@@ -219,7 +219,7 @@
   })
 
   function handleCardClick () {
-    const routePath = props.vocabulary.primaryKanji?.text || props.vocabulary.primaryKana?.text
+    const routePath = props.vocabulary.slug
     router.push(`/vocabulary/${routePath}`)
   }
 </script>

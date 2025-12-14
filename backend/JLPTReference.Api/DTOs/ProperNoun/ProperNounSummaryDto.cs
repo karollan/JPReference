@@ -6,6 +6,11 @@ public class ProperNounSummaryDto
 {
     public Guid Id { get; set; }
     public required string DictionaryId { get; set; }
+    /// <summary>
+    /// URL-friendly identifier. Format: "term" if unique, "term(reading)" if ambiguous.
+    /// Example: "田中" or "中(なか)"
+    /// </summary>
+    public string? Slug { get; set; }
     public double RelevanceScore { get; set; }
     public KanjiFormDto? PrimaryKanji { get; set; }
     public KanaFormDto? PrimaryKana { get; set; }
