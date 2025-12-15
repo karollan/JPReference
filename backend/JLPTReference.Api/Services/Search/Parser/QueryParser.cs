@@ -73,6 +73,17 @@ public class QueryParser : IQueryParser {
             FinalizeTokenOrTag(ref filters, tokens, currentToken.ToString(), isTag, hasWildcard, isTransliterationblocked);
         }
 
+        if (tokens.Count == 0)
+        {
+            // if no tokens were found, we search for all terms
+            tokens.Add(new SearchToken {
+                RawValue = "%",
+                Variants = new (),
+                HasWildcard = true,
+                TransliterationBlocked = true
+            });
+        }
+
         return new SearchSpec
         {
             Tokens = tokens,

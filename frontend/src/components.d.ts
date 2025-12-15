@@ -17,6 +17,7 @@ declare module 'vue' {
     ProperNounSummarySkeleton: typeof import('./components/search/ProperNounSummarySkeleton.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    SearchAutocomplete: typeof import('./components/search/SearchAutocomplete.vue')['default']
     VocabularySummary: typeof import('./components/search/VocabularySummary.vue')['default']
     VocabularySummarySkeleton: typeof import('./components/search/VocabularySummarySkeleton.vue')['default']
   }

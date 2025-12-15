@@ -15,18 +15,9 @@
         cols="12"
       >
         <div class="d-flex align-center">
-          <v-text-field
-            v-model="searchQuery"
-            bg-color="white"
-            class="home__search flex-grow-1"
-            clearable
-            density="comfortable"
-            hide-details="auto"
-            icon-color="#00000066"
-            placeholder="Search"
-            prepend-inner-icon="mdi-magnify"
-            variant="outlined"
-            @click:clear="searchQuery = ''"
+          <SearchAutocomplete
+            v-model:search-query="searchQuery"
+            @clear="searchQuery = ''"
           />
 
           <v-tooltip location="bottom">
@@ -51,22 +42,25 @@
           class="d-flex justify-left mt-1"
         >
           <span class="text-body-2 text-grey">
-            Searched for: {{ searchStore.searchedTerms.join(', ') }}. You can also search for
-            <v-hover
-              v-for="term in searchStore.searchedTerms"
-              :key="term"
-            >
-              <template #default="{ isHovering, props }">
-                <span
-                  v-bind="props"
-                  class="text-primary cursor-pointer"
-                  :class="{ 'text-secondary': isHovering }"
-                  @click="replaceTermBySuggestion(term)"
-                >
-                  "{{ term }}"
-                </span>
-              </template>
-            </v-hover>
+            Searched for: {{ searchStore.searchedTerms.join(', ') }}
+            <span v-if="searchStore.searchedTerms.length > 1">. You can also search for</span>
+            <span v-if="searchStore.searchedTerms.length > 1">
+              <v-hover
+                v-for="term in searchStore.searchedTerms"
+                :key="term"
+              >
+                <template #default="{ isHovering, props }">
+                  <span
+                    v-bind="props"
+                    class="text-primary cursor-pointer"
+                    :class="{ 'text-secondary': isHovering }"
+                    @click="replaceTermBySuggestion(term)"
+                  >
+                    "{{ term }}"
+                  </span>
+                </template>
+              </v-hover>
+            </span>
           </span>
         </div>
 
