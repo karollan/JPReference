@@ -54,7 +54,8 @@ public class SqlVocabularySearchService : IVocabularySearchService
                 @patterns,
                 @exactTerms,
                 @hasWildcard,
-                @jlptLevels,
+                @jlptMin,
+                @jlptMax,
                 @posTags,
                 @commonOnly,
                 @filterTags,
@@ -72,10 +73,8 @@ public class SqlVocabularySearchService : IVocabularySearchService
             Value = exactTerms.Length > 0 ? exactTerms : DBNull.Value 
         });
         cmd.Parameters.AddWithValue("@hasWildcard", hasWildcard);
-        cmd.Parameters.Add(new NpgsqlParameter("@jlptLevels", NpgsqlDbType.Array | NpgsqlDbType.Integer) 
-        { 
-            Value = filters.JlptLevels?.Count > 0 ? filters.JlptLevels.ToArray() : DBNull.Value 
-        });
+        cmd.Parameters.AddWithValue("@jlptMin", filters.JlptLevels?.Min ?? 0);
+        cmd.Parameters.AddWithValue("@jlptMax", filters.JlptLevels?.Max ?? 0);
         cmd.Parameters.Add(new NpgsqlParameter("@posTags", NpgsqlDbType.Array | NpgsqlDbType.Text) 
         { 
             Value = filters.PartOfSpeech?.Count > 0 ? filters.PartOfSpeech.ToArray() : DBNull.Value 

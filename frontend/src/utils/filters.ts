@@ -22,10 +22,11 @@ const FILTER_REGISTRY: Map<string, FilterDefinition> = new Map([
   // Enum filters (single value from set)
   ['jlpt', {
     key: 'jlpt',
-    type: 'enum',
+    type: 'range',
     valueType: 'int',
-    enumValues: [1, 2, 3, 4, 5],
-    description: 'JLPT level (1-5)',
+    min: 1,
+    max: 5,
+    description: 'JLPT level range (1-5)',
   }],
 
   // Range filters
@@ -41,22 +42,23 @@ const FILTER_REGISTRY: Map<string, FilterDefinition> = new Map([
   // Equality filters (single int value)
   ['grade', {
     key: 'grade',
-    type: 'equality',
+    type: 'range',
     valueType: 'int',
     min: 1,
     max: 12,
-    description: 'Grade level (1-12)',
+    description: 'Grade level range (1-12)',
   }],
 
   // Multi-op filters (future - commented out for now)
-  // ['freq', {
-  //   key: 'freq',
-  //   type: 'multi-op',
-  //   operators: ['=', '>', '<', 'range'],
-  //   valueType: 'int',
-  //   min: 0,
-  //   max: 10000
-  // }],
+  ['freq', {
+    key: 'freq',
+    type: 'range', // multi-op is not supported yet
+    operators: ['=', '>', '<', 'range'],
+    valueType: 'int',
+    min: 0,
+    max: 10000,
+    description: 'Frequency range (0-10000)',
+  }],
 
   ['surg', { key: 'surg', type: 'boolean' }],
   ['given', { key: 'given', type: 'boolean' }],

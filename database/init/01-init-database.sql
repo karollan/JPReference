@@ -2233,10 +2233,14 @@ CREATE OR REPLACE FUNCTION jlpt.search_kanji_ranked(
     patterns TEXT[],                    -- Pre-built LIKE patterns (e.g., '食%')
     exact_terms TEXT[],                 -- Exact terms for ranking (without wildcards)
     has_user_wildcard BOOLEAN,          -- Whether user used wildcards
-    jlpt_levels INT[],                  -- Filter: JLPT levels (empty = all)
-    grades INT[],                       -- Filter: Grades (empty = all)
+    jlpt_min INT,                       -- Filter: JLPT levels (0 = no min)
+    jlpt_max INT,                       -- Filter: JLPT levels (0 = no max)
+    grades_min INT,                     -- Filter: Grades (0 = no min)
+    grades_max INT,                     -- Filter: Grades (0 = no max)
     stroke_min INT,                     -- Filter: Min stroke count (0 = no min)
     stroke_max INT,                     -- Filter: Max stroke count (0 = no max)
+    freq_min INT,                       -- Filter: Min frequency (0 = no min)
+    freq_max INT,                       -- Filter: Max frequency (0 = no max)
     page_size INT DEFAULT 20,
     page_offset INT DEFAULT 0
 )
@@ -2265,10 +2269,14 @@ BEGIN
         WITH base AS (
             SELECT k.id, k.literal, k.grade, k.stroke_count, k.frequency, k.jlpt_level_new
             FROM jlpt.kanji k
-            WHERE (jlpt_levels IS NULL OR array_length(jlpt_levels, 1) IS NULL OR k.jlpt_level_new = ANY(jlpt_levels))
-              AND (grades IS NULL OR array_length(grades, 1) IS NULL OR k.grade = ANY(grades))
+            WHERE (jlpt_min <= 0 OR k.jlpt_level_new >= jlpt_min)
+              AND (jlpt_max <= 0 OR k.jlpt_level_new <= jlpt_max)
+              AND (grades_min <= 0 OR k.grade >= grades_min)
+              AND (grades_max <= 0 OR k.grade <= grades_max)
               AND (stroke_min <= 0 OR k.stroke_count >= stroke_min)
               AND (stroke_max <= 0 OR k.stroke_count <= stroke_max)
+              AND (freq_min <= 0 OR k.frequency >= freq_min)
+              AND (freq_max <= 0 OR k.frequency <= freq_max)
         ),
         counted AS (SELECT COUNT(*) as cnt FROM base),
         paginated AS (
@@ -2370,10 +2378,14 @@ BEGIN
             mi.best_quality, mi.locations, mi.shortest_match
         FROM match_info mi
         JOIN jlpt.kanji k ON k.id = mi.kanji_id
-        WHERE (jlpt_levels IS NULL OR array_length(jlpt_levels, 1) IS NULL OR k.jlpt_level_new = ANY(jlpt_levels))
-          AND (grades IS NULL OR array_length(grades, 1) IS NULL OR k.grade = ANY(grades))
+        WHERE (jlpt_min <= 0 OR k.jlpt_level_new >= jlpt_min)
+          AND (jlpt_max <= 0 OR k.jlpt_level_new <= jlpt_max)
+          AND (grades_min <= 0 OR k.grade >= grades_min)
+          AND (grades_max <= 0 OR k.grade <= grades_max)
           AND (stroke_min <= 0 OR k.stroke_count >= stroke_min)
           AND (stroke_max <= 0 OR k.stroke_count <= stroke_max)
+          AND (freq_min <= 0 OR k.frequency >= freq_min)
+          AND (freq_max <= 0 OR k.frequency <= freq_max)
     ),
     counted AS (SELECT COUNT(*) as cnt FROM filtered),
     paginated AS (
@@ -2405,7 +2417,8 @@ CREATE OR REPLACE FUNCTION jlpt.search_vocabulary_ranked(
     patterns TEXT[],                    -- Pre-built LIKE patterns (e.g., 'たべ%')
     exact_terms TEXT[],                 -- Exact terms for ranking (without wildcards)
     has_user_wildcard BOOLEAN,          -- Whether user used wildcards
-    jlpt_levels INT[],                  -- Filter: JLPT levels (empty = all)
+    jlpt_min INT,                       -- Filter: JLPT levels (0 = no min)
+    jlpt_max INT,                       -- Filter: JLPT levels (0 = no max)
     pos_tags TEXT[],                    -- Filter: Part of speech tags
     common_only BOOLEAN,                -- Filter: common words only
     filter_tags TEXT[],                 -- Filter: general tags
@@ -2444,7 +2457,8 @@ BEGIN
                 v.jlpt_level_new,
                 EXISTS (SELECT 1 FROM jlpt.vocabulary_kana vk WHERE vk.vocabulary_id = v.id AND vk.is_common) as is_common
             FROM jlpt.vocabulary v
-            WHERE (jlpt_levels IS NULL OR array_length(jlpt_levels, 1) IS NULL OR v.jlpt_level_new = ANY(jlpt_levels))
+            WHERE (jlpt_min <= 0 OR v.jlpt_level_new >= jlpt_min)
+              AND (jlpt_max <= 0 OR v.jlpt_level_new <= jlpt_max)
               AND (NOT common_only OR EXISTS (SELECT 1 FROM jlpt.vocabulary_kana vk WHERE vk.vocabulary_id = v.id AND vk.is_common))
         ),
         counted AS (SELECT COUNT(*) as cnt FROM base),
@@ -2603,7 +2617,8 @@ BEGIN
         FROM match_info mi
         JOIN jlpt.vocabulary v ON v.id = mi.vocabulary_id
         WHERE 
-            (jlpt_levels IS NULL OR array_length(jlpt_levels, 1) IS NULL OR v.jlpt_level_new = ANY(jlpt_levels))
+            (jlpt_min <= 0 OR v.jlpt_level_new >= jlpt_min)
+            AND (jlpt_max <= 0 OR v.jlpt_level_new <= jlpt_max)
             AND (NOT common_only OR EXISTS (SELECT 1 FROM jlpt.vocabulary_kana vk WHERE vk.vocabulary_id = v.id AND vk.is_common))
             AND (pos_tags IS NULL OR array_length(pos_tags, 1) IS NULL OR EXISTS (
                 SELECT 1 FROM jlpt.vocabulary_sense vs

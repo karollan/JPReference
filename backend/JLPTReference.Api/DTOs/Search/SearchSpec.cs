@@ -12,12 +12,13 @@ public class SearchToken {
 }
 
 public class SearchFilters {
-    public List<int>? JlptLevels { get; set; }
+    public IntRange? JlptLevels { get; set; }
     public List<string>? PartOfSpeech { get; set; }
     public bool? CommonOnly { get; set; }
     public List<string>? Tags { get; set; }
     public IntRange? StrokeCount { get; set; } // #stroke:5 or #stroke:5-10
-    public List<int>? Grades { get; set; }
+    public IntRange? Grades { get; set; }
+    public IntRange? Frequency { get; set; }
 }
 
 public class IntRange {

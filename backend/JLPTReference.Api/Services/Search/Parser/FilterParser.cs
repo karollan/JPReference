@@ -7,10 +7,7 @@ public static class FilterParser
     {
         ["jlpt"] = (filters, value) =>
         {
-            if (!string.IsNullOrEmpty(value) && int.TryParse(value, out int level))
-            {
-                (filters.JlptLevels ??= new List<int>()).Add(level);
-            }
+            ParseIntRange(value, (intRange) => filters.JlptLevels = intRange);
         },
         ["pos"] = (filters, value) =>
         {
@@ -25,18 +22,16 @@ public static class FilterParser
         },
         ["stroke"] = (filters, value) =>
         {
-            if (!string.IsNullOrEmpty(value))
-            {
-                ParseStrokeCount(filters, value);
-            }
+            ParseIntRange(value, (intRange) => filters.StrokeCount = intRange);
         },
         ["grade"] = (filters, value) =>
         {
-            if (!string.IsNullOrEmpty(value) && int.TryParse(value, out int grade))
-            {
-                (filters.Grades ??= new List<int>()).Add(grade);
-            }
-        }
+            ParseIntRange(value, (intRange) => filters.Grades = intRange);
+        },
+        ["freq"] = (filters, value) =>
+        {
+            ParseIntRange(value, (intRange) => filters.Frequency = intRange);
+        },
     };
 
     public static bool TryApplyFilter(SearchFilters filters, string key, string value)
@@ -49,16 +44,19 @@ public static class FilterParser
         return false;
     }
 
-    private static void ParseStrokeCount(SearchFilters filters, string value)
+    private static void ParseIntRange(string value, Action<IntRange?> setRange)
     {
-        string[] strokeVals = value.Split('-');
-        if (strokeVals.Length == 1 && int.TryParse(strokeVals[0], out int singleStroke))
+        if (string.IsNullOrEmpty(value)) return;
+
+        string[] intVals = value.Split('-', StringSplitOptions.RemoveEmptyEntries);
+
+        if (intVals.Length == 1 && int.TryParse(intVals[0], out int singleInt))
         {
-            filters.StrokeCount = new IntRange { Min = singleStroke, Max = singleStroke };
+            setRange(new IntRange { Min = singleInt, Max = singleInt });
         }
-        else if (strokeVals.Length == 2 && int.TryParse(strokeVals[0], out int minStroke) && int.TryParse(strokeVals[1], out int maxStroke))
+        else if (intVals.Length == 2 && int.TryParse(intVals[0], out int minInt) && int.TryParse(intVals[1], out int maxInt))
         {
-            filters.StrokeCount = new IntRange { Min = minStroke, Max = maxStroke };
+            setRange(new IntRange { Min = minInt, Max = maxInt });
         }
     }
 }

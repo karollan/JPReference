@@ -86,9 +86,12 @@ public class EfCoreVocabularyQueryBuilder : ISearchQueryBuilder<Vocabulary>, IRa
     {
         if (filters == null) return query;
 
-        if (filters.JlptLevels is {Count: > 0})
+        if (filters.JlptLevels is {Min: > 0, Max: > 0})
         {
-            query = query.Where(v => filters.JlptLevels.Contains(v.JlptLevelNew ?? 0));
+            query = query.Where(v =>
+                v.JlptLevelNew >= filters.JlptLevels.Min &&
+                v.JlptLevelNew <= filters.JlptLevels.Max
+            );
         }
 
         if (filters.PartOfSpeech is {Count: > 0})

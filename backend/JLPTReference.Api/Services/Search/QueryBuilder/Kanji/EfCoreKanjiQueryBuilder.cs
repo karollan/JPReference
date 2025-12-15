@@ -96,9 +96,12 @@ public class EfCoreKanjiQueryBuilder : ISearchQueryBuilder<Kanji>, IRankedQueryB
     {
         if (filters == null) return query;
 
-        if (filters.JlptLevels is {Count: > 0})
+        if (filters.JlptLevels is {Min: > 0, Max: > 0})
         {
-            query = query.Where(k => filters.JlptLevels.Contains(k.JlptLevelNew ?? 0));
+            query = query.Where(k => 
+                k.JlptLevelNew >= filters.JlptLevels.Min &&
+                k.JlptLevelNew <= filters.JlptLevels.Max
+        );
         }
 
         if (filters.StrokeCount is {Min: > 0, Max: > 0})
@@ -109,9 +112,20 @@ public class EfCoreKanjiQueryBuilder : ISearchQueryBuilder<Kanji>, IRankedQueryB
             );
         }
 
-        if (filters.Grades is {Count: > 0})
+        if (filters.Grades is {Min: > 0, Max: > 0})
         {
-            query = query.Where(k => filters.Grades.Contains(k.Grade ?? 0));
+            query = query.Where(k =>
+                k.Grade >= filters.Grades.Min &&
+                k.Grade <= filters.Grades.Max
+            );
+        }
+
+        if (filters.Frequency is {Min: > 0, Max: > 0})
+        {
+            query = query.Where(k =>
+                k.Frequency >= filters.Frequency.Min &&
+                k.Frequency <= filters.Frequency.Max
+            );
         }
 
         return query;

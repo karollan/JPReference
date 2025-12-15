@@ -50,10 +50,14 @@ public class SqlKanjiSearchService : IKanjiSearchService
                 @patterns,
                 @exactTerms,
                 @hasWildcard,
-                @jlptLevels,
-                @grades,
+                @jlptMin,
+                @jlptMax,
+                @gradeMin,
+                @gradeMax,
                 @strokeMin,
                 @strokeMax,
+                @freqMin,
+                @freqMax,
                 @pageSize,
                 @pageOffset
             )", connection);
@@ -67,16 +71,14 @@ public class SqlKanjiSearchService : IKanjiSearchService
             Value = exactTerms.Length > 0 ? exactTerms : DBNull.Value
         });
         cmd.Parameters.AddWithValue("@hasWildcard", hasWildcard);
-        cmd.Parameters.Add(new NpgsqlParameter("@jlptLevels", NpgsqlDbType.Array | NpgsqlDbType.Integer)
-        {
-            Value = filters.JlptLevels?.Count > 0 ? filters.JlptLevels.ToArray() : DBNull.Value
-        });
-        cmd.Parameters.Add(new NpgsqlParameter("@grades", NpgsqlDbType.Array | NpgsqlDbType.Integer)
-        {
-            Value = filters.Grades?.Count > 0 ? filters.Grades.ToArray() : DBNull.Value
-        });
+        cmd.Parameters.AddWithValue("@jlptMin", filters.JlptLevels?.Min ?? 0);
+        cmd.Parameters.AddWithValue("@jlptMax", filters.JlptLevels?.Max ?? 0);
+        cmd.Parameters.AddWithValue("@gradeMin", filters.Grades?.Min ?? 0);
+        cmd.Parameters.AddWithValue("@gradeMax", filters.Grades?.Max ?? 0);
         cmd.Parameters.AddWithValue("@strokeMin", filters.StrokeCount?.Min ?? 0);
         cmd.Parameters.AddWithValue("@strokeMax", filters.StrokeCount?.Max ?? 0);
+        cmd.Parameters.AddWithValue("@freqMin", filters.Frequency?.Min ?? 0);
+        cmd.Parameters.AddWithValue("@freqMax", filters.Frequency?.Max ?? 0);
         cmd.Parameters.AddWithValue("@pageSize", pageSize);
         cmd.Parameters.AddWithValue("@pageOffset", (page - 1) * pageSize);
 
