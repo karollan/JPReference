@@ -86,7 +86,7 @@ public class EfCoreKanjiQueryBuilder : ISearchQueryBuilder<Kanji>, IRankedQueryB
         query = query.Where(k =>
             patterns.Any(p => EF.Functions.ILike(k.Literal, p)) ||
             k.Readings.Any(r => patterns.Any(p => EF.Functions.ILike(r.Value, p))) ||
-            k.Meanings.Any(m => m.Lang == "en" && patterns.Any(p => EF.Functions.ILike(m.Value, p)))
+            k.Meanings.Any(m => m.Lang == "eng" && patterns.Any(p => EF.Functions.ILike(m.Value, p)))
         );
 
         return query;

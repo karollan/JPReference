@@ -553,7 +553,7 @@ SELECT
     k.jlpt_level_new,
     STRING_AGG(DISTINCT kr.value, ', ' ORDER BY kr.value) FILTER (WHERE kr.type = 'ja_on') as on_readings,
     STRING_AGG(DISTINCT kr.value, ', ' ORDER BY kr.value) FILTER (WHERE kr.type = 'ja_kun') as kun_readings,
-    STRING_AGG(DISTINCT km.value, '; ' ORDER BY km.value) FILTER (WHERE km.lang = 'en') as meanings_en
+    STRING_AGG(DISTINCT km.value, '; ' ORDER BY km.value) FILTER (WHERE km.lang = 'eng') as meanings_en
 FROM kanji k
 LEFT JOIN kanji_reading kr ON kr.kanji_id = k.id
 LEFT JOIN kanji_meaning km ON km.kanji_id = k.id
@@ -2289,7 +2289,7 @@ BEGIN
             p.jlpt_level_new AS jlpt_level,
             0::INT AS match_quality, 0::INT AS match_location, 0::INT AS matched_text_length,
             ARRAY(SELECT kr.value::TEXT FROM jlpt.kanji_reading kr WHERE kr.kanji_id = p.id) AS all_readings,
-            ARRAY(SELECT km.value::TEXT FROM jlpt.kanji_meaning km WHERE km.kanji_id = p.id AND km.lang = 'en') AS all_meanings,
+            ARRAY(SELECT km.value::TEXT FROM jlpt.kanji_meaning km WHERE km.kanji_id = p.id AND km.lang = 'eng') AS all_meanings,
             (SELECT COALESCE(json_agg(json_build_object('id', kr.id, 'type', kr.type, 'value', kr.value, 'status', kr.status, 'onType', kr.on_type) ORDER BY kr.id), '[]'::json)
              FROM jlpt.kanji_reading kr WHERE kr.kanji_id = p.id AND kr.type = 'ja_kun') AS kunyomi,
             (SELECT COALESCE(json_agg(json_build_object('id', kr.id, 'type', kr.type, 'value', kr.value, 'status', kr.status, 'onType', kr.on_type) ORDER BY kr.id), '[]'::json)
@@ -2349,7 +2349,7 @@ BEGIN
                 ELSE CASE WHEN has_user_wildcard THEN 100 ELSE 200 END
             END as quality
         FROM jlpt.kanji_meaning km
-        WHERE km.lang = 'en' AND km.value ILIKE ANY(patterns)
+        WHERE km.lang = 'eng' AND km.value ILIKE ANY(patterns)
         ORDER BY km.kanji_id,
             CASE WHEN NOT has_user_wildcard AND lower(km.value) = ANY(SELECT lower(unnest(exact_terms))) THEN 0 ELSE 1 END,
             length(km.value)
@@ -2399,7 +2399,7 @@ BEGIN
         p.locations AS match_location, 
         p.shortest_match AS matched_text_length,
         ARRAY(SELECT kr.value::TEXT FROM jlpt.kanji_reading kr WHERE kr.kanji_id = p.id) AS all_readings,
-        ARRAY(SELECT km.value::TEXT FROM jlpt.kanji_meaning km WHERE km.kanji_id = p.id AND km.lang = 'en') AS all_meanings,
+        ARRAY(SELECT km.value::TEXT FROM jlpt.kanji_meaning km WHERE km.kanji_id = p.id AND km.lang = 'eng') AS all_meanings,
         (SELECT COALESCE(json_agg(json_build_object('id', kr.id, 'type', kr.type, 'value', kr.value, 'status', kr.status, 'onType', kr.on_type) ORDER BY kr.id), '[]'::json)
          FROM jlpt.kanji_reading kr WHERE kr.kanji_id = p.id AND kr.type = 'ja_kun') AS kunyomi,
         (SELECT COALESCE(json_agg(json_build_object('id', kr.id, 'type', kr.type, 'value', kr.value, 'status', kr.status, 'onType', kr.on_type) ORDER BY kr.id), '[]'::json)

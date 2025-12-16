@@ -51,7 +51,7 @@ public class EfCoreKanjiSearchService : IKanjiSearchService
             k.Frequency,
             k.JlptLevelNew,
             AllReadings = k.Readings.Select(r => r.Value).ToList(),
-            AllMeanings = k.Meanings.Where(m => m.Lang == "en").Select(m => m.Value).ToList(),
+            AllMeanings = k.Meanings.Where(m => m.Lang == "eng").Select(m => m.Value).ToList(),
             Kunyomi = k.Readings
                 .Where(r => r.Type == "ja_kun")
                 .OrderBy(r => r.Id)

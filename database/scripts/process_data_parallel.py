@@ -21,6 +21,22 @@ import threading
 BATCH_SIZE = 500
 NUM_WORKERS = int(os.getenv('NUM_WORKERS', '4'))
 
+# For uniform language codes
+LANGUAGE_MAP = {
+    'en': 'eng',
+    'de': 'ger',
+    'ru': 'rus',
+    'hu': 'hun',
+    'nl': 'dut',
+    'es': 'spa',
+    'fr': 'fre',
+    'sv': 'swe',
+    'sl': 'slv',
+    'pt': 'por',
+    'it': 'ita',
+    'ja': 'jpn'
+}
+
 def safe_print(text):
     """Safely print text that may contain Unicode characters."""
     try:
@@ -214,7 +230,7 @@ class ParallelJLPTDataProcessor:
                         INSERT INTO jlpt.kanji_meaning (kanji_id, lang, value)
                         VALUES (%s, %s, %s)
                         ON CONFLICT DO NOTHING
-                    """, (kanji_id, meaning.get('lang', ''), meaning.get('value', '')))
+                    """, (kanji_id, LANGUAGE_MAP.get(meaning.get('lang', '')), meaning.get('value', '')))
         
         # Nanori
         for nanori in character_data.get('nanori', []):
