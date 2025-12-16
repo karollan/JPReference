@@ -2341,7 +2341,7 @@ BEGIN
             CASE WHEN NOT has_user_wildcard AND kr.value = ANY(exact_terms) THEN 0 ELSE 1 END,
             length(kr.value)
     ),
-    -- Match on meanings
+    -- Match on meanings (with optional language filter)
     meaning_matches AS (
         SELECT DISTINCT ON (km.kanji_id)
             km.kanji_id,
@@ -2354,6 +2354,8 @@ BEGIN
             END as quality
         FROM jlpt.kanji_meaning km
         WHERE km.value ILIKE ANY(patterns)
+          -- When language filter is specified, only match meanings in those languages
+          AND (langs IS NULL OR array_length(langs, 1) IS NULL OR km.lang = ANY(langs))
         ORDER BY km.kanji_id,
             CASE WHEN NOT has_user_wildcard AND lower(km.value) = ANY(SELECT lower(unnest(exact_terms))) THEN 0 ELSE 1 END,
             length(km.value)
@@ -2375,12 +2377,16 @@ BEGIN
         WHERE quality > 0
         GROUP BY kanji_id
     ),
-    -- Apply language filter early if specified (optimization: filter before other filters)
+    -- Apply language filter: for meaning matches, we already filtered by language in meaning_matches.
+    -- For kanji/reading matches (Japanese text), we still want to show them but require term has content in filter languages.
     language_filtered AS (
         SELECT mi.*
         FROM match_info mi
         WHERE (langs IS NULL OR array_length(langs, 1) IS NULL)
-           OR EXISTS (SELECT 1 FROM jlpt.kanji_meaning km WHERE km.kanji_id = mi.kanji_id AND km.lang = ANY(langs))
+           -- If match came only from meanings (bit 64), we already filtered in meaning_matches so it's valid
+           -- If match came from kanji/readings too (bits 16 or 32), check language existence
+           OR (mi.locations & 64 = 64)  -- Has meaning match (already language-filtered)
+           OR ((mi.locations & (16 | 32)) != 0 AND EXISTS (SELECT 1 FROM jlpt.kanji_meaning km WHERE km.kanji_id = mi.kanji_id AND km.lang = ANY(langs)))
     ),
     -- Apply other filters
     filtered AS (
@@ -2603,7 +2609,7 @@ BEGIN
             CASE WHEN NOT has_user_wildcard AND vk.text = ANY(exact_terms) THEN 0 ELSE 1 END,
             length(vk.text)
     ),
-    -- Find gloss matches (with sense order for first_sense detection)
+    -- Find gloss matches (with optional language filter and sense order for first_sense detection)
     gloss_matches AS (
         SELECT DISTINCT ON (vs.vocabulary_id)
             vs.vocabulary_id,
@@ -2618,6 +2624,8 @@ BEGIN
         FROM jlpt.vocabulary_sense vs
         JOIN jlpt.vocabulary_sense_gloss vsg ON vs.id = vsg.sense_id
         WHERE vsg.text ILIKE ANY(patterns)
+          -- When language filter is specified, only match glosses in those languages
+          AND (langs IS NULL OR array_length(langs, 1) IS NULL OR vsg.lang = ANY(langs))
         ORDER BY vs.vocabulary_id,
             CASE WHEN NOT has_user_wildcard AND lower(vsg.text) = ANY(SELECT lower(unnest(exact_terms))) THEN 0 ELSE 1 END,
             length(vsg.text)
@@ -2639,16 +2647,20 @@ BEGIN
         WHERE quality > 0
         GROUP BY vocabulary_id
     ),
-    -- Apply language filter early if specified (optimization: filter before other filters)
+    -- Apply language filter: for gloss matches, we already filtered by language in gloss_matches.
+    -- For kana/kanji matches (Japanese text), we still want to show them but require term has content in filter languages.
     language_filtered AS (
         SELECT mi.*
         FROM match_info mi
         WHERE (langs IS NULL OR array_length(langs, 1) IS NULL)
-           OR EXISTS (
+           -- If match came from gloss (bit 4), we already filtered in gloss_matches so it's valid
+           -- If match came from kana/kanji too (bits 1 or 2), check language existence
+           OR (mi.locations & 4 = 4)  -- Has gloss match (already language-filtered)
+           OR ((mi.locations & (1 | 2)) != 0 AND EXISTS (
                SELECT 1 FROM jlpt.vocabulary_sense vs
                JOIN jlpt.vocabulary_sense_gloss vsg ON vs.id = vsg.sense_id 
                WHERE vs.vocabulary_id = mi.vocabulary_id AND vsg.lang = ANY(langs)
-           )
+           ))
     ),
     -- Apply other filters
     filtered AS (
@@ -2933,6 +2945,7 @@ BEGIN
             CASE WHEN NOT has_user_wildcard AND pk.text = ANY(exact_terms) THEN 0 ELSE 1 END,
             length(pk.text)
     ),
+    -- Translation matches (with optional language filter)
     translation_matches AS (
         SELECT DISTINCT ON (pt.proper_noun_id)
             pt.proper_noun_id,
@@ -2946,6 +2959,8 @@ BEGIN
         FROM jlpt.proper_noun_translation pt
         JOIN jlpt.proper_noun_translation_text ptt ON pt.id = ptt.translation_id
         WHERE ptt.text ILIKE ANY(patterns)
+          -- When language filter is specified, only match translations in those languages
+          AND (langs IS NULL OR array_length(langs, 1) IS NULL OR ptt.lang = ANY(langs))
         ORDER BY pt.proper_noun_id,
             CASE WHEN NOT has_user_wildcard AND lower(ptt.text) = ANY(SELECT lower(unnest(exact_terms))) THEN 0 ELSE 1 END,
             length(ptt.text)
@@ -2966,16 +2981,20 @@ BEGIN
         WHERE quality > 0
         GROUP BY proper_noun_id
     ),
-    -- Apply language filter early if specified (optimization: filter before other filters)
+    -- Apply language filter: for translation matches, we already filtered by language in translation_matches.
+    -- For kana/kanji matches (Japanese text), we still want to show them but require term has content in filter languages.
     language_filtered AS (
         SELECT mi.*
         FROM match_info mi
         WHERE (langs IS NULL OR array_length(langs, 1) IS NULL)
-           OR EXISTS (
+           -- If match came from translation (bit 128), we already filtered in translation_matches so it's valid
+           -- If match came from kana/kanji too (bits 1 or 2), check language existence
+           OR (mi.locations & 128 = 128)  -- Has translation match (already language-filtered)
+           OR ((mi.locations & (1 | 2)) != 0 AND EXISTS (
                SELECT 1 FROM jlpt.proper_noun_translation pt 
                JOIN jlpt.proper_noun_translation_text ptt ON pt.id = ptt.translation_id 
                WHERE pt.proper_noun_id = mi.proper_noun_id AND ptt.lang = ANY(langs)
-           )
+           ))
     ),
     filtered AS (
         SELECT p.id, p.jmnedict_id, lf.best_quality, lf.locations, lf.shortest_match
