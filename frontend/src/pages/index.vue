@@ -18,15 +18,10 @@
         </h5>
       </v-col>
       <v-col cols="12">
-        <v-text-field
-          v-model="searchQuery"
-          bg-color="white"
-          class="home__search mx-auto"
-          density="comfortable"
-          icon-color="#00000066"
+        <SearchAutocomplete
+          v-model:search-query="searchQuery"
           placeholder="Search for vocabulary or kanji"
-          prepend-inner-icon="mdi-magnify"
-          variant="outlined"
+          @clear="searchQuery = ''"
         />
       </v-col>
       <v-col

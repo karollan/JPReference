@@ -1,11 +1,15 @@
 using System.Text.Json;
 using JLPTReference.Api.Data;
+using JLPTReference.Api.DTOs.Kanji;
+using JLPTReference.Api.DTOs.ProperNoun;
+using JLPTReference.Api.DTOs.Radical;
 using JLPTReference.Api.DTOs.Search;
 using JLPTReference.Api.DTOs.Vocabulary;
-using JLPTReference.Api.DTOs.ProperNoun;
-using JLPTReference.Api.DTOs.Kanji;
-using JLPTReference.Api.DTOs.Radical;
+using JLPTReference.Api.Entities.Kanji;
+using JLPTReference.Api.Entities.ProperNoun;
+using JLPTReference.Api.Entities.Vocabulary;
 using JLPTReference.Api.Repositories.Interfaces;
+using JLPTReference.Api.Services.Search.QueryBuilder;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 namespace JLPTReference.Api.Repositories.Implementations;
@@ -13,10 +17,33 @@ namespace JLPTReference.Api.Repositories.Implementations;
 public class SearchRepository : ISearchRepository
 {
     private readonly string _connectionString;
-
-    public SearchRepository(IConfiguration configuration)
+    private readonly ISearchQueryBuilder<Kanji> _kanjiQueryBuilder;
+    private readonly ISearchQueryBuilder<ProperNoun> _properNounQueryBuilder;
+    private readonly ISearchQueryBuilder<Vocabulary> _vocabularyQueryBuilder;
+    private readonly IVocabularySearchService _vocabularySearchService;
+    private readonly IKanjiSearchService _kanjiSearchService;
+    private readonly IProperNounSearchService _properNounSearchService;
+    private readonly IDbContextFactory<ApplicationDBContext> _contextFactory;
+    
+    public SearchRepository(
+        IConfiguration configuration,
+        ISearchQueryBuilder<Kanji> kanjiQueryBuilder,
+        ISearchQueryBuilder<ProperNoun> properNounQueryBuilder,
+        ISearchQueryBuilder<Vocabulary> vocabularyQueryBuilder,
+        IVocabularySearchService vocabularySearchService,
+        IKanjiSearchService kanjiSearchService,
+        IProperNounSearchService properNounSearchService,
+        IDbContextFactory<ApplicationDBContext> contextFactory
+    )
     {
         _connectionString = configuration.GetConnectionString("DefaultConnection")!;
+        _kanjiQueryBuilder = kanjiQueryBuilder;
+        _properNounQueryBuilder = properNounQueryBuilder;
+        _vocabularyQueryBuilder = vocabularyQueryBuilder;
+        _vocabularySearchService = vocabularySearchService;
+        _kanjiSearchService = kanjiSearchService;
+        _properNounSearchService = properNounSearchService;
+        _contextFactory = contextFactory;
     }
 
     public async Task<GlobalSearchResponse> SearchAllAsync(GlobalSearchRequest request)
@@ -36,8 +63,14 @@ public class SearchRepository : ISearchRepository
         };
     }
 
+    public async Task<SearchResultKanji> SearchKanjiAsync(SearchSpec spec, int pageSize, int page)
+    {
+        return await _kanjiSearchService.SearchAsync(spec, pageSize, page);
+    }
+
     public async Task<SearchResultKanji> SearchKanjiAsync(GlobalSearchRequest request)
     {
+        
         var sql = @"
           SELECT * FROM jlpt.search_kanji_by_text(@queries, @relevanceThreshold, @pageSize, @offset);
         ";
@@ -102,6 +135,10 @@ public class SearchRepository : ISearchRepository
 
     }
 
+    public async Task<SearchResultProperNoun> SearchProperNounAsync(SearchSpec spec, int pageSize, int page)
+    {
+        return await _properNounSearchService.SearchAsync(spec, pageSize, page);
+    }
     public async Task<SearchResultProperNoun> SearchProperNounAsync(GlobalSearchRequest request)
     {
         var sql = @"
@@ -130,7 +167,7 @@ public class SearchRepository : ISearchRepository
 
         while (await reader.ReadAsync())
         {
-            totalCount = reader.GetInt32(8);
+            totalCount = reader.GetInt32(9);
             var result = new ProperNounSummaryDto
             {
                 Id = reader.GetGuid(0),
@@ -146,6 +183,7 @@ public class SearchRepository : ISearchRepository
                     JsonSerializer.Deserialize<List<DTOs.ProperNoun.KanaFormDto>>(reader.GetString(6), jsonOptions),
                 Translations = await reader.IsDBNullAsync(7) ? null :
                     JsonSerializer.Deserialize<List<TranslationSummaryDto>>(reader.GetString(7), jsonOptions),
+                Slug = await reader.IsDBNullAsync(8) ? null : reader.GetString(8)
             };
             results.Add(result);
         }
@@ -162,6 +200,18 @@ public class SearchRepository : ISearchRepository
                 PageSize = request.PageSize,
                 TotalPages = totalPages,
             }
+        };
+    }
+
+    public async Task<SearchResultVocabulary> SearchVocabularyAsync(SearchSpec spec, int pageSize, int page)
+    {
+        // Delegate to the vocabulary search service (either EF Core or SQL based)
+        var result = await _vocabularySearchService.SearchAsync(spec, pageSize, page);
+        
+        return new SearchResultVocabulary
+        {
+            Data = result.Data,
+            Pagination = result.Pagination
         };
     }
 
@@ -195,7 +245,7 @@ public class SearchRepository : ISearchRepository
 
         while (await reader.ReadAsync())
         {
-            totalCount = reader.GetInt32(10);
+            totalCount = reader.GetInt32(11);
             var result = new VocabularySummaryDto
             {
                 Id = reader.GetGuid(0),
@@ -212,7 +262,8 @@ public class SearchRepository : ISearchRepository
                     JsonSerializer.Deserialize<List<DTOs.Vocabulary.KanaFormDto>>(reader.GetString(7), jsonOptions),
                 Senses = await reader.IsDBNullAsync(8) ? null :
                     JsonSerializer.Deserialize<List<SenseSummaryDto>>(reader.GetString(8), jsonOptions),
-                IsCommon = reader.GetBoolean(9)
+                IsCommon = reader.GetBoolean(9),
+                Slug = await reader.IsDBNullAsync(10) ? null : reader.GetString(10)
             };
             results.Add(result);
         }

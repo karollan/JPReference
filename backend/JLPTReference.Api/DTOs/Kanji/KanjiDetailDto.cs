@@ -35,7 +35,7 @@ public class KanjiMeaningDto {
 
 public class KanjiReadingDto {
     public Guid Id { get; set; }
-    public string? KanjiId { get; set; }
+    public Guid? KanjiId { get; set; }
     public required string Type { get; set; }
     public required string Value { get; set; }
     public string? Status { get; set; }

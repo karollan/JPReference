@@ -9,4 +9,6 @@ public class VocabularySenseExample
     public required string Text {get; set;}
     public DateTime CreatedAt {get; set;}
     public DateTime UpdatedAt {get; set;}
+
+    public List<VocabularySenseExampleSentence> Sentences {get; set;} = new();
 }

@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using JLPTReference.Api.Data;
 using JLPTReference.Api.DTOs.Vocabulary;
 using Microsoft.EntityFrameworkCore;
@@ -8,24 +9,91 @@ namespace JLPTReference.Api.Repositories.Implementations;
 public class VocabularyRepository : IVocabularyRepository {
 
     private readonly ApplicationDBContext _context;
+    
+    // Pattern to match term(reading) format, e.g., "中(なか)"
+    private static readonly Regex TermWithReadingPattern = new(@"^(.+)\(([^)]+)\)$", RegexOptions.Compiled);
+    
     public VocabularyRepository(ApplicationDBContext context) {
         _context = context;
+    }
+
+    /// <summary>
+    /// Parses a term that may include a reading in parentheses.
+    /// Examples: "食べる" -> ("食べる", null), "中(なか)" -> ("中", "なか")
+    /// </summary>
+    private static (string term, string? reading) ParseTermWithReading(string input)
+    {
+        var match = TermWithReadingPattern.Match(input);
+        if (match.Success)
+        {
+            return (match.Groups[1].Value, match.Groups[2].Value);
+        }
+        return (input, null);
     }
 
     public async Task<VocabularyDetailDto> GetVocabularyDetailByTermAsync(string term) {
         if (string.IsNullOrEmpty(term))
             throw new ArgumentException("Vocabulary term is required");
 
-        // Find vocabulary by matching term in either VocabularyKanji or VocabularyKana
-        var vocabularyId = await _context.VocabularyKanji
-            .Where(vk => vk.Text == term)
-            .Select(vk => vk.VocabularyId)
-            .FirstOrDefaultAsync();
+        // Parse term to extract optional reading: "中(なか)" -> term="中", reading="なか"
+        var (searchTerm, reading) = ParseTermWithReading(term);
+        
+        Guid vocabularyId = Guid.Empty;
 
+        // If reading is provided, find vocabulary with matching primary kanji AND primary kana
+        if (reading != null)
+        {
+            vocabularyId = await _context.VocabularyKanji
+                .Where(vk => vk.Text == searchTerm && vk.IsPrimary)
+                .Where(vk => _context.VocabularyKana
+                    .Any(vka => vka.VocabularyId == vk.VocabularyId && vka.Text == reading && vka.IsPrimary))
+                .Select(vk => vk.VocabularyId)
+                .FirstOrDefaultAsync();
+        }
+
+        // If no reading or not found with reading, try primary kanji only
+        if (vocabularyId == Guid.Empty)
+        {
+            vocabularyId = await _context.VocabularyKanji
+                .Where(vk => vk.Text == searchTerm && vk.IsPrimary)
+                .Select(vk => vk.VocabularyId)
+                .FirstOrDefaultAsync();
+        }
+
+        // Fallback: find KANA-ONLY vocabulary (no primary kanji) where term is the PRIMARY kana form
+        // This ensures "ちゅう" (kiss) is found before "籌" (ちゅう - wooden skewer)
         if (vocabularyId == Guid.Empty)
         {
             vocabularyId = await _context.VocabularyKana
-                .Where(vka => vka.Text == term)
+                .Where(vka => vka.Text == searchTerm && vka.IsPrimary)
+                .Where(vka => !_context.VocabularyKanji.Any(vk => vk.VocabularyId == vka.VocabularyId && vk.IsPrimary))
+                .Select(vka => vka.VocabularyId)
+                .FirstOrDefaultAsync();
+        }
+
+        // Fallback: find vocabulary where term is the PRIMARY kana form (including entries with kanji)
+        if (vocabularyId == Guid.Empty)
+        {
+            vocabularyId = await _context.VocabularyKana
+                .Where(vka => vka.Text == searchTerm && vka.IsPrimary)
+                .Select(vka => vka.VocabularyId)
+                .FirstOrDefaultAsync();
+        }
+
+        // Fallback: find any vocabulary containing the term as kanji
+        if (vocabularyId == Guid.Empty)
+        {
+            vocabularyId = await _context.VocabularyKanji
+                .Where(vk => vk.Text == searchTerm)
+                .Select(vk => vk.VocabularyId)
+                .FirstOrDefaultAsync();
+        }
+
+        // Fallback: find any vocabulary containing the term as kana
+        if (vocabularyId == Guid.Empty)
+        {
+            vocabularyId = await _context.VocabularyKana
+                .Where(vka => vka.Text == searchTerm)
                 .Select(vka => vka.VocabularyId)
                 .FirstOrDefaultAsync();
         }

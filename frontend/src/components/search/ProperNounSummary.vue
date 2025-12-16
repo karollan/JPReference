@@ -180,7 +180,7 @@
   })
 
   function handleCardClick () {
-    const routePath = props.properNoun.primaryKanji?.text || props.properNoun.primaryKana?.text
+    const routePath = props.properNoun.slug
     router.push(`/proper-noun/${routePath}`)
   }
 </script>

@@ -24,6 +24,7 @@ export interface ProperNounSummary {
   otherKanjiForms: KanjiForm[] | null
   otherKanaForms: KanaForm[] | null
   translations: TranslationSummary[] | null
+  slug: string
 }
 
 export interface KanjiInfo {

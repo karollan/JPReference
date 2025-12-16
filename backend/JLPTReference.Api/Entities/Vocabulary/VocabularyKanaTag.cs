@@ -7,4 +7,6 @@ public class VocabularyKanaTag
     public required string TagCode {get; set;}
     public DateTime CreatedAt {get; set;}
     public DateTime UpdatedAt {get; set;}
+
+    public Tag Tag {get; set;} = null!;
 }

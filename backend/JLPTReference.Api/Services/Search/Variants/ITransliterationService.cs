@@ -1,6 +1,6 @@
 using WanaKanaNet;
 
-namespace JLPTReference.Api.Services.Interfaces;
+namespace JLPTReference.Api.Services.Search.Variants;
 
 public interface ITransliterationService
 {
