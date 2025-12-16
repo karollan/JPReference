@@ -14,7 +14,21 @@
           <div class="primary-entry">
             <template v-if="vocabulary.primaryKanji">
               <ruby>
-                {{ vocabulary.primaryKanji.text }}
+                <template v-if="vocabulary.primaryKanji.tags?.length > 0">
+                  <v-tooltip location="top">
+                    <template #activator="{ props: tooltipProps }">
+                      <span v-bind="tooltipProps" class="kanji-with-tags">{{ vocabulary.primaryKanji.text }}</span>
+                    </template>
+                    <div class="tag-tooltip-content">
+                      <div v-for="(tag, idx) in vocabulary.primaryKanji.tags" :key="idx">
+                        • {{ tag.description }}
+                      </div>
+                    </div>
+                  </v-tooltip>
+                </template>
+                <template v-else>
+                  {{ vocabulary.primaryKanji.text }}
+                </template>
                 <rt>
                   <template v-if="primaryKanaTags.length > 0">
                     <v-tooltip location="top">
@@ -91,7 +105,21 @@
                   :key="`kanji-form-${idx}`"
                   class="form-item"
                 >
-                  <span class="kanji-text">{{ entry.kanji.text }}</span>
+                  <template v-if="entry.kanji.tags?.length > 0">
+                    <v-tooltip location="top">
+                      <template #activator="{ props: tooltipProps }">
+                        <span v-bind="tooltipProps" class="kanji-with-tags">{{ entry.kanji.text }}</span>
+                      </template>
+                      <div class="tag-tooltip-content">
+                        <div v-for="(tag, idx) in entry.kanji.tags" :key="idx">
+                          • {{ tag.description }}
+                        </div>
+                      </div>
+                    </v-tooltip>
+                  </template>
+                  <template v-else>
+                    <span class="kanji-text">{{ entry.kanji.text }}</span>
+                  </template>
                   <span v-if="entry.readings.length > 0" class="reading-text">
                     (<template v-for="(reading, ridx) in entry.readings" :key="`reading-${ridx}`">
                       <template v-if="reading.tags && reading.tags.length > 0">
