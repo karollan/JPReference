@@ -58,6 +58,7 @@ public class SqlKanjiSearchService : IKanjiSearchService
                 @strokeMax,
                 @freqMin,
                 @freqMax,
+                @langs,
                 @pageSize,
                 @pageOffset
             )", connection);
@@ -79,6 +80,10 @@ public class SqlKanjiSearchService : IKanjiSearchService
         cmd.Parameters.AddWithValue("@strokeMax", filters.StrokeCount?.Max ?? 0);
         cmd.Parameters.AddWithValue("@freqMin", filters.Frequency?.Min ?? 0);
         cmd.Parameters.AddWithValue("@freqMax", filters.Frequency?.Max ?? 0);
+        cmd.Parameters.Add(new NpgsqlParameter("@langs", NpgsqlDbType.Array | NpgsqlDbType.Text)
+        {
+            Value = filters.Languages?.Count > 0 ? filters.Languages.ToArray() : DBNull.Value
+        });
         cmd.Parameters.AddWithValue("@pageSize", pageSize);
         cmd.Parameters.AddWithValue("@pageOffset", (page - 1) * pageSize);
 

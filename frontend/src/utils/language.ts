@@ -1,55 +1,32 @@
-const LANGUAGE_PAIRS: Array<[string, string, string]> = [
-  ['eng', 'en', 'English'],
-  ['ger', 'de', 'German'],
-  ['rus', 'ru', 'Russian'],
-  ['hun', 'hu', 'Hungarian'],
-  ['dut', 'nl', 'Dutch'],
-  ['spa', 'es', 'Spanish'],
-  ['fre', 'fr', 'French'],
-  ['swe', 'sv', 'Swedish'],
-  ['slv', 'sl', 'Slovenian'],
-  ['por', 'pt', 'Portuguese'],
-  ['ita', 'it', 'Italian'],
-  ['jpn', 'ja', 'Japanese'],
-]
+export const LANGUAGE_PAIRS: Record<string, string> = {
+  eng: 'English',
+  ger: 'German',
+  rus: 'Russian',
+  hun: 'Hungarian',
+  dut: 'Dutch',
+  spa: 'Spanish',
+  fre: 'French',
+  swe: 'Swedish',
+  slv: 'Slovenian',
+  por: 'Portuguese',
+  ita: 'Italian',
+  jpn: 'Japanese',
+}
 
 const LANGUAGE_FLAGS: Record<string, string> = {
   eng: '🇬🇧',
-  en: '🇬🇧',
   ger: '🇩🇪',
-  de: '🇩🇪',
   rus: '🇷🇺',
-  ru: '🇷🇺',
   hun: '🇭🇺',
-  hu: '🇭🇺',
   dut: '🇳🇱',
-  nl: '🇳🇱',
   spa: '🇪🇸',
-  es: '🇪🇸',
   fre: '🇫🇷',
-  fr: '🇫🇷',
   swe: '🇸🇪',
-  sv: '🇸🇪',
   slv: '🇸🇮',
-  sl: '🇸🇮',
   por: '🇵🇹',
-  pt: '🇵🇹',
   ita: '🇮🇹',
-  it: '🇮🇹',
   jpn: '🇯🇵',
-  ja: '🇯🇵',
 }
-
-const languageEntries = LANGUAGE_PAIRS.map(([three, two, name]) => ({ three, two, name }))
-
-const THREE_TO_TWO: Record<string, string> = Object.fromEntries(languageEntries.map(({ three, two }) => [three, two]))
-const TWO_TO_THREE: Record<string, string> = Object.fromEntries(languageEntries.map(({ three, two }) => [two, three]))
-const LANGUAGE_NAMES: Record<string, string> = Object.fromEntries(
-  languageEntries.flatMap(({ three, two, name }) => [
-    [three, name],
-    [two, name],
-  ]),
-)
 
 export const DEFAULT_LANGUAGE = 'eng'
 const FALLBACK_FLAG = '🏳️'
@@ -66,12 +43,7 @@ function collectVariants (code?: string | null): string[] {
 
   const variants = new Set<string>([normalized])
 
-  const twoLetter = THREE_TO_TWO[normalized]
-  if (twoLetter) {
-    variants.add(twoLetter)
-  }
-
-  const threeLetter = TWO_TO_THREE[normalized]
+  const threeLetter = LANGUAGE_PAIRS[normalized]
   if (threeLetter) {
     variants.add(threeLetter)
   }
@@ -101,5 +73,5 @@ export function getLanguageName (code?: string | null): string {
     return ''
   }
 
-  return LANGUAGE_NAMES[normalized] || normalized.toUpperCase()
+  return LANGUAGE_PAIRS[normalized] || normalized.toUpperCase()
 }

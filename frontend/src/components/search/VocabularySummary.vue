@@ -55,24 +55,9 @@
             <div v-if="hasOtherForms" class="other-forms text-left mt-3">
               <div class="section-label">Other Forms</div>
               <div class="forms-list">
-                <div v-for="(form, idx) in vocabulary.otherKanjiForms" :key="`kanji-${idx}`" class="form-item">
-                  <ruby v-if="getKanaForKanji(form.text)">
-                    {{ form.text }}
-                    <rt>{{ getKanaForKanji(form.text) }}</rt>
-                  </ruby>
-                  <span v-else>{{ form.text }}</span>
-                  <v-chip
-                    v-if="form.isCommon"
-                    class="ml-1"
-                    color="success"
-                    size="x-small"
-                    variant="tonal"
-                  >
-                    Common
-                  </v-chip>
-                </div>
-                <div v-for="(form, idx) in vocabulary.otherKanaForms" :key="`kana-${idx}`" class="form-item">
-                  {{ form.text }}
+                <div v-for="(form, idx) in otherForms" :key="`other-form-${idx}`" class="form-item">
+                  <span>{{ form.text }}</span>
+                  <span v-if="getKanaForKanji(form.text)" class="text-caption"> ({{ getKanaForKanji(form.text) }})</span>
                   <v-chip
                     v-if="form.isCommon"
                     class="ml-1"
@@ -191,6 +176,13 @@
       || (props.vocabulary.otherKanaForms && props.vocabulary.otherKanaForms.length > 0)
   })
 
+  const otherForms = computed(() => {
+    return [
+      ...(props.vocabulary.otherKanjiForms || []),
+      ...(props.vocabulary.otherKanaForms || []),
+    ]
+  })
+
   function getKanaForKanji (kanjiText: string): string | null {
     // Find matching kana form
     const kanaForms = [
@@ -198,10 +190,14 @@
       ...(props.vocabulary.otherKanaForms || []),
     ]
 
+    const kanaText = []
     for (const kana of kanaForms) {
-      if (kana && kana.appliesToKanji && kana.appliesToKanji.includes(kanjiText)) {
-        return kana.text
+      if (kana && kana.appliesToKanji && (kana.appliesToKanji.includes(kanjiText) || kana.appliesToKanji.includes('*'))) {
+        kanaText.push(kana.text)
       }
+    }
+    if (kanaText.length > 0) {
+      return kanaText.join(', ')
     }
     return null
   }

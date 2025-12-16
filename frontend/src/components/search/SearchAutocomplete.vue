@@ -158,8 +158,12 @@
               }
               case 'enum':
               case 'equality': {
-                const num = Number.parseInt(value, 10)
-                isValid = value !== '' && !Number.isNaN(num)
+                if (def.valueType === 'string' && def.type === 'enum') {
+                  isValid = value !== '' && ((def.enumValues as string[])?.includes(value) ?? false)
+                } else {
+                  const num = Number.parseInt(value, 10)
+                  isValid = value !== '' && !Number.isNaN(num)
+                }
                 break
               }
               case 'range': {

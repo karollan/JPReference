@@ -76,7 +76,7 @@ public class EfCoreVocabularyQueryBuilder : ISearchQueryBuilder<Vocabulary>, IRa
         query = query.Where(v =>
             v.Kana.Any(k => patterns.Any(p => EF.Functions.ILike(k.Text, p))) ||
             v.Kanji.Any(k => patterns.Any(p => EF.Functions.ILike(k.Text, p))) ||
-            v.Senses.Any(s => s.Glosses.Any(g => g.Lang == "eng" && patterns.Any(p => EF.Functions.ILike(g.Text, p))))
+            v.Senses.Any(s => s.Glosses.Any(g => patterns.Any(p => EF.Functions.ILike(g.Text, p))))
         );
 
         return query;
@@ -94,11 +94,6 @@ public class EfCoreVocabularyQueryBuilder : ISearchQueryBuilder<Vocabulary>, IRa
             );
         }
 
-        if (filters.PartOfSpeech is {Count: > 0})
-        {
-            query = query.Where(v => v.Senses.Any(s => s.Tags.Any(t => filters.PartOfSpeech.Contains(t.TagCode))));
-        }
-
         if (filters.CommonOnly is true)
         {
             query = query.Where(v => v.Kana.Any(k => k.IsCommon) && v.Kanji.Any(k => k.IsCommon));
@@ -111,6 +106,11 @@ public class EfCoreVocabularyQueryBuilder : ISearchQueryBuilder<Vocabulary>, IRa
                 v.Kanji.Any(k => k.Tags.Any(t => filters.Tags.Contains(t.TagCode))) || 
                 v.Senses.Any(s => s.Tags.Any(t => filters.Tags.Contains(t.TagCode)))
             );
+        }
+
+        if (filters.Languages is not null && filters.Languages.Count > 0)
+        {
+            query = query.Where(v => v.Senses.Any(s => s.Glosses.Any(g => filters.Languages.Contains(g.Lang))));
         }
 
         return query;

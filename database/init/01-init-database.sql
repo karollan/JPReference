@@ -485,6 +485,8 @@ CREATE INDEX IF NOT EXISTS idx_proper_noun_trans_type_tag ON proper_noun_transla
 CREATE INDEX IF NOT EXISTS idx_proper_noun_trans_related_trans ON proper_noun_translation_related(translation_id);
 CREATE INDEX IF NOT EXISTS idx_proper_noun_trans_related_ref_trans ON proper_noun_translation_related(reference_proper_noun_id);
 CREATE INDEX IF NOT EXISTS idx_proper_noun_trans_text_trans ON proper_noun_translation_text(translation_id);
+CREATE INDEX IF NOT EXISTS idx_proper_noun_trans_text_lang ON proper_noun_translation_text(lang);
+CREATE INDEX IF NOT EXISTS idx_proper_noun_trans_text_lang_id ON proper_noun_translation_text(translation_id, lang);
 -- Proper noun text search
 CREATE INDEX IF NOT EXISTS idx_proper_noun_kanji_text_trgm ON proper_noun_kanji USING gist (text gist_trgm_ops);
 CREATE INDEX IF NOT EXISTS idx_proper_noun_kanji_text_trgm_gin ON proper_noun_kanji USING gin (text gin_trgm_ops);
@@ -2241,6 +2243,7 @@ CREATE OR REPLACE FUNCTION jlpt.search_kanji_ranked(
     stroke_max INT,                     -- Filter: Max stroke count (0 = no max)
     freq_min INT,                       -- Filter: Min frequency (0 = no min)
     freq_max INT,                       -- Filter: Max frequency (0 = no max)
+    langs TEXT[],                       -- Filter: Languages
     page_size INT DEFAULT 20,
     page_offset INT DEFAULT 0
 )
@@ -2277,6 +2280,7 @@ BEGIN
               AND (stroke_max <= 0 OR k.stroke_count <= stroke_max)
               AND (freq_min <= 0 OR k.frequency >= freq_min)
               AND (freq_max <= 0 OR k.frequency <= freq_max)
+              AND (langs IS NULL OR array_length(langs, 1) IS NULL OR EXISTS (SELECT 1 FROM jlpt.kanji_meaning km WHERE km.kanji_id = k.id AND km.lang = ANY(langs)))
         ),
         counted AS (SELECT COUNT(*) as cnt FROM base),
         paginated AS (
@@ -2289,7 +2293,7 @@ BEGIN
             p.jlpt_level_new AS jlpt_level,
             0::INT AS match_quality, 0::INT AS match_location, 0::INT AS matched_text_length,
             ARRAY(SELECT kr.value::TEXT FROM jlpt.kanji_reading kr WHERE kr.kanji_id = p.id) AS all_readings,
-            ARRAY(SELECT km.value::TEXT FROM jlpt.kanji_meaning km WHERE km.kanji_id = p.id AND km.lang = 'eng') AS all_meanings,
+            ARRAY(SELECT km.value::TEXT FROM jlpt.kanji_meaning km WHERE km.kanji_id = p.id) AS all_meanings,
             (SELECT COALESCE(json_agg(json_build_object('id', kr.id, 'type', kr.type, 'value', kr.value, 'status', kr.status, 'onType', kr.on_type) ORDER BY kr.id), '[]'::json)
              FROM jlpt.kanji_reading kr WHERE kr.kanji_id = p.id AND kr.type = 'ja_kun') AS kunyomi,
             (SELECT COALESCE(json_agg(json_build_object('id', kr.id, 'type', kr.type, 'value', kr.value, 'status', kr.status, 'onType', kr.on_type) ORDER BY kr.id), '[]'::json)
@@ -2349,7 +2353,7 @@ BEGIN
                 ELSE CASE WHEN has_user_wildcard THEN 100 ELSE 200 END
             END as quality
         FROM jlpt.kanji_meaning km
-        WHERE km.lang = 'eng' AND km.value ILIKE ANY(patterns)
+        WHERE km.value ILIKE ANY(patterns)
         ORDER BY km.kanji_id,
             CASE WHEN NOT has_user_wildcard AND lower(km.value) = ANY(SELECT lower(unnest(exact_terms))) THEN 0 ELSE 1 END,
             length(km.value)
@@ -2371,13 +2375,20 @@ BEGIN
         WHERE quality > 0
         GROUP BY kanji_id
     ),
-    -- Apply filters
+    -- Apply language filter early if specified (optimization: filter before other filters)
+    language_filtered AS (
+        SELECT mi.*
+        FROM match_info mi
+        WHERE (langs IS NULL OR array_length(langs, 1) IS NULL)
+           OR EXISTS (SELECT 1 FROM jlpt.kanji_meaning km WHERE km.kanji_id = mi.kanji_id AND km.lang = ANY(langs))
+    ),
+    -- Apply other filters
     filtered AS (
         SELECT 
             k.id, k.literal, k.grade, k.stroke_count, k.frequency, k.jlpt_level_new,
-            mi.best_quality, mi.locations, mi.shortest_match
-        FROM match_info mi
-        JOIN jlpt.kanji k ON k.id = mi.kanji_id
+            lf.best_quality, lf.locations, lf.shortest_match
+        FROM language_filtered lf
+        JOIN jlpt.kanji k ON k.id = lf.kanji_id
         WHERE (jlpt_min <= 0 OR k.jlpt_level_new >= jlpt_min)
           AND (jlpt_max <= 0 OR k.jlpt_level_new <= jlpt_max)
           AND (grades_min <= 0 OR k.grade >= grades_min)
@@ -2399,7 +2410,7 @@ BEGIN
         p.locations AS match_location, 
         p.shortest_match AS matched_text_length,
         ARRAY(SELECT kr.value::TEXT FROM jlpt.kanji_reading kr WHERE kr.kanji_id = p.id) AS all_readings,
-        ARRAY(SELECT km.value::TEXT FROM jlpt.kanji_meaning km WHERE km.kanji_id = p.id AND km.lang = 'eng') AS all_meanings,
+        ARRAY(SELECT km.value::TEXT FROM jlpt.kanji_meaning km WHERE km.kanji_id = p.id) AS all_meanings,
         (SELECT COALESCE(json_agg(json_build_object('id', kr.id, 'type', kr.type, 'value', kr.value, 'status', kr.status, 'onType', kr.on_type) ORDER BY kr.id), '[]'::json)
          FROM jlpt.kanji_reading kr WHERE kr.kanji_id = p.id AND kr.type = 'ja_kun') AS kunyomi,
         (SELECT COALESCE(json_agg(json_build_object('id', kr.id, 'type', kr.type, 'value', kr.value, 'status', kr.status, 'onType', kr.on_type) ORDER BY kr.id), '[]'::json)
@@ -2419,9 +2430,9 @@ CREATE OR REPLACE FUNCTION jlpt.search_vocabulary_ranked(
     has_user_wildcard BOOLEAN,          -- Whether user used wildcards
     jlpt_min INT,                       -- Filter: JLPT levels (0 = no min)
     jlpt_max INT,                       -- Filter: JLPT levels (0 = no max)
-    pos_tags TEXT[],                    -- Filter: Part of speech tags
     common_only BOOLEAN,                -- Filter: common words only
     filter_tags TEXT[],                 -- Filter: general tags
+    langs TEXT[],                       -- Filter: Languages
     page_size INT DEFAULT 20,
     page_offset INT DEFAULT 0
 )
@@ -2460,6 +2471,11 @@ BEGIN
             WHERE (jlpt_min <= 0 OR v.jlpt_level_new >= jlpt_min)
               AND (jlpt_max <= 0 OR v.jlpt_level_new <= jlpt_max)
               AND (NOT common_only OR EXISTS (SELECT 1 FROM jlpt.vocabulary_kana vk WHERE vk.vocabulary_id = v.id AND vk.is_common))
+              AND (langs IS NULL OR array_length(langs, 1) IS NULL OR EXISTS (
+                  SELECT 1 FROM jlpt.vocabulary_sense vs
+                  JOIN jlpt.vocabulary_sense_gloss vsg ON vs.id = vsg.sense_id 
+                  WHERE vs.vocabulary_id = v.id AND vsg.lang = ANY(langs)
+              ))
         ),
         counted AS (SELECT COUNT(*) as cnt FROM base),
         paginated AS (
@@ -2487,7 +2503,7 @@ BEGIN
                 FROM jlpt.vocabulary_kanji vk WHERE vk.vocabulary_id = p.id AND vk.is_primary = true LIMIT 1
             ) x),
             (SELECT row_to_json(x) FROM (
-                SELECT vk.text, vk.is_common as "isCommon",
+                SELECT vk.text, vk.is_common as "isCommon", vk.applies_to_kanji as "appliesToKanji",
                     COALESCE((SELECT json_agg(json_build_object('code', t.code, 'description', t.description, 'category', t.category))
                         FROM jlpt.vocabulary_kana_tag vkt JOIN jlpt.tag t ON vkt.tag_code = t.code WHERE vkt.vocabulary_kana_id = vk.id), '[]'::json) as tags
                 FROM jlpt.vocabulary_kana vk WHERE vk.vocabulary_id = p.id AND vk.is_primary = true LIMIT 1
@@ -2499,18 +2515,38 @@ BEGIN
                 FROM jlpt.vocabulary_kanji vk WHERE vk.vocabulary_id = p.id AND vk.is_primary = false
             ) x),
             (SELECT COALESCE(json_agg(row_to_json(x)), '[]'::json) FROM (
-                SELECT vk.text, vk.is_common as "isCommon",
+                SELECT vk.text, vk.is_common as "isCommon", vk.applies_to_kanji as "appliesToKanji",
                     COALESCE((SELECT json_agg(json_build_object('code', t.code, 'description', t.description, 'category', t.category))
                         FROM jlpt.vocabulary_kana_tag vkt JOIN jlpt.tag t ON vkt.tag_code = t.code WHERE vkt.vocabulary_kana_id = vk.id), '[]'::json) as tags
                 FROM jlpt.vocabulary_kana vk WHERE vk.vocabulary_id = p.id AND vk.is_primary = false
             ) x),
             (SELECT COALESCE(json_agg(row_to_json(x)), '[]'::json) FROM (
+                WITH senses_with_langs AS (
+                    SELECT DISTINCT vs.id as sense_id, vsg.lang
+                    FROM jlpt.vocabulary_sense vs
+                    JOIN jlpt.vocabulary_sense_gloss vsg ON vs.id = vsg.sense_id
+                    WHERE vs.vocabulary_id = p.id
+                ),
+                ranked_senses AS (
+                    SELECT 
+                        sense_id,
+                        lang,
+                        ROW_NUMBER() OVER (PARTITION BY lang ORDER BY sense_id) as sense_rank
+                    FROM senses_with_langs
+                ),
+                top_senses AS (
+                    SELECT DISTINCT sense_id
+                    FROM ranked_senses
+                    WHERE sense_rank <= 3
+                )
                 SELECT vs.applies_to_kanji as "appliesToKanji", vs.applies_to_kana as "appliesToKana", vs.info,
                     COALESCE((SELECT json_agg(json_build_object('code', t.code, 'description', t.description, 'category', t.category, 'type', vst.tag_type))
                         FROM jlpt.vocabulary_sense_tag vst JOIN jlpt.tag t ON vst.tag_code = t.code WHERE vst.sense_id = vs.id), '[]'::json) as tags,
                     COALESCE((SELECT json_agg(json_build_object('language', vsg.lang, 'text', vsg.text) ORDER BY vsg.id)
                         FROM jlpt.vocabulary_sense_gloss vsg WHERE vsg.sense_id = vs.id), '[]'::json) as glosses
-                FROM jlpt.vocabulary_sense vs WHERE vs.vocabulary_id = p.id ORDER BY vs.id LIMIT 3
+                FROM top_senses ts
+                JOIN jlpt.vocabulary_sense vs ON vs.id = ts.sense_id
+                ORDER BY vs.id
             ) x),
             -- Compute slug
             (SELECT 
@@ -2581,7 +2617,7 @@ BEGIN
             (ROW_NUMBER() OVER (PARTITION BY vs.vocabulary_id ORDER BY vs.id, vsg.id)) as sense_order
         FROM jlpt.vocabulary_sense vs
         JOIN jlpt.vocabulary_sense_gloss vsg ON vs.id = vsg.sense_id
-        WHERE vsg.lang = 'eng' AND vsg.text ILIKE ANY(patterns)
+        WHERE vsg.text ILIKE ANY(patterns)
         ORDER BY vs.vocabulary_id,
             CASE WHEN NOT has_user_wildcard AND lower(vsg.text) = ANY(SELECT lower(unnest(exact_terms))) THEN 0 ELSE 1 END,
             length(vsg.text)
@@ -2603,28 +2639,34 @@ BEGIN
         WHERE quality > 0
         GROUP BY vocabulary_id
     ),
-    -- Apply filters
+    -- Apply language filter early if specified (optimization: filter before other filters)
+    language_filtered AS (
+        SELECT mi.*
+        FROM match_info mi
+        WHERE (langs IS NULL OR array_length(langs, 1) IS NULL)
+           OR EXISTS (
+               SELECT 1 FROM jlpt.vocabulary_sense vs
+               JOIN jlpt.vocabulary_sense_gloss vsg ON vs.id = vsg.sense_id 
+               WHERE vs.vocabulary_id = mi.vocabulary_id AND vsg.lang = ANY(langs)
+           )
+    ),
+    -- Apply other filters
     filtered AS (
         SELECT 
             v.id,
             v.jmdict_id,
             v.jlpt_level_new,
-            mi.best_quality,
-            mi.locations,
-            mi.shortest_match,
+            lf.best_quality,
+            lf.locations,
+            lf.shortest_match,
             EXISTS (SELECT 1 FROM jlpt.vocabulary_kana vk WHERE vk.vocabulary_id = v.id AND vk.is_common) OR
             EXISTS (SELECT 1 FROM jlpt.vocabulary_kanji vk WHERE vk.vocabulary_id = v.id AND vk.is_common) as is_common
-        FROM match_info mi
-        JOIN jlpt.vocabulary v ON v.id = mi.vocabulary_id
+        FROM language_filtered lf
+        JOIN jlpt.vocabulary v ON v.id = lf.vocabulary_id
         WHERE 
             (jlpt_min <= 0 OR v.jlpt_level_new >= jlpt_min)
             AND (jlpt_max <= 0 OR v.jlpt_level_new <= jlpt_max)
             AND (NOT common_only OR EXISTS (SELECT 1 FROM jlpt.vocabulary_kana vk WHERE vk.vocabulary_id = v.id AND vk.is_common))
-            AND (pos_tags IS NULL OR array_length(pos_tags, 1) IS NULL OR EXISTS (
-                SELECT 1 FROM jlpt.vocabulary_sense vs
-                JOIN jlpt.vocabulary_sense_tag vst ON vs.id = vst.sense_id
-                WHERE vs.vocabulary_id = v.id AND vst.tag_code = ANY(pos_tags)
-            ))
             AND (filter_tags IS NULL OR array_length(filter_tags, 1) IS NULL 
                 OR EXISTS (SELECT 1 FROM jlpt.vocabulary_kana vk JOIN jlpt.vocabulary_kana_tag vkt ON vk.id = vkt.vocabulary_kana_id WHERE vk.vocabulary_id = v.id AND vkt.tag_code = ANY(filter_tags))
                 OR EXISTS (SELECT 1 FROM jlpt.vocabulary_kanji vk JOIN jlpt.vocabulary_kanji_tag vkt ON vk.id = vkt.vocabulary_kanji_id WHERE vk.vocabulary_id = v.id AND vkt.tag_code = ANY(filter_tags))
@@ -2650,9 +2692,9 @@ BEGIN
         ARRAY(SELECT vk.text FROM jlpt.vocabulary_kana vk WHERE vk.vocabulary_id = p.id ORDER BY vk.is_primary DESC, vk.is_common DESC),
         ARRAY(SELECT vk.text FROM jlpt.vocabulary_kanji vk WHERE vk.vocabulary_id = p.id ORDER BY vk.is_primary DESC, vk.is_common DESC),
         ARRAY(SELECT vsg.text FROM jlpt.vocabulary_sense vs JOIN jlpt.vocabulary_sense_gloss vsg ON vs.id = vsg.sense_id 
-              WHERE vs.vocabulary_id = p.id AND vsg.lang = 'eng' ORDER BY vs.id LIMIT 5),
+              WHERE vs.vocabulary_id = p.id ORDER BY vs.id LIMIT 5),
         ARRAY(SELECT vsg.text FROM jlpt.vocabulary_sense vs JOIN jlpt.vocabulary_sense_gloss vsg ON vs.id = vsg.sense_id 
-              WHERE vs.vocabulary_id = p.id AND vsg.lang = 'eng'),
+              WHERE vs.vocabulary_id = p.id),
         (SELECT row_to_json(x) FROM (
             SELECT vk.text, vk.is_common as "isCommon",
                 COALESCE((SELECT json_agg(json_build_object('code', t.code, 'description', t.description, 'category', t.category))
@@ -2660,7 +2702,7 @@ BEGIN
             FROM jlpt.vocabulary_kanji vk WHERE vk.vocabulary_id = p.id AND vk.is_primary = true LIMIT 1
         ) x),
         (SELECT row_to_json(x) FROM (
-            SELECT vk.text, vk.is_common as "isCommon",
+            SELECT vk.text, vk.is_common as "isCommon", vk.applies_to_kanji as "appliesToKanji",
                 COALESCE((SELECT json_agg(json_build_object('code', t.code, 'description', t.description, 'category', t.category))
                     FROM jlpt.vocabulary_kana_tag vkt JOIN jlpt.tag t ON vkt.tag_code = t.code WHERE vkt.vocabulary_kana_id = vk.id), '[]'::json) as tags
             FROM jlpt.vocabulary_kana vk WHERE vk.vocabulary_id = p.id AND vk.is_primary = true LIMIT 1
@@ -2672,18 +2714,38 @@ BEGIN
             FROM jlpt.vocabulary_kanji vk WHERE vk.vocabulary_id = p.id AND vk.is_primary = false
         ) x),
         (SELECT COALESCE(json_agg(row_to_json(x)), '[]'::json) FROM (
-            SELECT vk.text, vk.is_common as "isCommon",
+            SELECT vk.text, vk.is_common as "isCommon", vk.applies_to_kanji as "appliesToKanji",
                 COALESCE((SELECT json_agg(json_build_object('code', t.code, 'description', t.description, 'category', t.category))
                     FROM jlpt.vocabulary_kana_tag vkt JOIN jlpt.tag t ON vkt.tag_code = t.code WHERE vkt.vocabulary_kana_id = vk.id), '[]'::json) as tags
             FROM jlpt.vocabulary_kana vk WHERE vk.vocabulary_id = p.id AND vk.is_primary = false
         ) x),
         (SELECT COALESCE(json_agg(row_to_json(x)), '[]'::json) FROM (
+            WITH senses_with_langs AS (
+                SELECT DISTINCT vs.id as sense_id, vsg.lang
+                FROM jlpt.vocabulary_sense vs
+                JOIN jlpt.vocabulary_sense_gloss vsg ON vs.id = vsg.sense_id
+                WHERE vs.vocabulary_id = p.id
+            ),
+            ranked_senses AS (
+                SELECT 
+                    sense_id,
+                    lang,
+                    ROW_NUMBER() OVER (PARTITION BY lang ORDER BY sense_id) as sense_rank
+                FROM senses_with_langs
+            ),
+            top_senses AS (
+                SELECT DISTINCT sense_id
+                FROM ranked_senses
+                WHERE sense_rank <= 3
+            )
             SELECT vs.applies_to_kanji as "appliesToKanji", vs.applies_to_kana as "appliesToKana", vs.info,
                 COALESCE((SELECT json_agg(json_build_object('code', t.code, 'description', t.description, 'category', t.category, 'type', vst.tag_type))
                     FROM jlpt.vocabulary_sense_tag vst JOIN jlpt.tag t ON vst.tag_code = t.code WHERE vst.sense_id = vs.id), '[]'::json) as tags,
                 COALESCE((SELECT json_agg(json_build_object('language', vsg.lang, 'text', vsg.text) ORDER BY vsg.id)
                     FROM jlpt.vocabulary_sense_gloss vsg WHERE vsg.sense_id = vs.id), '[]'::json) as glosses
-            FROM jlpt.vocabulary_sense vs WHERE vs.vocabulary_id = p.id ORDER BY vs.id LIMIT 3
+            FROM top_senses ts
+            JOIN jlpt.vocabulary_sense vs ON vs.id = ts.sense_id
+            ORDER BY vs.id
         ) x),
         -- Compute slug
         (SELECT 
@@ -2708,6 +2770,7 @@ CREATE OR REPLACE FUNCTION jlpt.search_proper_noun_ranked(
     exact_terms TEXT[],                 -- Exact terms for ranking (without wildcards)
     has_user_wildcard BOOLEAN,          -- Whether user used wildcards
     filter_tags TEXT[],                 -- Filter: tags
+    langs TEXT[],                       -- Filter: Languages
     page_size INT DEFAULT 20,
     page_offset INT DEFAULT 0
 )
@@ -2740,6 +2803,11 @@ BEGIN
                 OR EXISTS (SELECT 1 FROM jlpt.proper_noun_kana pk JOIN jlpt.proper_noun_kana_tag pkt ON pk.id = pkt.proper_noun_kana_id WHERE pk.proper_noun_id = p.id AND pkt.tag_code = ANY(filter_tags))
                 OR EXISTS (SELECT 1 FROM jlpt.proper_noun_translation pt JOIN jlpt.proper_noun_translation_type ptt ON pt.id = ptt.translation_id WHERE pt.proper_noun_id = p.id AND ptt.tag_code = ANY(filter_tags))
             )
+            AND (langs IS NULL OR array_length(langs, 1) IS NULL OR EXISTS (
+                SELECT 1 FROM jlpt.proper_noun_translation pt 
+                JOIN jlpt.proper_noun_translation_text ptt ON pt.id = ptt.translation_id 
+                WHERE pt.proper_noun_id = p.id AND ptt.lang = ANY(langs)
+            ))
         ),
         counted AS (SELECT COUNT(*) as cnt FROM base),
         paginated AS (
@@ -2751,7 +2819,67 @@ BEGIN
             ARRAY(SELECT pk.text FROM jlpt.proper_noun_kanji pk WHERE pk.proper_noun_id = p.id),
             ARRAY(SELECT pk.text FROM jlpt.proper_noun_kana pk WHERE pk.proper_noun_id = p.id),
             ARRAY(SELECT ptt.text FROM jlpt.proper_noun_translation pt JOIN jlpt.proper_noun_translation_text ptt ON pt.id = ptt.translation_id WHERE pt.proper_noun_id = p.id),
-            NULL::JSON, NULL::JSON, NULL::JSON, NULL::JSON, NULL::JSON,
+            -- Primary kanji
+            (SELECT row_to_json(x) FROM (
+                SELECT pk.text, COALESCE((
+                    SELECT json_agg(json_build_object('code', t.code, 'description', t.description, 'category', t.category))
+                    FROM jlpt.proper_noun_kanji_tag pkt JOIN jlpt.tag t ON pkt.tag_code = t.code WHERE pkt.proper_noun_kanji_id = pk.id
+                ), '[]'::json) as tags
+                FROM jlpt.proper_noun_kanji pk WHERE pk.proper_noun_id = p.id AND pk.is_primary = true LIMIT 1
+            ) x),
+            -- Primary kana
+            (SELECT row_to_json(x) FROM (
+                SELECT pk.text, pk.applies_to_kanji as "appliesToKanji", COALESCE((
+                    SELECT json_agg(json_build_object('code', t.code, 'description', t.description, 'category', t.category))
+                    FROM jlpt.proper_noun_kana_tag pkt JOIN jlpt.tag t ON pkt.tag_code = t.code WHERE pkt.proper_noun_kana_id = pk.id
+                ), '[]'::json) as tags
+                FROM jlpt.proper_noun_kana pk WHERE pk.proper_noun_id = p.id AND pk.is_primary = true LIMIT 1
+            ) x),
+            -- Other kanji forms
+            (SELECT COALESCE(json_agg(row_to_json(x)), '[]'::json) FROM (
+                SELECT pk.text, COALESCE((
+                    SELECT json_agg(json_build_object('code', t.code, 'description', t.description, 'category', t.category))
+                    FROM jlpt.proper_noun_kanji_tag pkt JOIN jlpt.tag t ON pkt.tag_code = t.code WHERE pkt.proper_noun_kanji_id = pk.id
+                ), '[]'::json) as tags
+                FROM jlpt.proper_noun_kanji pk WHERE pk.proper_noun_id = p.id AND pk.is_primary = false
+            ) x),
+            -- Other kana forms
+            (SELECT COALESCE(json_agg(row_to_json(x)), '[]'::json) FROM (
+                SELECT pk.text, pk.applies_to_kanji as "appliesToKanji", COALESCE((
+                    SELECT json_agg(json_build_object('code', t.code, 'description', t.description, 'category', t.category))
+                    FROM jlpt.proper_noun_kana_tag pkt JOIN jlpt.tag t ON pkt.tag_code = t.code WHERE pkt.proper_noun_kana_id = pk.id
+                ), '[]'::json) as tags
+                FROM jlpt.proper_noun_kana pk WHERE pk.proper_noun_id = p.id AND pk.is_primary = false
+            ) x),
+            -- Translations (top 3 per language)
+            (SELECT COALESCE(json_agg(row_to_json(x)), '[]'::json) FROM (
+                WITH translations_with_langs AS (
+                    SELECT DISTINCT pt.id as translation_id, ptt.lang
+                    FROM jlpt.proper_noun_translation pt
+                    JOIN jlpt.proper_noun_translation_text ptt ON pt.id = ptt.translation_id
+                    WHERE pt.proper_noun_id = p.id
+                ),
+                ranked_translations AS (
+                    SELECT 
+                        translation_id,
+                        lang,
+                        ROW_NUMBER() OVER (PARTITION BY lang ORDER BY translation_id) as translation_rank
+                    FROM translations_with_langs
+                ),
+                top_translations AS (
+                    SELECT DISTINCT translation_id
+                    FROM ranked_translations
+                    WHERE translation_rank <= 3
+                )
+                SELECT 
+                    COALESCE((SELECT json_agg(json_build_object('code', t.code, 'description', t.description, 'category', t.category))
+                        FROM jlpt.proper_noun_translation_type ptt JOIN jlpt.tag t ON ptt.tag_code = t.code WHERE ptt.translation_id = pt.id), '[]'::json) as types,
+                    COALESCE((SELECT json_agg(json_build_object('language', ptt.lang, 'text', ptt.text) ORDER BY ptt.id)
+                        FROM jlpt.proper_noun_translation_text ptt WHERE ptt.translation_id = pt.id), '[]'::json) as translations
+                FROM top_translations tt
+                JOIN jlpt.proper_noun_translation pt ON pt.id = tt.translation_id
+                ORDER BY pt.id
+            ) x),
             -- Compute slug
             (SELECT 
                 CASE 
@@ -2838,10 +2966,21 @@ BEGIN
         WHERE quality > 0
         GROUP BY proper_noun_id
     ),
-    filtered AS (
-        SELECT p.id, p.jmnedict_id, mi.best_quality, mi.locations, mi.shortest_match
+    -- Apply language filter early if specified (optimization: filter before other filters)
+    language_filtered AS (
+        SELECT mi.*
         FROM match_info mi
-        JOIN jlpt.proper_noun p ON p.id = mi.proper_noun_id
+        WHERE (langs IS NULL OR array_length(langs, 1) IS NULL)
+           OR EXISTS (
+               SELECT 1 FROM jlpt.proper_noun_translation pt 
+               JOIN jlpt.proper_noun_translation_text ptt ON pt.id = ptt.translation_id 
+               WHERE pt.proper_noun_id = mi.proper_noun_id AND ptt.lang = ANY(langs)
+           )
+    ),
+    filtered AS (
+        SELECT p.id, p.jmnedict_id, lf.best_quality, lf.locations, lf.shortest_match
+        FROM language_filtered lf
+        JOIN jlpt.proper_noun p ON p.id = lf.proper_noun_id
         WHERE (filter_tags IS NULL OR array_length(filter_tags, 1) IS NULL 
             OR EXISTS (SELECT 1 FROM jlpt.proper_noun_kanji pk JOIN jlpt.proper_noun_kanji_tag pkt ON pk.id = pkt.proper_noun_kanji_id WHERE pk.proper_noun_id = p.id AND pkt.tag_code = ANY(filter_tags))
             OR EXISTS (SELECT 1 FROM jlpt.proper_noun_kana pk JOIN jlpt.proper_noun_kana_tag pkt ON pk.id = pkt.proper_noun_kana_id WHERE pk.proper_noun_id = p.id AND pkt.tag_code = ANY(filter_tags))
@@ -2892,14 +3031,34 @@ BEGIN
             ), '[]'::json) as tags
             FROM jlpt.proper_noun_kana pk WHERE pk.proper_noun_id = p.id AND pk.is_primary = false
         ) x),
-        -- Translations
+        -- Translations (top 3 per language)
         (SELECT COALESCE(json_agg(row_to_json(x)), '[]'::json) FROM (
+            WITH translations_with_langs AS (
+                SELECT DISTINCT pt.id as translation_id, ptt.lang
+                FROM jlpt.proper_noun_translation pt
+                JOIN jlpt.proper_noun_translation_text ptt ON pt.id = ptt.translation_id
+                WHERE pt.proper_noun_id = p.id
+            ),
+            ranked_translations AS (
+                SELECT 
+                    translation_id,
+                    lang,
+                    ROW_NUMBER() OVER (PARTITION BY lang ORDER BY translation_id) as translation_rank
+                FROM translations_with_langs
+            ),
+            top_translations AS (
+                SELECT DISTINCT translation_id
+                FROM ranked_translations
+                WHERE translation_rank <= 3
+            )
             SELECT 
                 COALESCE((SELECT json_agg(json_build_object('code', t.code, 'description', t.description, 'category', t.category))
                     FROM jlpt.proper_noun_translation_type ptt JOIN jlpt.tag t ON ptt.tag_code = t.code WHERE ptt.translation_id = pt.id), '[]'::json) as types,
                 COALESCE((SELECT json_agg(json_build_object('language', ptt.lang, 'text', ptt.text) ORDER BY ptt.id)
                     FROM jlpt.proper_noun_translation_text ptt WHERE ptt.translation_id = pt.id), '[]'::json) as translations
-            FROM jlpt.proper_noun_translation pt WHERE pt.proper_noun_id = p.id ORDER BY pt.id
+            FROM top_translations tt
+            JOIN jlpt.proper_noun_translation pt ON pt.id = tt.translation_id
+            ORDER BY pt.id
         ) x),
         -- Compute slug
         (SELECT 

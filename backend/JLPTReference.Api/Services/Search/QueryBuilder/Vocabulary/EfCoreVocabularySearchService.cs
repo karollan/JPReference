@@ -59,10 +59,10 @@ public class EfCoreVocabularySearchService : IVocabularySearchService
             FirstSenseGlosses = v.Senses
                 .OrderBy(s => s.Id)
                 .Take(1)
-                .SelectMany(s => s.Glosses.Where(g => g.Lang == "eng").Select(g => g.Text))
+                .SelectMany(s => s.Glosses.Select(g => g.Text))
                 .ToList(),
             AllGlosses = v.Senses
-                .SelectMany(s => s.Glosses.Where(g => g.Lang == "eng").Select(g => g.Text))
+                .SelectMany(s => s.Glosses.Select(g => g.Text))
                 .ToList(),
 
             PrimaryKanji = v.Kanji

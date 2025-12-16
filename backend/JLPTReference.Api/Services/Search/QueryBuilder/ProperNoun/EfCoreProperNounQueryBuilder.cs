@@ -99,6 +99,11 @@ public class EfCoreProperNounQueryBuilder : ISearchQueryBuilder<ProperNoun>, IRa
             );
         }
 
+        if (filters.Languages is not null && filters.Languages.Count > 0)
+        {
+            query = query.Where(p => p.Translations.Any(t => t.Texts.Any(txt => filters.Languages.Contains(txt.Lang))));
+        }
+
         return query;
     }
 }

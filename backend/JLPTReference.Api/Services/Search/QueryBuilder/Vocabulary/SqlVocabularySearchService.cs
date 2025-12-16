@@ -56,9 +56,9 @@ public class SqlVocabularySearchService : IVocabularySearchService
                 @hasWildcard,
                 @jlptMin,
                 @jlptMax,
-                @posTags,
                 @commonOnly,
                 @filterTags,
+                @langs,
                 @pageSize,
                 @pageOffset
             )", connection);
@@ -75,14 +75,14 @@ public class SqlVocabularySearchService : IVocabularySearchService
         cmd.Parameters.AddWithValue("@hasWildcard", hasWildcard);
         cmd.Parameters.AddWithValue("@jlptMin", filters.JlptLevels?.Min ?? 0);
         cmd.Parameters.AddWithValue("@jlptMax", filters.JlptLevels?.Max ?? 0);
-        cmd.Parameters.Add(new NpgsqlParameter("@posTags", NpgsqlDbType.Array | NpgsqlDbType.Text) 
-        { 
-            Value = filters.PartOfSpeech?.Count > 0 ? filters.PartOfSpeech.ToArray() : DBNull.Value 
-        });
         cmd.Parameters.AddWithValue("@commonOnly", filters.CommonOnly ?? false);
         cmd.Parameters.Add(new NpgsqlParameter("@filterTags", NpgsqlDbType.Array | NpgsqlDbType.Text) 
         { 
             Value = filters.Tags?.Count > 0 ? filters.Tags.ToArray() : DBNull.Value 
+        });
+        cmd.Parameters.Add(new NpgsqlParameter("@langs", NpgsqlDbType.Array | NpgsqlDbType.Text)
+        {
+            Value = filters.Languages?.Count > 0 ? filters.Languages.ToArray() : DBNull.Value
         });
         cmd.Parameters.AddWithValue("@pageSize", pageSize);
         cmd.Parameters.AddWithValue("@pageOffset", (page - 1) * pageSize);

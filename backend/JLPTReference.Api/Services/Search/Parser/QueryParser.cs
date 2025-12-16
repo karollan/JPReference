@@ -84,6 +84,11 @@ public class QueryParser : IQueryParser {
             });
         }
 
+        if (filters.Languages is null || filters.Languages.Count == 0)
+        {
+            filters.Languages = new List<string> { "eng" };
+        }
+
         return new SearchSpec
         {
             Tokens = tokens,

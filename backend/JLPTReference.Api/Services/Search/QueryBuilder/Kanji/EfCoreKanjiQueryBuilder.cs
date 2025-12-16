@@ -86,7 +86,7 @@ public class EfCoreKanjiQueryBuilder : ISearchQueryBuilder<Kanji>, IRankedQueryB
         query = query.Where(k =>
             patterns.Any(p => EF.Functions.ILike(k.Literal, p)) ||
             k.Readings.Any(r => patterns.Any(p => EF.Functions.ILike(r.Value, p))) ||
-            k.Meanings.Any(m => m.Lang == "eng" && patterns.Any(p => EF.Functions.ILike(m.Value, p)))
+            k.Meanings.Any(m => patterns.Any(p => EF.Functions.ILike(m.Value, p)))
         );
 
         return query;
@@ -126,6 +126,11 @@ public class EfCoreKanjiQueryBuilder : ISearchQueryBuilder<Kanji>, IRankedQueryB
                 k.Frequency >= filters.Frequency.Min &&
                 k.Frequency <= filters.Frequency.Max
             );
+        }
+
+        if (filters.Languages is not null && filters.Languages.Count > 0)
+        {
+            query = query.Where(k => k.Meanings.Any(m => filters.Languages.Contains(m.Lang)));
         }
 
         return query;

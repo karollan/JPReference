@@ -154,6 +154,10 @@ export function isValidFilterSyntax (
       return false
     }
 
+    if (def.valueType === 'string' && def.type === 'enum') {
+      return (def.enumValues as string[])?.includes(state.value) ?? false
+    }
+
     if (def.valueType === 'int') {
       const num = Number.parseInt(state.value, 10)
       if (Number.isNaN(num)) {

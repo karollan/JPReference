@@ -20,13 +20,20 @@ export function validateFilterValue (
     return { valid: false, error: 'Value required' }
   }
 
+  if (def.valueType === 'string' && def.type === 'enum' && !(def.enumValues as string[])?.includes(value)) {
+    return {
+      valid: false,
+      error: `Must be one of: ${def.enumValues?.join(', ')}`,
+    }
+  }
+
   if (def.valueType === 'int') {
     const num = Number.parseInt(value, 10)
     if (Number.isNaN(num)) {
       return { valid: false, error: 'Must be a number' }
     }
 
-    if (def.type === 'enum' && !def.enumValues?.includes(num)) {
+    if (def.type === 'enum' && !(def.enumValues as number[])?.includes(num)) {
       return {
         valid: false,
         error: `Must be one of: ${def.enumValues?.join(', ')}`,

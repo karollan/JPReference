@@ -51,6 +51,7 @@ public class SqlProperNounSearchService : IProperNounSearchService
                 @exactTerms,
                 @hasWildcard,
                 @filterTags,
+                @langs,
                 @pageSize,
                 @pageOffset
             )", connection);
@@ -67,6 +68,10 @@ public class SqlProperNounSearchService : IProperNounSearchService
         cmd.Parameters.Add(new NpgsqlParameter("@filterTags", NpgsqlDbType.Array | NpgsqlDbType.Text)
         {
             Value = filters.Tags?.Count > 0 ? filters.Tags.ToArray() : DBNull.Value
+        });
+        cmd.Parameters.Add(new NpgsqlParameter("@langs", NpgsqlDbType.Array | NpgsqlDbType.Text)
+        {
+            Value = filters.Languages?.Count > 0 ? filters.Languages.ToArray() : DBNull.Value
         });
         cmd.Parameters.AddWithValue("@pageSize", pageSize);
         cmd.Parameters.AddWithValue("@pageOffset", (page - 1) * pageSize);

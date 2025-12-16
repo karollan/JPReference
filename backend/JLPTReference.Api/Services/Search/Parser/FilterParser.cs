@@ -9,13 +9,6 @@ public static class FilterParser
         {
             ParseIntRange(value, (intRange) => filters.JlptLevels = intRange);
         },
-        ["pos"] = (filters, value) =>
-        {
-            if (!string.IsNullOrEmpty(value))
-            {
-                (filters.PartOfSpeech ??= new List<string>()).Add(value);
-            }
-        },
         ["common"] = (filters, value) =>
         {
             filters.CommonOnly = true;
@@ -32,6 +25,13 @@ public static class FilterParser
         {
             ParseIntRange(value, (intRange) => filters.Frequency = intRange);
         },
+        ["lang"] = (filters, value) =>
+        {
+            if (!string.IsNullOrEmpty(value))
+            {
+                (filters.Languages ??= new List<string>()).Add(value);
+            }
+        }
     };
 
     public static bool TryApplyFilter(SearchFilters filters, string key, string value)
