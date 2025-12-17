@@ -10,13 +10,58 @@
     >
       <div class="d-flex justify-space-between align-start mb-2">
         <div class="proper-noun-primary flex-grow-1">
-          <ruby v-if="properNoun.primaryKanji">
-            {{ properNoun.primaryKanji.text }}
-            <rt v-if="properNoun.primaryKana">{{ properNoun.primaryKana.text }}</rt>
-          </ruby>
-          <span v-else class="proper-noun-text">
-            {{ properNoun.primaryKana?.text }}
-          </span>
+          <!-- Primary entry: Kanji with main reading, or Kana-only -->
+          <div class="primary-entry">
+            <template v-if="properNoun.primaryKanji">
+              <ruby>
+                <template v-if="properNoun.primaryKanji.tags?.length > 0">
+                  <v-tooltip location="top">
+                    <template #activator="{ props: tooltipProps }">
+                      <span v-bind="tooltipProps" class="kanji-with-tags">{{ properNoun.primaryKanji.text }}</span>
+                    </template>
+                    <div class="tag-tooltip-content">
+                      <div v-for="(tag, idx) in properNoun.primaryKanji.tags" :key="idx">
+                        • {{ tag.description }}
+                      </div>
+                    </div>
+                  </v-tooltip>
+                </template>
+                <template v-else>
+                  {{ properNoun.primaryKanji.text }}
+                </template>
+                <rt v-if="properNoun.primaryKana">
+                  <template v-if="properNoun.primaryKana.tags?.length > 0">
+                    <v-tooltip location="top">
+                      <template #activator="{ props: tooltipProps }">
+                        <span v-bind="tooltipProps" class="kana-with-tags">{{ properNoun.primaryKana.text }}</span>
+                      </template>
+                      <div class="tag-tooltip-content">
+                        <div v-for="(tag, idx) in properNoun.primaryKana.tags" :key="idx">
+                          • {{ tag.description }}
+                        </div>
+                      </div>
+                    </v-tooltip>
+                  </template>
+                  <template v-else>{{ properNoun.primaryKana.text }}</template>
+                </rt>
+              </ruby>
+            </template>
+            <span v-else class="proper-noun-text">
+              <template v-if="properNoun.primaryKana?.tags?.length > 0">
+                <v-tooltip location="top">
+                  <template #activator="{ props: tooltipProps }">
+                    <span v-bind="tooltipProps" class="kana-with-tags-large">{{ properNoun.primaryKana?.text }}</span>
+                  </template>
+                  <div class="tag-tooltip-content">
+                    <div v-for="(tag, idx) in properNoun.primaryKana?.tags" :key="idx">
+                      • {{ tag.description }}
+                    </div>
+                  </div>
+                </v-tooltip>
+              </template>
+              <template v-else>{{ properNoun.primaryKana?.text }}</template>
+            </span>
+          </div>
         </div>
         <LanguageSelector
           v-if="availableLanguages.length > 0"
@@ -28,33 +73,73 @@
 
       <div class="content-grid">
         <!-- Metadata Column -->
-        <div v-if="hasOtherForms || allTags.length > 0" class="metadata-col">
-          <!-- Tags -->
-          <div v-if="allTags.length > 0" class="tags-section mb-2">
-            <v-chip
-              v-for="(tag, idx) in allTags.slice(0, 5)"
-              :key="idx"
-              class="mr-1 mb-1"
-              size="x-small"
-              variant="outlined"
-            >
-              {{ tag.description }}
-            </v-chip>
-          </div>
-
-          <!-- Other Forms -->
-          <div v-if="hasOtherForms" class="other-forms">
+        <div v-if="hasOtherForms" class="metadata-col">
+          <!-- Other Kanji Forms with Readings -->
+          <div v-if="otherKanjiWithReadings.length > 0" class="other-forms">
             <div class="section-label">Also:</div>
             <div class="forms-list">
-              <span v-for="(form, idx) in properNoun.otherKanjiForms" :key="`kanji-${idx}`" class="form-item mr-2">
-                <ruby v-if="getKanaForKanji(form.text)">
-                  {{ form.text }}
-                  <rt>{{ getKanaForKanji(form.text) }}</rt>
-                </ruby>
-                <span v-else>{{ form.text }}</span>
+              <span
+                v-for="(entry, idx) in otherKanjiWithReadings"
+                :key="`kanji-form-${idx}`"
+                class="form-item mr-2"
+              >
+                <template v-if="entry.kanji.tags?.length > 0">
+                  <v-tooltip location="top">
+                    <template #activator="{ props: tooltipProps }">
+                      <span v-bind="tooltipProps" class="kanji-with-tags">{{ entry.kanji.text }}</span>
+                    </template>
+                    <div class="tag-tooltip-content">
+                      <div v-for="(tag, tidx) in entry.kanji.tags" :key="tidx">
+                        • {{ tag.description }}
+                      </div>
+                    </div>
+                  </v-tooltip>
+                </template>
+                <template v-else>{{ entry.kanji.text }}</template>
+                <span v-if="entry.readings.length > 0" class="reading-text">
+                  (<template v-for="(reading, ridx) in entry.readings" :key="`reading-${ridx}`">
+                    <template v-if="reading.tags && reading.tags.length > 0">
+                      <v-tooltip location="top">
+                        <template #activator="{ props: tooltipProps }">
+                          <span v-bind="tooltipProps" class="kana-with-tags">{{ reading.text }}</span>
+                        </template>
+                        <div class="tag-tooltip-content">
+                          <div v-for="(tag, tidx) in reading.tags" :key="tidx">
+                            • {{ tag.description }}
+                          </div>
+                        </div>
+                      </v-tooltip>
+                    </template>
+                    <template v-else>{{ reading.text }}</template>
+                    <template v-if="ridx < entry.readings.length - 1">、</template>
+                  </template>)
+                </span>
               </span>
-              <span v-for="(form, idx) in properNoun.otherKanaForms" :key="`kana-${idx}`" class="form-item mr-2">
-                {{ form.text }}
+            </div>
+          </div>
+
+          <!-- Standalone Kana Forms (no kanji match) -->
+          <div v-if="standaloneKanaForms.length > 0" class="other-forms mt-1">
+            <div class="section-label">Readings:</div>
+            <div class="forms-list">
+              <span
+                v-for="(kana, idx) in standaloneKanaForms"
+                :key="`kana-form-${idx}`"
+                class="form-item mr-2"
+              >
+                <template v-if="kana.tags && kana.tags.length > 0">
+                  <v-tooltip location="top">
+                    <template #activator="{ props: tooltipProps }">
+                      <span v-bind="tooltipProps" class="kana-with-tags">{{ kana.text }}</span>
+                    </template>
+                    <div class="tag-tooltip-content">
+                      <div v-for="(tag, tidx) in kana.tags" :key="tidx">
+                        • {{ tag.description }}
+                      </div>
+                    </div>
+                  </v-tooltip>
+                </template>
+                <template v-else>{{ kana.text }}</template>
               </span>
             </div>
           </div>
@@ -101,9 +186,11 @@
 </template>
 
 <script lang="ts" setup>
-  import type { ProperNounSummary } from '@/types/ProperNoun'
+  import type { KanaForm, KanjiForm, ProperNounSummary } from '@/types/ProperNoun'
+  import type { KanjiWithReadings } from '@/utils/kanjiKanaForms'
   import { computed, ref } from 'vue'
   import { DEFAULT_LANGUAGE, languageMatches } from '@/utils/language'
+  import { collectAllKanaForms, getStandaloneKanaForms, getUsedKanaTexts, groupKanjiWithReadings } from '@/utils/kanjiKanaForms'
   import LanguageSelector from './LanguageSelector.vue'
 
   const props = defineProps<{
@@ -152,32 +239,32 @@
       || (props.properNoun.otherKanaForms && props.properNoun.otherKanaForms.length > 0)
   })
 
-  function getKanaForKanji (kanjiText: string): string | null {
-    // Find matching kana form
-    const kanaForms = [
-      props.properNoun.primaryKana,
-      ...(props.properNoun.otherKanaForms || []),
-    ]
+  // Get all kana forms for matching (using shared utility)
+  const allKanaForms = computed(() => collectAllKanaForms(
+    props.properNoun.primaryKana,
+    props.properNoun.otherKanaForms,
+  ))
 
-    for (const kana of kanaForms) {
-      if (kana && kana.appliesToKanji && kana.appliesToKanji.includes(kanjiText)) {
-        return kana.text
-      }
-    }
-    return null
-  }
+  // Track which kana forms have been used (matched to a kanji)
+  const usedKanaTexts = computed(() => getUsedKanaTexts(
+    props.properNoun.primaryKanji,
+    props.properNoun.primaryKana,
+    props.properNoun.otherKanjiForms,
+    allKanaForms.value,
+  ))
 
-  const allTags = computed(() => {
-    const tags = [
-      ...props.properNoun.primaryKanji?.tags || [],
-      ...props.properNoun.primaryKana?.tags || [],
-    ]
-    // Remove duplicates based on code
-    const uniqueTags = tags.filter((tag, index, self) =>
-      index === self.findIndex(t => t.code === tag.code),
-    )
-    return uniqueTags
-  })
+  // Group other kanji forms with their applicable kana readings
+  const otherKanjiWithReadings = computed<KanjiWithReadings<KanjiForm, KanaForm>[]>(() =>
+    groupKanjiWithReadings(props.properNoun.otherKanjiForms, allKanaForms.value),
+  )
+
+  // Standalone kana forms - those not matched to any kanji
+  const standaloneKanaForms = computed<KanaForm[]>(() => getStandaloneKanaForms(
+    props.properNoun.primaryKanji,
+    props.properNoun.otherKanjiForms,
+    props.properNoun.otherKanaForms,
+    usedKanaTexts.value,
+  ))
 
   function handleCardClick () {
     const routePath = props.properNoun.slug
@@ -193,16 +280,58 @@
     line-height: 1.2;
     color: rgba(var(--v-theme-on-surface), 0.87);
 
+    .primary-entry {
+        display: flex;
+        align-items: baseline;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+
     ruby {
         rt {
             font-size: 0.7rem;
             color: rgba(var(--v-theme-on-surface), 0.6);
+
+            .kana-with-tags {
+                color: rgb(var(--v-theme-info));
+                cursor: help;
+                border-bottom: 1px dotted rgb(var(--v-theme-info));
+
+                &:hover {
+                    opacity: 0.8;
+                }
+            }
         }
     }
 
     .proper-noun-text {
         display: block;
     }
+
+    .kana-with-tags-large {
+        color: rgb(var(--v-theme-info));
+        cursor: help;
+        border-bottom: 2px dotted rgb(var(--v-theme-info));
+
+        &:hover {
+            opacity: 0.8;
+        }
+    }
+}
+
+.kana-with-tags, .kanji-with-tags {
+    color: rgb(var(--v-theme-info));
+    cursor: help;
+    border-bottom: 1px dotted rgb(var(--v-theme-info));
+
+    &:hover {
+        opacity: 0.8;
+    }
+}
+
+.tag-tooltip-content {
+    max-width: 300px;
+    text-align: left;
 }
 
 .content-grid {
@@ -235,11 +364,9 @@
             font-size: 0.95rem;
             color: rgba(var(--v-theme-on-surface), 0.87);
 
-            ruby {
-                rt {
-                    font-size: 0.6rem;
-                    color: rgba(var(--v-theme-on-surface), 0.6);
-                }
+            .reading-text {
+                color: rgba(var(--v-theme-on-surface), 0.6);
+                font-size: 0.85rem;
             }
         }
     }

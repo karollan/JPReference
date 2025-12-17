@@ -52,11 +52,11 @@
             <div class="d-flex flex-column flex-md-row align-md-end justify-space-between">
               <div class="main-term">
                 <h1 class="display-term font-weight-bold text-h2 text-md-h1 mb-2">
-                  <ruby v-if="primaryKanji">
-                    {{ primaryKanji }}
-                    <rt class="text-h5 font-weight-medium text-primary">{{ primaryKana }}</rt>
+                  <ruby v-if="selectedKanjiText">
+                    {{ selectedKanjiText }}
+                    <rt class="text-h5 font-weight-medium text-primary">{{ selectedKanaText }}</rt>
                   </ruby>
-                  <span v-else>{{ primaryKana }}</span>
+                  <span v-else>{{ selectedKanaText || vocabulary.kanaForms?.[0]?.text }}</span>
                 </h1>
               </div>
 
@@ -73,7 +73,7 @@
                 </div>
                 <div class="badges d-flex gap-2 mb-2">
                   <v-chip
-                    v-if="isCommon"
+                    v-if="selectedIsCommon"
                     color="success"
                     label
                     variant="flat"
@@ -221,27 +221,45 @@
                       Kanji Forms
                     </div>
                     <div class="d-flex flex-wrap gap-2">
-                      <v-chip
+                      <v-tooltip
                         v-for="(form, idx) in vocabulary.kanjiForms"
                         :key="`kf-${idx}`"
-                        class="mr-1 mb-1 font-jp"
-                        :color="form.isCommon ? 'secondary' : undefined"
-                        size="small"
-                        :variant="form.text === primaryKanji ? 'flat' : 'outlined'"
+                        :disabled="!form.tags?.length && !form.isCommon"
+                        location="top"
                       >
-                        {{ form.text }}
-                        <template
-                          v-if="form.isCommon"
-                          #append
-                        >
-                          <v-icon
-                            class="ml-1"
-                            icon="mdi-check-circle"
-                            size="x-small"
-                            start
-                          />
+                        <template #activator="{ props: tooltipProps }">
+                          <v-chip
+                            v-bind="tooltipProps"
+                            class="mr-1 mb-1 font-jp kanji-chip"
+                            :class="{ 'chip-with-tags': form.tags?.length > 0 }"
+                            :color="form.text === selectedKanjiText ? 'primary' : (form.isCommon ? 'secondary' : undefined)"
+                            size="small"
+                            :variant="form.text === selectedKanjiText ? 'flat' : 'outlined'"
+                            @click.stop="selectKanji(form.text)"
+                          >
+                            {{ form.text }}
+                            <template
+                              v-if="form.isCommon"
+                              #append
+                            >
+                              <v-icon
+                                class="ml-1"
+                                icon="mdi-check-circle"
+                                size="x-small"
+                              />
+                            </template>
+                          </v-chip>
                         </template>
-                      </v-chip>
+                        <div class="tag-tooltip-content">
+                          <div v-if="form.isCommon" class="mb-1">
+                            <v-icon icon="mdi-check-circle" size="x-small" class="mr-1" />
+                            Common word
+                          </div>
+                          <div v-for="(tag, tIdx) in form.tags" :key="tIdx">
+                            • {{ tag.description }}
+                          </div>
+                        </div>
+                      </v-tooltip>
                       <span
                         v-if="!vocabulary.kanjiForms?.length"
                         class="text-caption text-disabled"
@@ -254,16 +272,48 @@
                       Kana Forms
                     </div>
                     <div class="d-flex flex-wrap gap-2">
-                      <v-chip
+                      <v-tooltip
                         v-for="(form, idx) in vocabulary.kanaForms"
                         :key="`kn-${idx}`"
-                        class="mr-1 mb-1 font-jp"
-                        :color="form.isCommon ? 'secondary' : undefined"
-                        size="small"
-                        :variant="form.text === primaryKana ? 'flat' : 'outlined'"
+                        :disabled="!form.tags?.length && !form.isCommon"
+                        location="top"
                       >
-                        {{ form.text }}
-                      </v-chip>
+                        <template #activator="{ props: tooltipProps }">
+                          <v-chip
+                            v-bind="tooltipProps"
+                            class="mr-1 mb-1 font-jp"
+                            :class="{
+                              'chip-with-tags': form.tags?.length > 0,
+                              'kana-chip-clickable': !hasKanjiForms
+                            }"
+                            :color="isKanaMatching(form.text) ? 'primary' : (form.isCommon ? 'secondary' : undefined)"
+                            size="small"
+                            :variant="isKanaMatching(form.text) ? 'flat' : 'outlined'"
+                            @click.stop="selectKana(form.text)"
+                          >
+                            {{ form.text }}
+                            <template
+                              v-if="form.isCommon"
+                              #append
+                            >
+                              <v-icon
+                                class="ml-1"
+                                icon="mdi-check-circle"
+                                size="x-small"
+                              />
+                            </template>
+                          </v-chip>
+                        </template>
+                        <div class="tag-tooltip-content">
+                          <div v-if="form.isCommon" class="mb-1">
+                            <v-icon icon="mdi-check-circle" size="x-small" class="mr-1" />
+                            Common word
+                          </div>
+                          <div v-for="(tag, tIdx) in form.tags" :key="tIdx">
+                            • {{ tag.description }}
+                          </div>
+                        </div>
+                      </v-tooltip>
                     </div>
                   </div>
                 </v-card>
@@ -313,7 +363,7 @@
 </template>
 
 <script setup lang="ts">
-  import type { SenseDetails, SenseExample, SenseGloss } from '@/types/Vocabulary'
+  import type { KanaForm, KanjiForm, SenseDetails, SenseExample, SenseGloss } from '@/types/Vocabulary'
   import { computed, onMounted, ref, watch } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
   import LanguageSelector from '@/components/search/LanguageSelector.vue'
@@ -324,6 +374,9 @@
   const router = useRouter()
   const store = useVocabularyStore()
   const selectedLanguage = ref<string>(DEFAULT_LANGUAGE)
+
+  // Selection state - for kanji words we select kanji, for kana-only we select kana
+  const selectedFormText = ref<string | null>(null)
 
   const term = computed(() => (route.params as any).term as string)
 
@@ -339,48 +392,143 @@
   })
 
   watch(() => term.value, () => {
+    selectedFormText.value = null
     loadData()
   })
 
   const vocabulary = computed(() => store.vocabularyDetails)
 
-  // Primary Display Logic
-  const primaryKanji = computed(() => {
-    const v = vocabulary.value
-    if (!v) return ''
-    if (v.kanjiForms?.length > 0) {
-      return v.kanjiForms[0]?.text
-    }
-    return ''
+  // Determine if this is a kanji-based word or kana-only word
+  const hasKanjiForms = computed(() => {
+    return vocabulary.value?.kanjiForms && vocabulary.value.kanjiForms.length > 0
   })
 
-  const primaryKana = computed(() => {
+  // Initialize selection when vocabulary loads
+  // Initialize selection when vocabulary loads
+  watch(() => vocabulary.value, v => {
+    if (!v) return
+
+    // Check if current selection is valid for this newly loaded vocabulary
+    let isValidSelection = false
+    if (selectedFormText.value) {
+      const inKanji = v.kanjiForms?.some(k => k.text === selectedFormText.value)
+      // Only check kana forms if we are in kana-only mode or if we support mixed selection (though currently we separate them)
+      // But purely for validity, if it exists in either, it might be valid.
+      // However, our logic separates them.
+      // If hasKanjiForms is true, we expect selection to be a kanji form.
+      // If hasKanjiForms is false, we expect selection to be a kana form.
+      
+      if (v.kanjiForms?.length > 0) {
+          isValidSelection = v.kanjiForms.some(k => k.text === selectedFormText.value)
+      } else {
+          isValidSelection = v.kanaForms?.some(k => k.text === selectedFormText.value) ?? false
+      }
+    }
+
+    // If selection is missing or invalid for this term, set default
+    if (!selectedFormText.value || !isValidSelection) {
+      if (v.kanjiForms?.length > 0) {
+        // Kanji exists - select first kanji form
+        selectedFormText.value = v.kanjiForms[0]?.text ?? ''
+      } else if (v.kanaForms?.length > 0) {
+        // Kana-only - select first kana form (kana is the "form")
+        selectedFormText.value = v.kanaForms[0]?.text ?? ''
+      } else {
+        selectedFormText.value = null
+      }
+    }
+  }, { immediate: true })
+
+  // For kanji words: get the selected kanji form
+  const selectedKanjiForm = computed<KanjiForm | null>(() => {
     const v = vocabulary.value
-    if (!v) return ''
-    // Find kana that applies to primary kanji
-    if (primaryKanji.value) {
-      const match = v.kanaForms.find(k =>
-        !k.appliesToKanji
-        || k.appliesToKanji.length === 0
-        || k.appliesToKanji.includes('*')
-        || k.appliesToKanji.includes(primaryKanji.value as string),
-      )
-      if (match) return match.text
-    }
-    // Fallback to first kana
-    if (v.kanaForms && v.kanaForms.length > 0) {
-      return v.kanaForms[0]?.text
-    }
-    return ''
+    if (!v || !hasKanjiForms.value || !selectedFormText.value) return null
+    return v.kanjiForms?.find(k => k.text === selectedFormText.value) || null
   })
 
-  const isCommon = computed(() => {
+  // For kana-only words: get the selected kana form
+  const selectedKanaFormOnly = computed<KanaForm | null>(() => {
     const v = vocabulary.value
-    if (!v) return false
-    const pKanji = v.kanjiForms?.find(k => k.text === primaryKanji.value)
-    const pKana = v.kanaForms.find(k => k.text === primaryKana.value)
-    return pKanji?.isCommon || pKana?.isCommon || false
+    if (!v || hasKanjiForms.value || !selectedFormText.value) return null
+    return v.kanaForms?.find(k => k.text === selectedFormText.value) || null
   })
+
+  // Get kana forms that match the selected kanji (for kanji words)
+  const matchingKanaForms = computed<KanaForm[]>(() => {
+    const v = vocabulary.value
+    if (!v) return []
+    if (!hasKanjiForms.value) {
+      // Kana-only: no "matching" concept, just return empty
+      return []
+    }
+    if (!selectedFormText.value) {
+      // No selection, match all
+      return v.kanaForms || []
+    }
+    return v.kanaForms.filter(kana => {
+      if (!kana.appliesToKanji || kana.appliesToKanji.length === 0) return true
+      return kana.appliesToKanji.includes('*') || kana.appliesToKanji.includes(selectedFormText.value!)
+    })
+  })
+
+  // Get the display text for the header (kanji text or kana text)
+  const selectedKanjiText = computed(() => {
+    if (hasKanjiForms.value) {
+      return selectedFormText.value
+    }
+    return null // No kanji to display
+  })
+
+  // Get the kana reading to display (for kanji words: first matching reading, for kana-only: selected kana)
+  const selectedKanaText = computed(() => {
+    if (hasKanjiForms.value) {
+      // Show first matching kana reading
+      if (matchingKanaForms.value.length > 0) {
+        return matchingKanaForms.value[0]?.text ?? ''
+      }
+      return ''
+    }
+    // Kana-only: the selected form IS the kana
+    return selectedFormText.value || vocabulary.value?.kanaForms?.[0]?.text || ''
+  })
+
+  // Determine if a kana form is selected/matching
+  function isKanaMatching (kanaText: string): boolean {
+    if (hasKanjiForms.value) {
+      // Kanji word: check if this kana matches the selected kanji
+      return matchingKanaForms.value.some(k => k.text === kanaText)
+    }
+    // Kana-only: check if this IS the selected form
+    return kanaText === selectedFormText.value
+  }
+
+  // Display the isCommon status based on selection
+  const selectedIsCommon = computed(() => {
+    if (hasKanjiForms.value) {
+      if (selectedKanjiForm.value?.isCommon) return true
+      const matchingKana = matchingKanaForms.value[0]
+      return matchingKana?.isCommon || false
+    }
+    // Kana-only
+    return selectedKanaFormOnly.value?.isCommon || false
+  })
+
+  // Click handler for kanji chips
+  function selectKanji (kanjiText: string) {
+    selectedFormText.value = kanjiText
+  }
+
+  // Click handler for kana chips (only for kana-only words)
+  function selectKana (kanaText: string) {
+    if (!hasKanjiForms.value) {
+      selectedFormText.value = kanaText
+    }
+  }
+
+  // Build tooltip content for tags
+  function getTagTooltipContent (tags: { description: string }[]): string {
+    return tags.map(t => `• ${t.description}`).join('\n')
+  }
 
   // Language Handling
   function getLanguagesFromSense (sense: SenseDetails, languages: Set<string>) {
@@ -415,19 +563,36 @@
     selectedLanguage.value = lang
   }
 
+  // Check if a sense applies to the selected form
+  function senseAppliesToSelection (sense: SenseDetails): boolean {
+    const kanjiMatches = !sense.appliesToKanji
+      || sense.appliesToKanji.length === 0
+      || sense.appliesToKanji.includes('*')
+      || Boolean(selectedKanjiText.value && sense.appliesToKanji.includes(selectedKanjiText.value))
+
+    const kanaMatches = !sense.appliesToKana
+      || sense.appliesToKana.length === 0
+      || sense.appliesToKana.includes('*')
+      || Boolean(selectedKanaText.value && sense.appliesToKana.includes(selectedKanaText.value))
+
+    return Boolean(kanjiMatches) && Boolean(kanaMatches)
+  }
+
   const filteredSenses = computed(() => {
     const v = vocabulary.value
     if (!v || !v.senses) return []
 
-    return v.senses.map(sense => {
-      const hasGlosses = sense.glosses?.some(g => languageMatches(g.language, selectedLanguage.value))
-      if (!hasGlosses) return null
+    return v.senses
+      .filter(sense => senseAppliesToSelection(sense))
+      .map(sense => {
+        const hasGlosses = sense.glosses?.some(g => languageMatches(g.language, selectedLanguage.value))
+        if (!hasGlosses) return null
 
-      return {
-        ...sense,
-        glosses: sense.glosses.filter(g => languageMatches(g.language, selectedLanguage.value)),
-      }
-    }).filter((s): s is SenseDetails => s !== null)
+        return {
+          ...sense,
+          glosses: sense.glosses.filter(g => languageMatches(g.language, selectedLanguage.value)),
+        }
+      }).filter((s): s is SenseDetails => s !== null)
   })
 
   function getGlossText (sense: SenseDetails) {
@@ -485,5 +650,38 @@
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+// Interactive chip styles
+.kanji-chip {
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  }
+}
+
+.chip-with-tags {
+  border-style: dashed !important;
+}
+
+// Clickable kana chips for kana-only words
+.kana-chip-clickable {
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  }
+}
+
+.tag-tooltip-content {
+  max-width: 300px;
+  text-align: left;
+  font-size: 0.85rem;
+  line-height: 1.4;
 }
 </style>

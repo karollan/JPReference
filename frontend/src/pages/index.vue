@@ -22,6 +22,7 @@
           v-model:search-query="searchQuery"
           placeholder="Search for vocabulary or kanji"
           @clear="searchQuery = ''"
+          @search="handleSearch"
         />
       </v-col>
       <v-col
@@ -33,7 +34,7 @@
           color="primary"
           :disabled="disabled"
           elevation="0"
-          :to="`/search/?query=${encodeURIComponent(searchQuery)}`"
+          @click="handleSearch"
         >
           Explore
         </v-btn>
@@ -43,9 +44,19 @@
 </template>
 
 <script lang="ts" setup>
+  const router = useRouter()
   const searchQuery = ref('')
 
   const disabled = computed(() => searchQuery.value.trim().length === 0)
+  function handleSearch () {
+    if (disabled.value) return
+    router.push({
+      path: '/search',
+      query: {
+        query: searchQuery.value
+      }
+    })
+  }
 </script>
 <style lang="scss" scoped>
 .home {
