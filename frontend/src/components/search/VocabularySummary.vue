@@ -234,12 +234,11 @@
   import type { KanaForm, KanjiForm, VocabularySummary } from '@/types/Vocabulary'
   import { computed, ref } from 'vue'
   import { DEFAULT_LANGUAGE, languageMatches } from '@/utils/language'
+  import { collectAllKanaForms, getStandaloneKanaForms, getUsedKanaTexts, groupKanjiWithReadings } from '@/utils/kanjiKanaForms'
   import LanguageSelector from './LanguageSelector.vue'
 
-  interface KanjiWithReadings {
-    kanji: KanjiForm
-    readings: KanaForm[]
-  }
+  // Import the shared interface
+  import type { KanjiWithReadings } from '@/utils/kanjiKanaForms'
 
   const props = defineProps<{
     vocabulary: VocabularySummary
@@ -288,82 +287,32 @@
     return props.vocabulary.primaryKana?.tags || []
   })
 
-  // Get all kana forms for matching
-  const allKanaForms = computed(() => {
-    return [
-      ...(props.vocabulary.primaryKana ? [props.vocabulary.primaryKana] : []),
-      ...(props.vocabulary.otherKanaForms || []),
-    ]
-  })
+  // Get all kana forms for matching (using shared utility)
+  const allKanaForms = computed(() => collectAllKanaForms(
+    props.vocabulary.primaryKana,
+    props.vocabulary.otherKanaForms,
+  ))
 
   // Track which kana forms have been used (matched to a kanji)
-  const usedKanaTexts = computed(() => {
-    const used = new Set<string>()
-
-    // Primary kana is always used with primary kanji
-    if (props.vocabulary.primaryKanji && props.vocabulary.primaryKana) {
-      used.add(props.vocabulary.primaryKana.text)
-    }
-
-    // Mark kana used by other kanji forms
-    for (const kanjiForm of (props.vocabulary.otherKanjiForms || [])) {
-      for (const kana of allKanaForms.value) {
-        if (kana.appliesToKanji?.includes(kanjiForm.text) || kana.appliesToKanji?.includes('*')) {
-          used.add(kana.text)
-        }
-      }
-    }
-
-    return used
-  })
+  const usedKanaTexts = computed(() => getUsedKanaTexts(
+    props.vocabulary.primaryKanji,
+    props.vocabulary.primaryKana,
+    props.vocabulary.otherKanjiForms,
+    allKanaForms.value,
+  ))
 
   // Group other kanji forms with their applicable kana readings
-  const otherKanjiWithReadings = computed<KanjiWithReadings[]>(() => {
-    if (!props.vocabulary.otherKanjiForms) return []
-
-    return props.vocabulary.otherKanjiForms.map(kanji => {
-      const readings = allKanaForms.value.filter(kana => {
-        // Check if this kana applies to this kanji
-        if (!kana.appliesToKanji) return false
-        return kana.appliesToKanji.includes(kanji.text) || kana.appliesToKanji.includes('*')
-      })
-
-      return {
-        kanji,
-        readings,
-      }
-    })
-  })
+  const otherKanjiWithReadings = computed<KanjiWithReadings<KanjiForm, KanaForm>[]>(() =>
+    groupKanjiWithReadings(props.vocabulary.otherKanjiForms, allKanaForms.value),
+  )
 
   // Standalone kana forms - those not matched to any kanji
-  const standaloneKanaForms = computed<KanaForm[]>(() => {
-    // If there's no primary kanji, we don't show standalone kana separately
-    // because the main entry is already kana-based
-    if (!props.vocabulary.primaryKanji) return []
-
-    // Get other kana forms that don't apply to any kanji
-    const otherKana = props.vocabulary.otherKanaForms || []
-
-    return otherKana.filter(kana => {
-      // Skip if already used (matched to a kanji)
-      if (usedKanaTexts.value.has(kana.text)) return false
-
-      // Check if it applies to any kanji form (including primary)
-      const allKanji = [
-        props.vocabulary.primaryKanji?.text,
-        ...(props.vocabulary.otherKanjiForms?.map(k => k.text) || []),
-      ].filter(Boolean) as string[]
-
-      // If appliesToKanji contains "*", it's used for all kanji so not standalone
-      if (kana.appliesToKanji?.includes('*')) return false
-
-      // Check if it applies to any kanji
-      const matchesAnyKanji = kana.appliesToKanji?.some(k => allKanji.includes(k)) ?? false
-
-      // It's standalone if it doesn't match any kanji
-      return !matchesAnyKanji
-    })
-  })
+  const standaloneKanaForms = computed<KanaForm[]>(() => getStandaloneKanaForms(
+    props.vocabulary.primaryKanji,
+    props.vocabulary.otherKanjiForms,
+    props.vocabulary.otherKanaForms,
+    usedKanaTexts.value,
+  ))
 
   function handleCardClick () {
     const routePath = props.vocabulary.slug
@@ -417,7 +366,7 @@
     }
 }
 
-.kana-with-tags {
+.kana-with-tags, .kanji-with-tags {
     color: rgb(var(--v-theme-info));
     cursor: help;
     border-bottom: 1px dotted rgb(var(--v-theme-info));

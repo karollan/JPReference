@@ -52,11 +52,11 @@
             <div class="d-flex flex-column flex-md-row align-md-end justify-space-between">
               <div class="main-term">
                 <h1 class="display-term font-weight-bold text-h2 text-md-h1 mb-2">
-                  <ruby v-if="primaryKanji">
-                    {{ primaryKanji }}
-                    <rt class="text-h5 font-weight-medium text-primary">{{ primaryKana }}</rt>
+                  <ruby v-if="selectedKanjiText">
+                    {{ selectedKanjiText }}
+                    <rt class="text-h5 font-weight-medium text-primary">{{ selectedKanaText }}</rt>
                   </ruby>
-                  <span v-else>{{ primaryKana }}</span>
+                  <span v-else>{{ selectedKanaText }}</span>
                 </h1>
               </div>
 
@@ -165,15 +165,31 @@
                       Kanji Forms
                     </div>
                     <div class="d-flex flex-wrap gap-2">
-                      <v-chip
+                      <v-tooltip
                         v-for="(form, idx) in properNoun.kanjiForms"
                         :key="`kf-${idx}`"
-                        class="mr-1 mb-1 font-jp"
-                        size="small"
-                        :variant="form.text === primaryKanji ? 'flat' : 'outlined'"
+                        :disabled="!form.tags?.length"
+                        location="top"
                       >
-                        {{ form.text }}
-                      </v-chip>
+                        <template #activator="{ props: tooltipProps }">
+                          <v-chip
+                            v-bind="tooltipProps"
+                            class="mr-1 mb-1 font-jp kanji-chip"
+                            :class="{ 'chip-with-tags': form.tags?.length > 0 }"
+                            :color="selectedKanjiText === form.text ? 'primary' : undefined"
+                            size="small"
+                            :variant="selectedKanjiText === form.text ? 'flat' : 'outlined'"
+                            @click.stop="selectKanji(form.text)"
+                          >
+                            {{ form.text }}
+                          </v-chip>
+                        </template>
+                        <div class="tag-tooltip-content">
+                          <div v-for="(tag, tIdx) in form.tags" :key="tIdx">
+                            • {{ tag.description }}
+                          </div>
+                        </div>
+                      </v-tooltip>
                       <span
                         v-if="!properNoun.kanjiForms?.length"
                         class="text-caption text-disabled"
@@ -186,15 +202,34 @@
                       Kana Forms
                     </div>
                     <div class="d-flex flex-wrap gap-2">
-                      <v-chip
+                      <v-tooltip
                         v-for="(form, idx) in properNoun.kanaForms"
                         :key="`kn-${idx}`"
-                        class="mr-1 mb-1 font-jp"
-                        size="small"
-                        :variant="form.text === primaryKana ? 'flat' : 'outlined'"
+                        :disabled="!form.tags?.length"
+                        location="top"
                       >
-                        {{ form.text }}
-                      </v-chip>
+                        <template #activator="{ props: tooltipProps }">
+                          <v-chip
+                            v-bind="tooltipProps"
+                            class="mr-1 mb-1 font-jp"
+                            :class="{
+                              'chip-with-tags': form.tags?.length > 0,
+                              'kana-chip-clickable': !hasKanjiForms
+                            }"
+                            :color="isKanaMatching(form.text) ? 'primary' : undefined"
+                            size="small"
+                            :variant="isKanaMatching(form.text) ? 'flat' : 'outlined'"
+                            @click.stop="selectKana(form.text)"
+                          >
+                            {{ form.text }}
+                          </v-chip>
+                        </template>
+                        <div class="tag-tooltip-content">
+                          <div v-for="(tag, tIdx) in form.tags" :key="tIdx">
+                            • {{ tag.description }}
+                          </div>
+                        </div>
+                      </v-tooltip>
                     </div>
                   </div>
                 </v-card>
@@ -244,7 +279,7 @@
 </template>
 
 <script setup lang="ts">
-  import type { TranslationDetails } from '@/types/ProperNoun'
+  import type { KanaForm, KanjiForm, TranslationDetails } from '@/types/ProperNoun'
   import { computed, onMounted, ref, watch } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
   import LanguageSelector from '@/components/search/LanguageSelector.vue'
@@ -255,6 +290,9 @@
   const router = useRouter()
   const store = useProperNounStore()
   const selectedLanguage = ref<string>(DEFAULT_LANGUAGE)
+
+  // Selection state - for kanji words we select kanji, for kana-only we select kana
+  const selectedFormText = ref<string | null>(null)
 
   const term = computed(() => (route.params as any).term as string)
 
@@ -270,40 +308,124 @@
   })
 
   watch(() => term.value, () => {
+    selectedFormText.value = null
     loadData()
   })
 
   const properNoun = computed(() => store.properNounDetails)
 
-  // Primary Display Logic
-  const primaryKanji = computed(() => {
-    const p = properNoun.value
-    if (!p) return ''
-    if (p.kanjiForms && p.kanjiForms.length > 0) {
-      return p.kanjiForms[0]?.text ?? ''
-    }
-    return ''
+  // Determine if this is a kanji-based word or kana-only word
+  const hasKanjiForms = computed(() => {
+    return properNoun.value?.kanjiForms && properNoun.value.kanjiForms.length > 0
   })
 
-  const primaryKana = computed(() => {
+  // Initialize selection when proper noun loads
+  watch(() => properNoun.value, p => {
+    if (!p) return
+
+    // Check if current selection is valid for this newly loaded proper noun
+    let isValidSelection = false
+    if (selectedFormText.value) {
+      if (p.kanjiForms?.length > 0) {
+        isValidSelection = p.kanjiForms.some(k => k.text === selectedFormText.value)
+      } else {
+        isValidSelection = p.kanaForms?.some(k => k.text === selectedFormText.value) ?? false
+      }
+    }
+
+    // If selection is missing or invalid for this term, set default
+    if (!selectedFormText.value || !isValidSelection) {
+      if (p.kanjiForms?.length > 0) {
+        // Kanji exists - select first kanji form
+        selectedFormText.value = p.kanjiForms[0]?.text ?? ''
+      } else if (p.kanaForms?.length > 0) {
+        // Kana-only - select first kana form (kana is the "form")
+        selectedFormText.value = p.kanaForms[0]?.text ?? ''
+      } else {
+        selectedFormText.value = null
+      }
+    }
+  }, { immediate: true })
+
+  // For kanji words: get the selected kanji form
+  const selectedKanjiForm = computed<KanjiForm | null>(() => {
     const p = properNoun.value
-    if (!p) return ''
-    // Find kana that applies to primary kanji
-    if (primaryKanji.value) {
-      const match = p.kanaForms.find(k =>
-        !k.appliesToKanji
-        || k.appliesToKanji.length === 0
-        || k.appliesToKanji.includes('*')
-        || k.appliesToKanji.includes(primaryKanji.value as string),
-      )
-      if (match) return match.text
-    }
-    // Fallback to first kana
-    if (p.kanaForms && p.kanaForms.length > 0) {
-      return p.kanaForms[0]?.text ?? ''
-    }
-    return ''
+    if (!p || !hasKanjiForms.value || !selectedFormText.value) return null
+    return p.kanjiForms?.find(k => k.text === selectedFormText.value) || null
   })
+
+  // For kana-only words: get the selected kana form
+  const selectedKanaFormOnly = computed<KanaForm | null>(() => {
+    const p = properNoun.value
+    if (!p || hasKanjiForms.value || !selectedFormText.value) return null
+    return p.kanaForms?.find(k => k.text === selectedFormText.value) || null
+  })
+
+  // Get kana forms that match the selected kanji (for kanji words)
+  const matchingKanaForms = computed<KanaForm[]>(() => {
+    const p = properNoun.value
+    if (!p) return []
+    if (!hasKanjiForms.value) {
+      // Kana-only: no "matching" concept, just return empty
+      return []
+    }
+    if (!selectedFormText.value) {
+      // No selection, match all
+      return p.kanaForms || []
+    }
+    return p.kanaForms.filter(kana => {
+      if (!kana.appliesToKanji || kana.appliesToKanji.length === 0) return true
+      return kana.appliesToKanji.includes('*') || kana.appliesToKanji.includes(selectedFormText.value!)
+    })
+  })
+
+  // Get the display text for the header (kanji text or kana text)
+  const selectedKanjiText = computed(() => {
+    if (hasKanjiForms.value) {
+      return selectedFormText.value
+    }
+    return null // No kanji to display
+  })
+
+  // Get the kana reading to display (for kanji words: first matching reading, for kana-only: selected kana)
+  const selectedKanaText = computed(() => {
+    if (hasKanjiForms.value) {
+      // Show first matching kana reading
+      if (matchingKanaForms.value.length > 0) {
+        return matchingKanaForms.value[0]?.text ?? ''
+      }
+      return ''
+    }
+    // Kana-only: the selected form IS the kana
+    return selectedFormText.value || properNoun.value?.kanaForms?.[0]?.text || ''
+  })
+
+  // Determine if a kana form is selected/matching
+  function isKanaMatching (kanaText: string): boolean {
+    if (hasKanjiForms.value) {
+      // Kanji word: check if this kana matches the selected kanji
+      return matchingKanaForms.value.some(k => k.text === kanaText)
+    }
+    // Kana-only: check if this IS the selected form
+    return kanaText === selectedFormText.value
+  }
+
+  // Click handler for kanji chips
+  function selectKanji (kanjiText: string) {
+    selectedFormText.value = kanjiText
+  }
+
+  // Click handler for kana chips (only for kana-only words)
+  function selectKana (kanaText: string) {
+    if (!hasKanjiForms.value) {
+      selectedFormText.value = kanaText
+    }
+  }
+
+  // Build tooltip content for tags
+  function getTagTooltipContent (tags: { description: string }[]): string {
+    return tags.map(t => `• ${t.description}`).join('\n')
+  }
 
   // Language Handling
   function getLanguagesFromTranslation (translation: TranslationDetails, languages: Set<string>) {
@@ -390,5 +512,38 @@
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+// Interactive chip styles
+.kanji-chip {
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  }
+}
+
+.chip-with-tags {
+  border-style: dashed !important;
+}
+
+// Clickable kana chips for kana-only words
+.kana-chip-clickable {
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  }
+}
+
+.tag-tooltip-content {
+  max-width: 300px;
+  text-align: left;
+  font-size: 0.85rem;
+  line-height: 1.4;
 }
 </style>

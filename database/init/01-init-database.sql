@@ -2378,15 +2378,17 @@ BEGIN
         GROUP BY kanji_id
     ),
     -- Apply language filter: for meaning matches, we already filtered by language in meaning_matches.
-    -- For kanji/reading matches (Japanese text), we still want to show them but require term has content in filter languages.
+    -- For kanji/reading matches (Japanese text), we always show them - the language filter only affects
+    -- which meanings can match, not whether to exclude kanji that lack meanings in filter languages.
     language_filtered AS (
         SELECT mi.*
         FROM match_info mi
         WHERE (langs IS NULL OR array_length(langs, 1) IS NULL)
-           -- If match came only from meanings (bit 64), we already filtered in meaning_matches so it's valid
-           -- If match came from kanji/readings too (bits 16 or 32), check language existence
-           OR (mi.locations & 64 = 64)  -- Has meaning match (already language-filtered)
-           OR ((mi.locations & (16 | 32)) != 0 AND EXISTS (SELECT 1 FROM jlpt.kanji_meaning km WHERE km.kanji_id = mi.kanji_id AND km.lang = ANY(langs)))
+           -- If match came from meanings (bit 64), it was already filtered by language in meaning_matches
+           OR (mi.locations & 64 = 64)
+           -- If match came from kanji literal or readings (bits 16 or 32), always include them
+           -- These are Japanese text matches - don't filter by meaning language availability
+           OR (mi.locations & (16 | 32)) != 0
     ),
     -- Apply other filters
     filtered AS (
