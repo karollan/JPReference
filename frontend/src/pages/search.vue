@@ -18,6 +18,7 @@
           <SearchAutocomplete
             v-model:search-query="searchQuery"
             @clear="searchQuery = ''"
+            @search="handleEnterSearch"
           />
 
           <v-tooltip location="bottom">
@@ -426,6 +427,12 @@
     await loadInitialData()
   }, 500)
 
+  async function handleEnterSearch () {
+    // Cancel any pending debounced search
+    // calling loadInitialData directly will abort previous store request
+    await loadInitialData()
+  }
+
   function updateUrl () {
     const query: any = {}
 
@@ -493,6 +500,13 @@
 
     if (!newQuery.trim()) {
       searchStore.clearResults()
+      return
+    }
+
+    // Check for uncommitted filters (e.g. "#jlpt:1" without trailing space)
+    const hasUncommittedFilter = /(^|\s)#[^\s]*$/.test(newQuery)
+    
+    if (hasUncommittedFilter) {
       return
     }
 

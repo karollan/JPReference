@@ -27,12 +27,15 @@ export const useSearchStore = defineStore('search', () => {
   const currentPage = ref<number>(1)
   const pageSize = ref<number>(50)
 
+  let controller: AbortController | null = null;
+
   // Actions
   const reset = () => {
     error.value = null
   }
 
   const clearResults = () => {
+    abortSearch()
     kanjiList.value = undefined
     vocabularyList.value = undefined
     properNounList.value = undefined
@@ -67,7 +70,13 @@ export const useSearchStore = defineStore('search', () => {
         return
       }
 
-      const response = await SearchService.fetchGlobalSearch(query, 1, pageSize.value)
+      abortSearch()
+      controller = new AbortController();
+      const signal = controller.signal;
+
+      const response = await SearchService.fetchGlobalSearch(query, 1, pageSize.value, signal)
+
+      if (signal.aborted) return
 
       // Validate response structure
       if (!response?.vocabularyResults || !response?.properNounResults || !response?.kanjiResults) {
@@ -90,9 +99,18 @@ export const useSearchStore = defineStore('search', () => {
       properNounList.value = response.properNounResults
       searchedTerms.value = response.searchedTerms
     } catch (error_: any) {
+      if (error_.name === 'AbortError') {
+        // Ignore abort errors
+        return
+      }
       error.value = `Search error: ${error_.message}`
     } finally {
-      loading.value = false
+      // Only set loading to false if this is the active request
+      if (controller?.signal.aborted) {
+        // Do nothing, a new request has already started
+      } else {
+        loading.value = false
+      }
     }
   }
 
@@ -150,6 +168,13 @@ export const useSearchStore = defineStore('search', () => {
     activeTab.value = tab
   }
 
+  const abortSearch = () => {
+    if (controller) {
+      controller.abort()
+      controller = null
+    }
+  }
+
   // Getters
   const getSearchCache = (query: string, pageSize: number) => {
     return searchCache[query.trim().toLowerCase() + `_${pageSize}`]
@@ -176,5 +201,6 @@ export const useSearchStore = defineStore('search', () => {
     reset,
     clearResults,
     getSearchCache,
+    abortSearch,
   }
 })
