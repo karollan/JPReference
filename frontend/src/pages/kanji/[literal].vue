@@ -279,14 +279,8 @@
                 <v-card class="pa-4 rounded-lg border-thin" variant="outlined">
                   <h3 class="text-overline font-weight-bold mb-2 text-medium-emphasis">Study Tools</h3>
                   <div class="d-flex flex-column gap-2">
-                    <v-btn
-                      block
-                      prepend-icon="mdi-pencil"
-                      variant="outlined"
-                      @click="showStrokeOrder"
-                    >
-                      View Stroke Order
-                    </v-btn>
+                    <!-- <VueDmak :text="kanjiLiteral" /> -->
+                    <!-- <v-img id="draw" v-if="unicode" height="100px" :src="`/kanjivg/0${unicode}.svg`" /> -->
                     <v-btn
                       block
                       prepend-icon="mdi-volume-high"
@@ -295,37 +289,112 @@
                     >
                       Play Pronunciation
                     </v-btn>
-                    <v-btn
-                      block
-                      color="pink"
-                      prepend-icon="mdi-heart-outline"
-                      variant="outlined"
-                      @click="addToFavorites"
-                    >
-                      Add to Favorites
-                    </v-btn>
                   </div>
                 </v-card>
               </section>
 
-              <!-- Info -->
-              <section class="info-section">
+              <!-- Other details accordion -->
+              <section class="other-details-section">
                 <v-card class="pa-4 rounded-lg border-thin" variant="outlined">
-                  <h3 class="text-overline font-weight-bold mb-2 text-medium-emphasis">Information</h3>
-                  <div class="info-grid">
-                    <div class="info-item mb-2">
-                      <div class="text-caption text-disabled">Frequency Rank</div>
-                      <div class="font-weight-medium">#{{ kanji.frequency || 'N/A' }}</div>
-                    </div>
-                    <div class="info-item mb-2">
-                      <div class="text-caption text-disabled">Grade</div>
-                      <div class="font-weight-medium">{{ kanji.grade || 'N/A' }}</div>
-                    </div>
-                    <div class="info-item">
-                      <div class="text-caption text-disabled">Unicode</div>
-                      <div class="font-mono text-caption">{{ kanji.codepoints?.[0]?.value || 'N/A' }}</div>
-                    </div>
-                  </div>
+                  <h3 class="text-overline font-weight-bold mb-2 text-medium-emphasis">Other Info</h3>
+                  <v-expansion-panels variant="accordion">
+                    <v-expansion-panel elevation="1">
+                      <v-expansion-panel-title>Codepoints</v-expansion-panel-title>
+                      <v-expansion-panel-text>
+                        <div v-if="codepoints.length > 0" class="reference-grid">
+                          <v-card
+                            v-for="(cp, index) in codepoints"
+                            :key="index"
+                            class="ref-card transition-swing"
+                            elevation="0"
+                            rounded="lg"
+                            variant="outlined"
+                          >
+                            <v-card-text class="py-3">
+                              <div class="text-caption text-medium-emphasis font-weight-bold line-height-1 mb-1">
+                                {{ cp.displayName }}
+                              </div>
+                              <div class="font-weight-regular entry-value">
+                                {{ cp.value }}
+                              </div>
+                            </v-card-text>
+                          </v-card>
+                        </div>
+                        <div v-else class="pa-4 text-medium-emphasis font-italic">
+                          No codepoints available.
+                        </div>
+                      </v-expansion-panel-text>
+                    </v-expansion-panel>
+                    <v-expansion-panel elevation="1">
+                      <v-expansion-panel-title>Query codes</v-expansion-panel-title>
+                      <v-expansion-panel-text>
+                        <div v-if="queryCodes.length > 0" class="reference-grid">
+                          <v-card
+                            v-for="(qc, index) in queryCodes"
+                            :key="index"
+                            class="ref-card transition-swing"
+                            elevation="0"
+                            rounded="lg"
+                            variant="outlined"
+                          >
+                            <v-card-text class="py-3">
+                              <div class="text-caption text-medium-emphasis font-weight-bold line-height-1 mb-1">
+                                {{ qc.displayName }}
+                              </div>
+                              <div class="font-weight-regular entry-value">
+                                {{ qc.value }}
+                              </div>
+                            </v-card-text>
+                          </v-card>
+                        </div>
+                        <div v-else class="pa-4 text-medium-emphasis font-italic">
+                          No query codes available.
+                        </div>
+                      </v-expansion-panel-text>
+                    </v-expansion-panel>
+                    <v-expansion-panel elevation="1">
+                      <v-expansion-panel-title>Dictionary references</v-expansion-panel-title>
+                      <v-expansion-panel-text>
+                        <div v-if="dictionaryReferences.length > 0" class="reference-grid">
+                          <v-card
+                            v-for="ref in dictionaryReferences"
+                            class="ref-card transition-swing"
+                            elevation="0"
+                            rounded="lg"
+                            variant="outlined"
+                          >
+                            <v-card-text class="d-flex align-center justify-space-between py-3">
+                              <div class="d-flex align-center overflow-hidden">
+                                <div class="text-truncate">
+                                  <div class="text-caption text-medium-emphasis font-weight-bold line-height-1 mb-1">
+                                    {{ ref.displayName }}
+                                  </div>
+                                  <div class="font-weight-regular entry-value">
+                                    {{ ref.entry }}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div v-if="ref.isMorohashi" class="d-flex gap-2">
+                                <div class="extra-info text-right">
+                                  <div class="text-caption text-disabled">VOL</div>
+                                  <div class="font-weight-bold">{{ ref.morohashiVolume }}</div>
+                                </div>
+                                <v-divider vertical class="mx-1" />
+                                <div class="extra-info text-right">
+                                  <div class="text-caption text-disabled">PAGE</div>
+                                  <div class="font-weight-bold">{{ ref.morohashiPage }}</div>
+                                </div>
+                              </div>
+                            </v-card-text>
+                          </v-card>
+                        </div>
+                        <div v-else class="pa-4 text-medium-emphasis font-italic">
+                          No dictionary references available.
+                        </div>
+                      </v-expansion-panel-text>
+                    </v-expansion-panel>
+                  </v-expansion-panels>
                 </v-card>
               </section>
             </v-col>
@@ -358,6 +427,88 @@
 
   // Computed
   const kanjiLiteral = computed(() => (route.params as any).literal as string)
+
+  const unicode = computed(() => kanji.value?.codepoints?.find(codepoint => codepoint.type === "ucs")?.value || "")
+
+  const codepointNames: Record<string, string> = {
+    ucs: 'Unicode',
+    jis208: 'JIS X 0208',
+    jis212: 'JIS X 0212',
+    jis213: 'JIS X 0213',
+    deroo: 'De Roo',
+  }
+
+  const codepoints = computed(() => {
+    return kanji.value?.codepoints?.map(codepoint => {
+      const type = codepoint.type?.toLowerCase()
+      return {
+        type: codepoint.type,
+        displayName: codepointNames[type] || codepoint.type,
+        value: codepoint.value,
+      }
+    }) || []
+  })
+
+  const queryCodeNames: Record<string, string> = {
+    skip: 'SKIP',
+    four_corner: 'Four Corner',
+    deroo: 'De Roo',
+    misclass: 'Misclassification',
+  }
+
+  const queryCodes = computed(() => {
+    return kanji.value?.queryCodes?.map(code => {
+      const type = code.type?.toLowerCase()
+      return {
+        code: code.type,
+        displayName: queryCodeNames[type] || code.type,
+        value: code.value,
+      }
+    }) || []
+  })
+
+  const dictionaryNames: Record<string, string> = {
+    nelson_c: 'Classic Nelson',
+    nelson_n: 'New Nelson',
+    halpern_njecd: 'Halpern NJECD',
+    halpern_kkld: 'Halpern KKLD',
+    halpern_kkld_2ed: 'Halpern KKLD 2nd Ed.',
+    halpern_kkd: 'The Kodansha Kanji Dictionary',
+    heisig: 'Heisig',
+    heisig6: 'Heisig 6th Ed.',
+    gakken: 'Gakken',
+    oneill_names: 'O\'Neill Names',
+    oneill_kk: 'O\'Neill KK',
+    moro: 'Morohashi (Dai Kan-Wa Jiten)',
+    henshall: 'Henshall',
+    sh_kk: 'SH KK',
+    sh_kk2: 'SH KK2',
+    sakade: 'Sakade',
+    jf_cards: 'JF Cards',
+    henshall3: 'Henshall 3',
+    tutt_cards: 'Tuttle Cards',
+    crowley: 'Crowley',
+    kanji_in_context: 'Kanji in Context',
+    kodansha_compact: 'Kodansha Compact',
+    maniette: 'Maniette',
+    busy_people: 'Japanese for Busy People',
+    kanji_and_kana: 'Kanji & Kana',
+    denshi_jisho: 'Denshi Jisho',
+  }
+
+  const dictionaryReferences = computed(() => {
+    return kanji.value?.dictionaryReferences?.map(reference => {
+      const isMorohashi = reference.type === 'moro'
+      return {
+        source: reference.type,
+        displayName: dictionaryNames[reference.type] || reference.type,
+        entry: reference.value,
+        isMorohashi,
+        morohashiVolume: reference.morohashiVolume ?? '—',
+        morohashiPage: reference.morohashiPage ?? '—',
+      }
+    }) || []
+  })
 
   const availableLanguages = computed(() => {
     return kanji.value?.meanings?.map(meaning => meaning.language) || []
@@ -533,5 +684,45 @@
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+.reference-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.ref-card {
+  border-color: rgba(var(--v-border-color), 0.12) !important;
+  background-color: rgba(var(--v-theme-surface-variant), 0.05);
+
+  &:hover {
+    border-color: rgba(var(--v-theme-primary), 0.3) !important;
+    background-color: rgba(var(--v-theme-primary), 0.02);
+  }
+
+  .entry-value {
+    color: rgb(var(--v-theme-on-surface));
+    letter-spacing: 0.5px;
+  }
+}
+
+.ref-icon-container {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background-color: rgba(var(--v-theme-on-surface), 0.04);
+}
+
+.extra-info {
+  min-width: 45px;
+  line-height: 1.2;
+}
+
+.line-height-1 {
+  line-height: 1;
 }
 </style>
