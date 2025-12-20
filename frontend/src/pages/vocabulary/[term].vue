@@ -347,6 +347,28 @@
                 </v-card>
               </section>
 
+              <!-- Study Tools -->
+              <section class="tools-section mb-6">
+                <v-card class="pa-4 rounded-lg border-thin" variant="outlined">
+                  <h3 class="text-overline font-weight-bold mb-2 text-medium-emphasis">Study Tools</h3>
+                  <div class="d-flex flex-column gap-2">
+                    <VueDmak
+                      :text="selectedFormText"
+                      uri="/kanjivg/"
+                      :autoplay="true"
+                    />
+                    <v-btn
+                      block
+                      prepend-icon="mdi-volume-high"
+                      variant="outlined"
+                      @click="playPronunciation"
+                    >
+                      Play Pronunciation
+                    </v-btn>
+                  </div>
+                </v-card>
+              </section>
+
               <!-- Metadata/Ids -->
               <section class="meta-section">
                 <div class="text-caption text-disabled font-mono">
@@ -369,6 +391,11 @@
   import LanguageSelector from '@/components/search/LanguageSelector.vue'
   import { useVocabularyStore } from '@/stores/vocabulary'
   import { DEFAULT_LANGUAGE, languageMatches } from '@/utils/language'
+  import { VueDmak } from 'vue-dmak'
+
+  const playPronunciation = () => {
+    
+  }
 
   const route = useRoute()
   const router = useRouter()

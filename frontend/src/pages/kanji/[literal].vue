@@ -279,8 +279,29 @@
                 <v-card class="pa-4 rounded-lg border-thin" variant="outlined">
                   <h3 class="text-overline font-weight-bold mb-2 text-medium-emphasis">Study Tools</h3>
                   <div class="d-flex flex-column gap-2">
-                    <!-- <VueDmak :text="kanjiLiteral" /> -->
-                    <!-- <v-img id="draw" v-if="unicode" height="100px" :src="`/kanjivg/0${unicode}.svg`" /> -->
+                    <VueDmak
+                      :text="kanjiLiteral"
+                      uri="/kanjivg/"
+                      :autoplay="true"
+                    />
+                    <div class="d-flex flex-nowrap overflow-auto">
+                    <VueDmak
+                      v-for="stroke in kanji.strokeCount"
+                      :key="stroke"
+                      ref="strokeRefs"
+                      :text="kanjiLiteral"
+                      uri="/kanjivg/"
+                      :autoplay="false"
+                      :stroke="{
+                        animated: {drawing: false, erasing: false},
+                        attr: {
+                          'stroke-linecap': 'round'
+                        }  
+                      }"
+                    />
+                    </div>
+
+                    <v-btn @click="testRender">test</v-btn>
                     <v-btn
                       block
                       prepend-icon="mdi-volume-high"
@@ -411,10 +432,17 @@
   import { useRoute, useRouter } from 'vue-router'
   import LanguageSelector from '@/components/search/LanguageSelector.vue'
   import { useKanjiStore } from '@/stores/kanji'
+  import { VueDmak } from 'vue-dmak'
 
   const route = useRoute()
   const router = useRouter()
   const kanjiStore = useKanjiStore()
+
+function testRender() {
+  strokeRefs.value.forEach((stroke, index) => {
+    stroke.render(index+1)
+  })
+}
 
   // State
   const loading = ref(true)
@@ -424,6 +452,8 @@
   const selectedLanguage = ref<string>('en')
   const visibleVocabularyLimit = ref(20)
   const isLoadingMore = ref(false)
+
+  const strokeRefs = ref<any[]>([])
 
   // Computed
   const kanjiLiteral = computed(() => (route.params as any).literal as string)
@@ -644,8 +674,13 @@
       loading.value = false
     }
   }
-
-  onMounted(loadKanji)
+  onMounted(async () => {
+    await nextTick()
+    loadKanji()
+    strokeRefs.value.forEach((stroke, index) => {
+      stroke.render(1)
+    })
+  })
 
   watch(() => kanjiLiteral.value, () => {
     loadKanji()
