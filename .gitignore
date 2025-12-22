@@ -92,3 +92,7 @@ jspm_packages/
 
 # Database source content
 database/source/
+
+# Source code for components
+vue-dmak
+frontend/public/kanjivg
