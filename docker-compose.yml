@@ -130,13 +130,22 @@ services:
       LANG: C.UTF-8
       LC_ALL: C.UTF-8
       NUM_WORKERS: 8
+      KANJIVG_TARGET_DIR: /app/public/kanjivg
+      KANJIVG_STATE_FILE: /app/state/.kanjivg_commit
     volumes:
       - ./database/scripts:/app/scripts
       - ./database/source:/app/source
+      - ./frontend/public/kanjivg:/app/public/kanjivg
       - processor_state:/app/state
     working_dir: /app/scripts
     command: >
       sh -c "
+        echo 'Syncing KanjiVG...'
+        python -u sync_kanjivg.py
+        if [ $? -ne 0 ]; then
+          echo 'KanjiVG sync failed, but proceeding anyway...'
+        fi
+
         if [ -f /app/state/.data_seeded ]; then
           echo 'Data processor: Data already seeded. Skipping.'
           exit 0
