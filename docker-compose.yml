@@ -114,7 +114,7 @@ services:
 
   # JMDict Processor (prepares JSON source files before database seeding)
   jmdict-processor:
-    image: gradle:jdk21-ubi
+    image: gradle:7.6-jdk17
     container_name: jlpt-reference-jmdict-processor
     restart: "no"
     environment:

@@ -570,23 +570,41 @@ class JLPTDataProcessor:
 
         # Related terms - store for later resolution
         for related in sense.get('related', []):
-            term = related.get('term')
-            if term:
-                reading = related.get('reading')
-                sense_index = related.get('sense')  # 1-based index from JSON
-                self.pending_vocab_relations.append((
-                    sense_id, term, reading, sense_index, 'related'
-                ))
+            if isinstance(related, list) and len(related) > 0:
+                term = related[0] if len(related) > 0 else None
+                reading = related[1] if len(related) > 1 else None
+                sense_index = related[2] if len(related) > 2 else None
+                if term:
+                    self.pending_vocab_relations.append((
+                        sense_id, term, reading, sense_index, 'related'
+                    ))
+            elif isinstance(related, dict):
+                term = related.get('term')
+                if term:
+                    reading = related.get('reading')
+                    sense_index = related.get('sense')
+                    self.pending_vocab_relations.append((
+                        sense_id, term, reading, sense_index, 'related'
+                    ))
 
         # Antonyms - store for later resolution
         for antonym in sense.get('antonym', []):
-            term = antonym.get('term')
-            if term:
-                reading = antonym.get('reading')
-                sense_index = antonym.get('sense')  # 1-based index from JSON
-                self.pending_vocab_relations.append((
-                    sense_id, term, reading, sense_index, 'antonym'
-                ))
+            if isinstance(antonym, list) and len(antonym) > 0:
+                term = antonym[0] if len(antonym) > 0 else None
+                reading = antonym[1] if len(antonym) > 1 else None
+                sense_index = antonym[2] if len(antonym) > 2 else None
+                if term:
+                    self.pending_vocab_relations.append((
+                        sense_id, term, reading, sense_index, 'antonym'
+                    ))
+            elif isinstance(antonym, dict):
+                term = antonym.get('term')
+                if term:
+                    reading = antonym.get('reading')
+                    sense_index = antonym.get('sense')
+                    self.pending_vocab_relations.append((
+                        sense_id, term, reading, sense_index, 'antonym'
+                    ))
 
     def ensure_tag_exists(self, cursor, tag_code: str, category: str):
         """Ensure a tag exists in the database."""
@@ -875,14 +893,25 @@ class JLPTDataProcessor:
                 """, type_batch)
             
             # Store related terms for later resolution
+            # New jmdict-simplified format: related is a list of arrays
             for related in trans.get('related', []):
-                term = related.get('term')
-                if term:
-                    reading = related.get('reading')
-                    sense_index = related.get('sense')  # Can be null
-                    self.pending_proper_noun_relations.append((
-                        translation_id, term, reading, sense_index
-                    ))
+                if isinstance(related, list) and len(related) > 0:
+                    term = related[0] if len(related) > 0 else None
+                    reading = related[1] if len(related) > 1 else None
+                    sense_index = related[2] if len(related) > 2 else None
+                    if term:
+                        self.pending_proper_noun_relations.append((
+                            translation_id, term, reading, sense_index
+                        ))
+                elif isinstance(related, dict):
+                    # Legacy format support
+                    term = related.get('term')
+                    if term:
+                        reading = related.get('reading')
+                        sense_index = related.get('sense')
+                        self.pending_proper_noun_relations.append((
+                            translation_id, term, reading, sense_index
+                        ))
 
             # # Process related terms
             # related_batch = [(translation_id, None, None, r.get('term'), r.get('reading')) for r in trans.get('related', [])]
