@@ -14,3 +14,9 @@ ehthumbs.db
 Thumbs.db
 
 scripts/__pycache__/*
+
+# JMDict sync cache and state files
+scripts/.jmdict-cache/
+scripts/.jmdict_state
+scripts/.kanji_ref_commit
+scripts/.kanjivg_commit

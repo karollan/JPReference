@@ -112,6 +112,67 @@ services:
     depends_on:
       - backend
 
+  # JMDict Processor (prepares JSON source files before database seeding)
+  jmdict-processor:
+    image: gradle:jdk21-ubi
+    container_name: jlpt-reference-jmdict-processor
+    restart: "no"
+    environment:
+      PYTHONUNBUFFERED: 1
+      JMDICT_CACHE_DIR: /app/jmdict-cache
+      JMDICT_SOURCE_DIR: /app/source
+      JMDICT_STATE_FILE: /app/state/.jmdict_state
+      KANJI_REF_STATE_FILE: /app/state/.kanji_ref_commit
+      DATA_SEEDED_FLAG: /app/state/.data_seeded
+    volumes:
+      - ./database/scripts:/app/scripts
+      - ./database/source:/app/source
+      - jmdict_cache:/app/jmdict-cache
+      - processor_state:/app/state
+    working_dir: /app/scripts
+    command: >
+      sh -c "
+        echo '============================================'
+        echo 'JMDict Processor: Preparing source files'
+        echo '============================================'
+        
+        echo 'Installing Python and Git...'
+        apt-get update -q && apt-get install -y -q python3 git curl
+        
+        echo ''
+        echo 'Running JMDict sync...'
+        python3 -u sync_jmdict.py
+        JMDICT_RESULT=$?
+        
+        echo ''
+        echo 'Running Kanji reference sync...'
+        python3 -u sync_kanji_reference.py
+        KANJI_REF_RESULT=$?
+        
+        if [ $JMDICT_RESULT -ne 0 ]; then
+          echo 'WARNING: JMDict sync had issues (exit code '$JMDICT_RESULT')'
+        fi
+        
+        if [ $KANJI_REF_RESULT -ne 0 ]; then
+          echo 'WARNING: Kanji reference sync had issues (exit code '$KANJI_REF_RESULT')'
+        fi
+        
+        echo '============================================'
+        echo 'JMDict Processor: Complete'
+        echo '============================================'
+        exit 0
+      "
+    networks:
+      - jlpt-network
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '4'
+        reservations:
+          memory: 2G
+          cpus: '2'
+
   # Data Processor (runs once to populate database)
   data-processor:
     image: python:3.11-slim
@@ -177,6 +238,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      jmdict-processor:
+        condition: service_completed_successfully
     deploy:
       resources:
         limits:
@@ -192,6 +255,8 @@ volumes:
   pgadmin_data:
     driver: local
   processor_state:
+    driver: local
+  jmdict_cache:
     driver: local
 
 networks:

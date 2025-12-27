@@ -91,7 +91,7 @@ jspm_packages/
 .dockerignore
 
 # Database source content
-database/source/
+database/source/vocabulary/reference.json
 
 # Source code for components
 vue-dmak
