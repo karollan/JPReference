@@ -47,7 +47,7 @@
             <span v-if="searchStore.searchedTerms.length > 1">. You can also search for</span>
             <span v-if="searchStore.searchedTerms.length > 1">
               <v-hover
-                v-for="term in searchStore.searchedTerms"
+                v-for="(term, index) in searchStore.searchedTerms"
                 :key="term"
               >
                 <template #default="{ isHovering, props }">
@@ -59,6 +59,7 @@
                   >
                     "{{ term }}"
                   </span>
+                  <span v-if="isLastTerm(index)">,</span>
                 </template>
               </v-hover>
             </span>
@@ -403,6 +404,10 @@
   const limitedVocabulary = computed(() => searchStore.vocabularyList?.data?.slice(0, 5) || [])
   const limitedKanji = computed(() => searchStore.kanjiList?.data?.slice(0, 5) || [])
   const limitedProperNouns = computed(() => searchStore.properNounList?.data?.slice(0, 5) || [])
+
+  function isLastTerm (index: number) : boolean {
+    return index < searchStore.searchedTerms.length - 1
+  }
 
   // Simple debounce function
   function debounce (func: Function, delay: number) {
