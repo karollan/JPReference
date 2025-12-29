@@ -1,3 +1,5 @@
+using JLPTReference.Api.DTOs.Common;
+
 namespace JLPTReference.Api.DTOs.Vocabulary;
 
 public class VocabularyDetailDto
@@ -7,6 +9,7 @@ public class VocabularyDetailDto
     public List<KanjiFormDto> KanjiForms { get; set; } = new();
     public List<KanaFormDto> KanaForms { get; set; } = new();
     public List<SenseDto> Senses { get; set; } = new();
+    public List<FuriganaDto> Furigana { get; set; } = new();
     public int? JlptLevel { get; set; }
     // Cross-references
     public List<KanjiInfoDto> ContainedKanji { get; set; } = new();
@@ -42,14 +45,6 @@ public class SenseDto
     public List<SenseLanguageSourceDto> LanguageSources { get; set; } = new();
     public List<SenseGlossDto> Glosses { get; set; } = new();
     public List<SenseExampleDto> Examples { get; set; } = new();
-}
-
-public class TagInfoDto
-{
-    public required string Code { get; set; }
-    public required string Description { get; set; }
-    public required string Category { get; set; }
-    public string? Type { get; set; } // For sense tags: 'pos', 'field', 'dialect', 'misc'
 }
 
 public class SenseRelationDto

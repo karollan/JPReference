@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using JLPTReference.Api.Data;
 using JLPTReference.Api.DTOs.Vocabulary;
+using JLPTReference.Api.DTOs.Common;
 using Microsoft.EntityFrameworkCore;
 using JLPTReference.Api.Repositories.Interfaces;
 
@@ -263,6 +264,22 @@ public class VocabularyRepository : IVocabularyRepository {
                 .ToList()
         }).ToList();
 
+        // Load furigana
+        var furiganaEntities = await _context.VocabularyFurigana
+            .Where(vf => vf.VocabularyId == vocabularyId)
+            .AsNoTracking()
+            .ToListAsync();
+        var furigana = furiganaEntities.Select(vf => new FuriganaDto
+        {
+            Text = vf.Text,
+            Reading = vf.Reading,
+            Furigana = vf.Furigana.Select(f => new FuriganaPartDto
+            {
+                Ruby = f.Ruby,
+                Rt = f.Rt
+            }).ToList()
+        }).ToList();
+
         // Load kanji references
         var kanjiReferences = await _context.VocabularyUsesKanji
             .Where(vuk => vuk.VocabularyId == vocabularyId)
@@ -284,7 +301,8 @@ public class VocabularyRepository : IVocabularyRepository {
             KanjiForms = kanjiForms,
             KanaForms = kanaForms,
             Senses = senses,
-            ContainedKanji = kanjiReferences
+            ContainedKanji = kanjiReferences,
+            Furigana = furigana
         };
     }
 }

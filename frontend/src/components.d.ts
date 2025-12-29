@@ -10,6 +10,7 @@ declare module 'vue' {
   export interface GlobalComponents {
     AppFooter: typeof import('./components/AppFooter.vue')['default']
     AppHeader: typeof import('./components/AppHeader.vue')['default']
+    FuriganaText: typeof import('./components/common/FuriganaText.vue')['default']
     KanjiSummary: typeof import('./components/search/KanjiSummary.vue')['default']
     KanjiSummarySkeleton: typeof import('./components/search/KanjiSummarySkeleton.vue')['default']
     LanguageSelector: typeof import('./components/search/LanguageSelector.vue')['default']

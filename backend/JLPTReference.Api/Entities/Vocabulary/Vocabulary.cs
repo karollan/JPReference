@@ -13,4 +13,5 @@ public class Vocabulary
     public List<VocabularyKanji> Kanji { get; set; } = new();
     public List<VocabularySense> Senses { get; set; } = new();
     public List<VocabularyUsesKanji> KanjiReferences { get; set; } = new();
+    public List<VocabularyFurigana> Furigana { get; set; } = new();
 }

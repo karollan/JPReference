@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using JLPTReference.Api.Data;
 using JLPTReference.Api.DTOs.ProperNoun;
+using JLPTReference.Api.DTOs.Common;
 using JLPTReference.Api.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -125,8 +126,8 @@ public class ProperNounRepository : IProperNounRepository {
             Tags = kanjiTags
                 .Where(t => t.ProperNounKanjiId == p.Id)
                 .Select(t => allTags.TryGetValue(t.TagCode, out var tag)
-                    ? new DTOs.Vocabulary.TagInfoDto { Code = tag.Code, Description = tag.Description, Category = tag.Category }
-                    : new DTOs.Vocabulary.TagInfoDto { Code = t.TagCode, Description = t.TagCode, Category = "unknown" })
+                    ? new TagInfoDto { Code = tag.Code, Description = tag.Description, Category = tag.Category }
+                    : new TagInfoDto { Code = t.TagCode, Description = t.TagCode, Category = "unknown" })
                 .ToList()
         }).ToList();
 
@@ -148,8 +149,8 @@ public class ProperNounRepository : IProperNounRepository {
             Tags = kanaTags
                 .Where(t => t.ProperNounKanaId == p.Id)
                 .Select(t => allTags.TryGetValue(t.TagCode, out var tag)
-                    ? new DTOs.Vocabulary.TagInfoDto { Code = tag.Code, Description = tag.Description, Category = tag.Category }
-                    : new DTOs.Vocabulary.TagInfoDto { Code = t.TagCode, Description = t.TagCode, Category = "unknown" })
+                    ? new TagInfoDto { Code = tag.Code, Description = tag.Description, Category = tag.Category }
+                    : new TagInfoDto { Code = t.TagCode, Description = t.TagCode, Category = "unknown" })
                 .ToList()
         }).ToList();
         
@@ -176,8 +177,8 @@ public class ProperNounRepository : IProperNounRepository {
             Types = translationTypes
                 .Where(t => t.TranslationId == p.Id)
                 .Select(t => allTags.TryGetValue(t.TagCode, out var tag)
-                    ? new DTOs.Vocabulary.TagInfoDto { Code = tag.Code, Description = tag.Description, Category = tag.Category }
-                    : new DTOs.Vocabulary.TagInfoDto { Code = t.TagCode, Description = t.TagCode, Category = "unknown" })
+                    ? new TagInfoDto { Code = tag.Code, Description = tag.Description, Category = tag.Category }
+                    : new TagInfoDto { Code = t.TagCode, Description = t.TagCode, Category = "unknown" })
                 .ToList(),
             Related = translationRelated
                 .Where(t => t.TranslationId == p.Id)
@@ -195,6 +196,22 @@ public class ProperNounRepository : IProperNounRepository {
                     Text = t.Text,
                 })
                 .ToList()
+        }).ToList();
+
+        // Load furigana
+        var furiganaEntities = await _context.ProperNounFurigana
+            .Where(pf => pf.ProperNounId == properNounId)
+            .AsNoTracking()
+            .ToListAsync();
+        var furigana = furiganaEntities.Select(pf => new FuriganaDto
+        {
+            Text = pf.Text,
+            Reading = pf.Reading,
+            Furigana = pf.Furigana.Select(f => new FuriganaPartDto
+            {
+                Ruby = f.Ruby,
+                Rt = f.Rt
+            }).ToList()
         }).ToList();
 
         var containedKanji = await _context.ProperNounUsesKanji
@@ -220,6 +237,7 @@ public class ProperNounRepository : IProperNounRepository {
             KanaForms = kanaForms,
             Translations = translations,
             ContainedKanji = containedKanjiForms,
+            Furigana = furigana
         };
     }
 }

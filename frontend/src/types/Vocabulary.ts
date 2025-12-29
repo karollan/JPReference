@@ -1,4 +1,4 @@
-import type { PaginationMetadata, TagInfo } from './Common'
+import type { PaginationMetadata, TagInfo, Furigana } from './Common'
 
 export interface VocabularyResponse {
   data: VocabularySummary[]
@@ -11,6 +11,7 @@ export interface VocabularyDetails {
   kanjiForms: KanjiForm[]
   kanaForms: KanaForm[]
   senses: SenseDetails[]
+  furigana: Furigana[] | null
   jlptLevel?: number
   containedKanji: KanjiInfo[]
 }
@@ -25,6 +26,7 @@ export interface VocabularySummary {
   otherKanjiForms: KanjiForm[] | null
   otherKanaForms: KanaForm[] | null
   senses: SenseSummary[] | null
+  furigana: Furigana[] | null
   jlptLevel?: number
   isCommon: boolean
   slug: string

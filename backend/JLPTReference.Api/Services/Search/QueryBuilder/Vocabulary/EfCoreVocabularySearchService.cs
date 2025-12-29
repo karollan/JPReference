@@ -1,6 +1,7 @@
 using JLPTReference.Api.Data;
 using JLPTReference.Api.DTOs.Search;
 using JLPTReference.Api.DTOs.Vocabulary;
+using JLPTReference.Api.DTOs.Common;
 using JLPTReference.Api.Entities.Vocabulary;
 using JLPTReference.Api.Services.Search.Ranking;
 using Microsoft.EntityFrameworkCore;

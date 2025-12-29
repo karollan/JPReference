@@ -52,11 +52,11 @@
             <div class="d-flex flex-column flex-md-row align-md-end justify-space-between">
               <div class="main-term">
                 <h1 class="display-term font-weight-bold text-h2 text-md-h1 mb-2">
-                  <ruby v-if="selectedKanjiText">
-                    {{ selectedKanjiText }}
-                    <rt class="text-h5 font-weight-medium text-primary">{{ selectedKanaText }}</rt>
-                  </ruby>
-                  <span v-else>{{ selectedKanaText }}</span>
+                  <FuriganaText
+                    :text="selectedKanjiText || selectedKanaText"
+                    :reading="selectedKanjiText ? selectedKanaText : null"
+                    :furigana="properNoun.furigana"
+                  />
                 </h1>
               </div>
 

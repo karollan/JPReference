@@ -1,4 +1,4 @@
-using JLPTReference.Api.DTOs.Vocabulary;
+using JLPTReference.Api.DTOs.Common;
 
 namespace JLPTReference.Api.DTOs.ProperNoun;
 
@@ -17,6 +17,7 @@ public class ProperNounSummaryDto
     public List<KanjiFormDto>? OtherKanjiForms { get; set; } = new();
     public List<KanaFormDto>? OtherKanaForms { get; set; } = new();
     public List<TranslationSummaryDto>? Translations { get; set; } = new();
+    public List<FuriganaDto>? Furigana { get; set; } = new();
 }
 
 public class TranslationSummaryDto {

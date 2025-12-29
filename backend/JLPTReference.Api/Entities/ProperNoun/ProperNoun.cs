@@ -10,4 +10,5 @@ public class ProperNoun
     public List<ProperNounKanji> KanjiForms {get; set;} = new();
     public List<ProperNounKana> KanaForms {get; set;} = new();
     public List<ProperNounTranslation> Translations {get; set;} = new();
+    public List<ProperNounFurigana> Furigana {get; set;} = new();
 }

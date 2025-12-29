@@ -13,6 +13,7 @@ import subprocess
 import shutil
 import glob
 from pathlib import Path
+from sync_furigana import sync_furigana
 
 # Configuration
 REPO_URL = "https://github.com/scriptin/jmdict-simplified.git"
@@ -270,6 +271,13 @@ def main():
     if not copy_json_files(repo_dir):
         print("ERROR: Failed to copy JSON files")
         return 1
+
+    # Sync furigana data
+    print("Syncing furigana data...")
+    try:
+        sync_furigana()
+    except Exception as e:
+        print(f"WARNING: Furigana sync failed: {e}")
     
     # Signal database rebuild if data was updated
     signal_database_rebuild()

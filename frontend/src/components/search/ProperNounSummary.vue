@@ -11,57 +11,42 @@
       <div class="d-flex justify-space-between align-start mb-2">
         <div class="proper-noun-primary flex-grow-1">
           <!-- Primary entry: Kanji with main reading, or Kana-only -->
-          <div class="primary-entry">
-            <template v-if="properNoun.primaryKanji">
-              <ruby>
-                <template v-if="properNoun.primaryKanji.tags?.length > 0">
-                  <v-tooltip location="top">
-                    <template #activator="{ props: tooltipProps }">
-                      <span v-bind="tooltipProps" class="kanji-with-tags">{{ properNoun.primaryKanji.text }}</span>
-                    </template>
-                    <div class="tag-tooltip-content">
-                      <div v-for="(tag, idx) in properNoun.primaryKanji.tags" :key="idx">
+            <div class="primary-entry">
+              <template v-if="hasTags">
+                <v-tooltip location="top">
+                  <template #activator="{ props: tooltipProps }">
+                    <span v-bind="tooltipProps" class="word-with-tags">
+                      <FuriganaText
+                        :text="primaryText"
+                        :reading="primaryReading"
+                        :furigana="properNoun.furigana"
+                      />
+                    </span>
+                  </template>
+                  <div class="tag-tooltip-content">
+                    <div v-if="primaryKanjiTags.length > 0">
+                      <div class="text-caption font-weight-bold mb-1">Kanji Tags:</div>
+                      <div v-for="(tag, idx) in primaryKanjiTags" :key="`kj-${idx}`">
                         • {{ tag.description }}
                       </div>
                     </div>
-                  </v-tooltip>
-                </template>
-                <template v-else>
-                  {{ properNoun.primaryKanji.text }}
-                </template>
-                <rt v-if="properNoun.primaryKana">
-                  <template v-if="properNoun.primaryKana.tags?.length > 0">
-                    <v-tooltip location="top">
-                      <template #activator="{ props: tooltipProps }">
-                        <span v-bind="tooltipProps" class="kana-with-tags">{{ properNoun.primaryKana.text }}</span>
-                      </template>
-                      <div class="tag-tooltip-content">
-                        <div v-for="(tag, idx) in properNoun.primaryKana.tags" :key="idx">
-                          • {{ tag.description }}
-                        </div>
+                    <div v-if="primaryKanaTags.length > 0" :class="{ 'mt-2': primaryKanjiTags.length > 0 }">
+                      <div class="text-caption font-weight-bold mb-1">Kana Tags:</div>
+                      <div v-for="(tag, idx) in primaryKanaTags" :key="`kn-${idx}`">
+                        • {{ tag.description }}
                       </div>
-                    </v-tooltip>
-                  </template>
-                  <template v-else>{{ properNoun.primaryKana.text }}</template>
-                </rt>
-              </ruby>
-            </template>
-            <span v-else class="proper-noun-text">
-              <template v-if="properNoun.primaryKana?.tags?.length > 0">
-                <v-tooltip location="top">
-                  <template #activator="{ props: tooltipProps }">
-                    <span v-bind="tooltipProps" class="kana-with-tags-large">{{ properNoun.primaryKana?.text }}</span>
-                  </template>
-                  <div class="tag-tooltip-content">
-                    <div v-for="(tag, idx) in properNoun.primaryKana?.tags" :key="idx">
-                      • {{ tag.description }}
                     </div>
                   </div>
                 </v-tooltip>
               </template>
-              <template v-else>{{ properNoun.primaryKana?.text }}</template>
-            </span>
-          </div>
+              <template v-else>
+                <FuriganaText
+                  :text="primaryText"
+                  :reading="primaryReading"
+                  :furigana="properNoun.furigana"
+                />
+              </template>
+            </div>
         </div>
         <LanguageSelector
           v-if="availableLanguages.length > 0"
@@ -234,6 +219,28 @@
       .filter((t): t is { text: string, types: any[] } => t !== null)
   })
 
+  // Tags helpers
+  const primaryKanaTags = computed(() => {
+    return props.properNoun.primaryKana?.tags || []
+  })
+
+  const primaryKanjiTags = computed(() => {
+    return props.properNoun.primaryKanji?.tags || []
+  })
+
+  // Has any tags (kanji or kana)
+  const hasTags = computed(() => {
+    return primaryKanjiTags.value.length > 0 || primaryKanaTags.value.length > 0
+  })
+
+  const primaryText = computed(() => {
+    return props.properNoun.primaryKanji?.text || props.properNoun.primaryKana?.text || ''
+  })
+
+  const primaryReading = computed(() => {
+    return props.properNoun.primaryKanji ? props.properNoun.primaryKana?.text : null
+  })
+
   const hasOtherForms = computed(() => {
     return (props.properNoun.otherKanjiForms && props.properNoun.otherKanjiForms.length > 0)
       || (props.properNoun.otherKanaForms && props.properNoun.otherKanaForms.length > 0)
@@ -319,7 +326,7 @@
     }
 }
 
-.kana-with-tags, .kanji-with-tags {
+.kana-with-tags, .kanji-with-tags, .word-with-tags {
     color: rgb(var(--v-theme-info));
     cursor: help;
     border-bottom: 1px dotted rgb(var(--v-theme-info));
