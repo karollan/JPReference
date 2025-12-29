@@ -284,23 +284,14 @@
                       uri="/kanjivg/"
                     />
 
-                    <div class="d-flex flex-nowrap overflow-auto">
                     <VueDmak
-                      v-for="stroke in kanji.strokeCount"
-                      :key="stroke"
                       :text="kanjiLiteral"
-                      :height="90"
-                      :width="90"
                       uri="/kanjivg/"
-                      :renderAt="stroke"
-                      :stroke="{
-                        animated: {drawing: false, erasing: false},
-                        attr: {
-                          'stroke-linecap': 'round'
-                        }  
-                      }"
+                      view="series"
+                      :width="90"
+                      :height="90"
+                      :seriesStyle="seriesStyle"
                     />
-                    </div>
                   </div>
                 </v-card>
               </section>
@@ -437,6 +428,11 @@
   const selectedLanguage = ref<string>('en')
   const visibleVocabularyLimit = ref(20)
   const isLoadingMore = ref(false)
+  const seriesStyle = reactive({
+    display: "flex",
+    wrap: "no-wrap",
+    overflow: "auto",
+  })
 
   // Computed
   const kanjiLiteral = computed(() => (route.params as any).literal as string)
@@ -739,5 +735,11 @@
 
 .line-height-1 {
   line-height: 1;
+}
+
+
+// TODO: Remove this when dmak is updated
+:deep(.dmak-series-frame) {
+  flex-shrink: 0;
 }
 </style>

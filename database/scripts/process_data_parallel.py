@@ -1072,7 +1072,13 @@ class ParallelJLPTDataProcessor:
                     RETURNING id
                 """, (jmnedict_id,))
 
-                proper_noun_id = cursor.fetchone()[0]
+                result = cursor.fetchone()
+                if result:
+                    proper_noun_id = result[0]
+                else:
+                    # If ON CONFLICT DO NOTHING triggered, we need to fetch the existing ID
+                    cursor.execute("SELECT id FROM jlpt.proper_noun WHERE jmnedict_id = %s", (jmnedict_id,))
+                    proper_noun_id = cursor.fetchone()[0]
 
                 # Process proper noun forms, translations and relationships
                 self._process_proper_noun_forms(cursor, proper_noun_id, name_data)

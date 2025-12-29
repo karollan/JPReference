@@ -272,20 +272,62 @@ def main():
         print("ERROR: Failed to copy JSON files")
         return 1
 
+    import hashlib
+
+    def calculate_checksums():
+        """Calculate MD5 checksums for all source JSON files."""
+        checksums = {}
+        for root, _, files in os.walk(SOURCE_DIR):
+            for file in files:
+                if file.endswith('.json'):
+                    path = Path(root) / file
+                    # relative path for stable keys
+                    rel_path = str(path.relative_to(SOURCE_DIR))
+                    try:
+                        with open(path, 'rb') as f:
+                            file_hash = hashlib.md5()
+                            while chunk := f.read(8192):
+                                file_hash.update(chunk)
+                            checksums[rel_path] = file_hash.hexdigest()
+                    except Exception as e:
+                        print(f"Warning: Could not hash {rel_path}: {e}")
+        return checksums
+
     # Sync furigana data
     print("Syncing furigana data...")
     try:
         sync_furigana()
     except Exception as e:
         print(f"WARNING: Furigana sync failed: {e}")
+
+    # Calculate new checksums
+    new_checksums = calculate_checksums()
+    old_checksums = state.get("checksums", {})
     
-    # Signal database rebuild if data was updated
-    signal_database_rebuild()
-    
+    if new_checksums != old_checksums:
+        print("Source data changes detected via checksums.")
+        changes = []
+        for k, v in new_checksums.items():
+            if k not in old_checksums:
+                changes.append(f"New: {k}")
+            elif old_checksums[k] != v:
+                changes.append(f"Modified: {k}")
+        for k in old_checksums:
+            if k not in new_checksums:
+                changes.append(f"Deleted: {k}")
+        
+        print(f"Changes: {', '.join(changes[:5])}..." if len(changes) > 5 else f"Changes: {', '.join(changes)}")
+        
+        # Signal database rebuild if data was updated
+        signal_database_rebuild()
+    else:
+        print("No content changes detected in source files. Skipping database rebuild signal.")
+
     # Save state
     save_state({
         "commit": current_commit,
         "completed": True,
+        "checksums": new_checksums
     })
     
     print("=" * 60)

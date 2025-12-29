@@ -2,7 +2,6 @@
   <v-card class="stroke-player bg-transparent" flat>
     <!-- VueDmak Component -->
     <VueDmak
-      class="dmak-container d-flex justify-center"
       ref="dmakRef"
       :autoplay="autoplay"
       :grid="gridOptions"
@@ -13,7 +12,6 @@
       :height="90"
       @loaded="onLoaded"
       @drew="onDrew"
-      @erased="onErased"
     />
 
     <!-- Control Center -->
@@ -141,7 +139,6 @@ const speed = ref(3)
 const showStrokeNumbers = ref(false)
 const showOptions = ref(false)
 const totalStrokes = ref(0)
-const isResetting = ref(false)
 
 // Map speed (1-10) to step (0.03 to 0.003)
 const stepValue = computed(() => 0.03 / speed.value)
@@ -187,14 +184,6 @@ function onDrew(pointer: number) {
   }
 }
 
-function onErased(pointer: number) {
-  if (isResetting.value && pointer === 0) {
-    isResetting.value = false
-    isPlaying.value = true
-    dmakRef.value?.render()
-  }
-}
-
 function togglePlay() {
   if (isPlaying.value) {
     dmakRef.value?.pause()
@@ -205,11 +194,9 @@ function togglePlay() {
 }
 
 function reset() {
-  dmakRef.value?.pause()
-  isResetting.value = true
-  isPlaying.value = false
-  // erase() without parameters erases everything
-  dmakRef.value?.erase()
+  // Use the new exposed reset method which handles restart gracefully
+  dmakRef.value?.reset()
+  isPlaying.value = true
 }
 
 function next() {
