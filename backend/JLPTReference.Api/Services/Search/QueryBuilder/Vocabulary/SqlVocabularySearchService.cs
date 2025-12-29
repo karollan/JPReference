@@ -1,6 +1,7 @@
 using System.Text.Json;
 using JLPTReference.Api.DTOs.Search;
 using JLPTReference.Api.DTOs.Vocabulary;
+using JLPTReference.Api.DTOs.Common;
 using JLPTReference.Api.Services.Search.Ranking;
 using Npgsql;
 using NpgsqlTypes;
@@ -121,9 +122,10 @@ public class SqlVocabularySearchService : IVocabularySearchService
             dto.OtherKanjiForms = await ReadJsonColumn<List<KanjiFormDto>>(reader, 14) ?? new List<KanjiFormDto>();
             dto.OtherKanaForms = await ReadJsonColumn<List<KanaFormDto>>(reader, 15) ?? new List<KanaFormDto>();
             dto.Senses = await ReadJsonColumn<List<SenseSummaryDto>>(reader, 16) ?? new List<SenseSummaryDto>();
-            dto.Slug = await reader.IsDBNullAsync(17) ? null : reader.GetString(17);
+            dto.Furigana = await ReadJsonColumn<List<FuriganaDto>>(reader, 17) ?? new List<FuriganaDto>();
+            dto.Slug = await reader.IsDBNullAsync(18) ? null : reader.GetString(18);
 
-            totalCount = reader.GetInt64(18);
+            totalCount = reader.GetInt64(19);
 
             // Compute final ranking score using the ranker
             var matchInfo = new VocabularyMatchInfo

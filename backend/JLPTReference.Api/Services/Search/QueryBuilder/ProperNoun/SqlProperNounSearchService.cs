@@ -1,7 +1,7 @@
 using System.Text.Json;
 using JLPTReference.Api.DTOs.ProperNoun;
 using JLPTReference.Api.DTOs.Search;
-using JLPTReference.Api.DTOs.Vocabulary;
+using JLPTReference.Api.DTOs.Common;
 using JLPTReference.Api.Services.Search.Ranking;
 using Npgsql;
 using NpgsqlTypes;
@@ -105,9 +105,10 @@ public class SqlProperNounSearchService : IProperNounSearchService
             dto.OtherKanjiForms = await ReadJsonColumn<List<DTOs.ProperNoun.KanjiFormDto>>(reader, 10) ?? new List<DTOs.ProperNoun.KanjiFormDto>();
             dto.OtherKanaForms = await ReadJsonColumn<List<DTOs.ProperNoun.KanaFormDto>>(reader, 11) ?? new List<DTOs.ProperNoun.KanaFormDto>();
             dto.Translations = await ReadJsonColumn<List<TranslationSummaryDto>>(reader, 12) ?? new List<TranslationSummaryDto>();
-            dto.Slug = await reader.IsDBNullAsync(13) ? null : reader.GetString(13);
+            dto.Furigana = await ReadJsonColumn<List<FuriganaDto>>(reader, 13) ?? new List<FuriganaDto>();
+            dto.Slug = await reader.IsDBNullAsync(14) ? null : reader.GetString(14);
 
-            totalCount = reader.GetInt64(14);
+            totalCount = reader.GetInt64(15);
 
             // Compute ranking score
             var matchInfo = new ProperNounMatchInfo

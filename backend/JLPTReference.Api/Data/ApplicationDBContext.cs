@@ -41,6 +41,7 @@ public class ApplicationDBContext : DbContext
     public DbSet<VocabularySenseGloss> VocabularySenseGlosses { get; set; }
     public DbSet<VocabularySenseExample> VocabularySenseExamples { get; set; }
     public DbSet<VocabularySenseExampleSentence> VocabularySenseExampleSentences { get; set; }
+    public DbSet<VocabularyFurigana> VocabularyFurigana { get; set; }
 
     // Proper Nouns
     public DbSet<ProperNoun> ProperNoun { get; set; }
@@ -52,6 +53,7 @@ public class ApplicationDBContext : DbContext
     public DbSet<ProperNounTranslationType> ProperNounTranslationTypes { get; set; }
     public DbSet<ProperNounTranslationText> ProperNounTranslationTexts { get; set; }
     public DbSet<ProperNounTranslationRelated> ProperNounTranslationRelated { get; set; }
+    public DbSet<ProperNounFurigana> ProperNounFurigana { get; set; }
 
     // Relations
     public DbSet<KanjiRadical> KanjiRadicals { get; set; }
@@ -139,6 +141,10 @@ public class ApplicationDBContext : DbContext
         modelBuilder.Entity<VocabularySenseExampleSentence>().ToTable("vocabulary_sense_example_sentence", schema: "jlpt");
         modelBuilder.Entity<VocabularySenseExampleSentence>().HasKey(vses => vses.Id);
 
+        modelBuilder.Entity<VocabularyFurigana>().ToTable("vocabulary_furigana", schema: "jlpt");
+        modelBuilder.Entity<VocabularyFurigana>().HasKey(vf => vf.Id);
+        modelBuilder.Entity<VocabularyFurigana>().Property(vf => vf.Furigana).HasColumnType("jsonb");
+
         // Proper Nouns
         modelBuilder.Entity<ProperNoun>().ToTable("proper_noun", schema: "jlpt");
         modelBuilder.Entity<ProperNoun>().HasKey(pn => pn.Id);
@@ -184,6 +190,10 @@ public class ApplicationDBContext : DbContext
 
         modelBuilder.Entity<ProperNounTranslationRelated>().ToTable("proper_noun_translation_related", schema: "jlpt");
         modelBuilder.Entity<ProperNounTranslationRelated>().HasKey(pntr => pntr.Id);
+
+        modelBuilder.Entity<ProperNounFurigana>().ToTable("proper_noun_furigana", schema: "jlpt");
+        modelBuilder.Entity<ProperNounFurigana>().HasKey(pnf => pnf.Id);
+        modelBuilder.Entity<ProperNounFurigana>().Property(pnf => pnf.Furigana).HasColumnType("jsonb");
 
         // Relations
         modelBuilder.Entity<KanjiRadical>().ToTable("kanji_radical", schema: "jlpt");

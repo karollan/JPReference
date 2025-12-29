@@ -269,6 +269,18 @@ CREATE TABLE IF NOT EXISTS vocabulary_sense_example_sentence (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Furigana data for vocabulary
+CREATE TABLE IF NOT EXISTS vocabulary_furigana (
+    id UUID PRIMARY KEY DEFAULT uuidv7(),
+    vocabulary_id UUID NOT NULL REFERENCES vocabulary(id) ON DELETE CASCADE,
+    text TEXT NOT NULL,
+    reading TEXT NOT NULL,
+    furigana JSONB NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(vocabulary_id, text, reading)
+);
+
 -- ============================================
 -- PROPER NOUNS (Names, Places, Companies)
 -- ============================================
@@ -355,6 +367,18 @@ CREATE TABLE IF NOT EXISTS proper_noun_translation_text (
     text TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Furigana data for proper nouns
+CREATE TABLE IF NOT EXISTS proper_noun_furigana (
+    id UUID PRIMARY KEY DEFAULT uuidv7(),
+    proper_noun_id UUID NOT NULL REFERENCES proper_noun(id) ON DELETE CASCADE,
+    text TEXT NOT NULL,
+    reading TEXT NOT NULL,
+    furigana JSONB NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(proper_noun_id, text, reading)
 );
 
 -- ============================================
@@ -2462,6 +2486,7 @@ RETURNS TABLE (
     other_kanji_forms JSON,
     other_kana_forms JSON,
     senses JSON,
+    furigana JSON,
     slug TEXT,                          -- URL-friendly identifier: "term" or "term(reading)"
     total_count BIGINT
 ) AS $$
@@ -2761,6 +2786,11 @@ BEGIN
             JOIN jlpt.vocabulary_sense vs ON vs.id = ts.sense_id
             ORDER BY vs.id
         ) x),
+        (SELECT COALESCE(json_agg(json_build_object(
+            'text', vf.text,
+            'reading', vf.reading,
+            'furigana', vf.furigana
+        )), '[]'::json) FROM jlpt.vocabulary_furigana vf WHERE vf.vocabulary_id = p.id),
         -- Compute slug
         (SELECT 
             CASE 
@@ -2802,6 +2832,7 @@ RETURNS TABLE (
     other_kanji_forms JSON,
     other_kana_forms JSON,
     translations JSON,
+    furigana JSON,
     slug TEXT,                          -- URL-friendly identifier: "term" or "term(reading)"
     total_count BIGINT
 ) AS $$
@@ -3081,6 +3112,11 @@ BEGIN
             JOIN jlpt.proper_noun_translation pt ON pt.id = tt.translation_id
             ORDER BY pt.id
         ) x),
+        (SELECT COALESCE(json_agg(json_build_object(
+            'text', pnf.text,
+            'reading', pnf.reading,
+            'furigana', pnf.furigana
+        )), '[]'::json) FROM jlpt.proper_noun_furigana pnf WHERE pnf.proper_noun_id = p.id),
         -- Compute slug
         (SELECT 
             CASE 

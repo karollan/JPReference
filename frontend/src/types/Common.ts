@@ -13,3 +13,14 @@ export interface PaginationMetadata {
   hasPrevious: boolean
   hasNext: boolean
 }
+
+export interface Furigana {
+  text: string
+  reading: string
+  furigana: FuriganaPart[]
+}
+
+export interface FuriganaPart {
+  ruby: string
+  rt?: string
+}

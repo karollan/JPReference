@@ -1,4 +1,4 @@
-import type { PaginationMetadata, TagInfo } from './Common'
+import type { PaginationMetadata, TagInfo, Furigana } from './Common'
 
 export interface ProperNounResponse {
   data: ProperNounSummary[]
@@ -11,6 +11,7 @@ export interface ProperNounDetails {
   kanjiForms: KanjiForm[]
   kanaForms: KanaForm[]
   translations: TranslationDetails[]
+  furigana: Furigana[] | null
   containedKanji: KanjiInfo[]
 }
 
@@ -24,6 +25,7 @@ export interface ProperNounSummary {
   otherKanjiForms: KanjiForm[] | null
   otherKanaForms: KanaForm[] | null
   translations: TranslationSummary[] | null
+  furigana: Furigana[] | null
   slug: string
 }
 

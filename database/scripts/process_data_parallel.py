@@ -11,6 +11,7 @@ Optimizations:
 import os
 import sys
 import time
+import json
 import psycopg2
 from pathlib import Path
 import ijson
@@ -88,6 +89,10 @@ class ParallelJLPTDataProcessor:
 
         # Connection pool
         self.connection_pool = []
+
+        # Furigana maps
+        self.vocab_furigana_map = {}
+        self.proper_noun_furigana_map = {}
 
     def get_db_connection(self):
         """Get a database connection from the pool."""
@@ -319,6 +324,7 @@ class ParallelJLPTDataProcessor:
                 # Process forms and senses
                 self._process_vocab_forms(cursor, vocabulary_id, word_data)
                 self._process_vocab_senses(cursor, vocabulary_id, word_data, local_pending_vocab_relations)
+                self._process_furigana(cursor, vocabulary_id, 'vocabulary', word_data, self.vocab_furigana_map)
                 
                 processed += 1
                 if processed % 100 == 0:
@@ -437,6 +443,83 @@ class ParallelJLPTDataProcessor:
                         # For kana-only words, key by (kana, kana)
                         self.vocabulary_jlpt_mapping[(furigana, furigana)] = jlpt_numeric
             print(f"Loaded JLPT mapping for {len(self.vocabulary_jlpt_mapping)} vocabulary entries")
+
+    def load_furigana_data(self):
+        """Load furigana data into memory maps."""
+        print("Loading furigana data...")
+        
+        # Load vocabulary furigana
+        vocab_furigana_path = self.source_dir / "vocabulary" / "furigana.json"
+        if vocab_furigana_path.exists():
+            print(f"Loading vocabulary furigana from {vocab_furigana_path.name}...", flush=True)
+            with open(vocab_furigana_path, 'r', encoding='utf-8-sig') as f:
+                # Use ijson to stream the list of objects
+                entries = ijson.items(f, 'item')
+                count = 0
+                for entry in entries:
+                    text = entry.get('text')
+                    reading = entry.get('reading')
+                    furigana = entry.get('furigana')
+                    if text and reading and furigana:
+                        self.vocab_furigana_map[(text, reading)] = json.dumps(furigana)
+                        count += 1
+                print(f"Loaded {count} vocabulary furigana entries")
+        
+        # Load proper noun furigana
+        names_furigana_path = self.source_dir / "names" / "furigana.json"
+        if names_furigana_path.exists():
+            print(f"Loading proper noun furigana from {names_furigana_path.name}...", flush=True)
+            with open(names_furigana_path, 'r', encoding='utf-8-sig') as f:
+                entries = ijson.items(f, 'item')
+                count = 0
+                for entry in entries:
+                    text = entry.get('text')
+                    reading = entry.get('reading')
+                    furigana = entry.get('furigana')
+                    if text and reading and furigana:
+                        self.proper_noun_furigana_map[(text, reading)] = json.dumps(furigana)
+                        count += 1
+                print(f"Loaded {count} proper noun furigana entries")
+
+    def _process_furigana(self, cursor, entity_id, entity_type, word_data, furigana_map):
+        """Process and insert furigana data for an entity."""
+        if not furigana_map:
+            return
+
+        furigana_batch = []
+        processed_pairs = set()
+
+        # Check all combinations of kanji and kana
+        # Efficiency note: This is O(N*M) but N and M are usually very small (1-3)
+        for kanji in word_data.get('kanji', []):
+            text = kanji.get('text')
+            if not text: continue
+            
+            for kana in word_data.get('kana', []):
+                reading = kana.get('reading', kana.get('text')) # 'text' is reading in Jmdict
+                if not reading: continue
+                
+                # Check appliesToKanji constraint
+                applies_to = kana.get('appliesToKanji', [])
+                if applies_to and applies_to != ['*'] and text not in applies_to:
+                    continue
+
+                if (text, reading) in processed_pairs:
+                    continue
+                
+                json_data = furigana_map.get((text, reading))
+                if json_data:
+                    furigana_batch.append((entity_id, text, reading, json_data))
+                    processed_pairs.add((text, reading))
+        
+        if furigana_batch:
+            table_name = f"jlpt.{entity_type}_furigana"
+            id_column = f"{entity_type}_id"
+            cursor.executemany(f"""
+                INSERT INTO {table_name} ({id_column}, text, reading, furigana)
+                VALUES (%s, %s, %s, %s)
+                ON CONFLICT ({id_column}, text, reading) DO NOTHING
+            """, furigana_batch)
 
     def _get_vocab_jlpt_level(self, word_data):
         """Get JLPT level for vocabulary from mapping.
@@ -995,6 +1078,7 @@ class ParallelJLPTDataProcessor:
                 self._process_proper_noun_forms(cursor, proper_noun_id, name_data)
                 self._process_proper_noun_translations(cursor, proper_noun_id, name_data, local_pending_proper_nouns_relations)
                 self._process_proper_noun_kanji_relationships(cursor, proper_noun_id, name_data)
+                self._process_furigana(cursor, proper_noun_id, 'proper_noun', name_data, self.proper_noun_furigana_map)
 
                 processed += 1
                 if processed % 100 == 0:
@@ -1586,6 +1670,7 @@ class ParallelJLPTDataProcessor:
             return False
         
         self.load_jlpt_mappings()
+        self.load_furigana_data()
         self.pre_populate_tags()
         
         try:

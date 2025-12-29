@@ -137,8 +137,8 @@ services:
         echo '============================================'
         
         echo 'Installing Python and Git...'
-        apt-get update -q && apt-get install -y -q python3 git curl
-        
+        apt-get update -q && apt-get install -y -q python3 git curl python3-requests
+
         echo ''
         echo 'Running JMDict sync...'
         python3 -u sync_jmdict.py

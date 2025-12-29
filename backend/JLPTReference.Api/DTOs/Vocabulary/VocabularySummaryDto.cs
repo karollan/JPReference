@@ -1,3 +1,5 @@
+using JLPTReference.Api.DTOs.Common;
+
 namespace JLPTReference.Api.DTOs.Vocabulary;
 
 public class VocabularySummaryDto
@@ -15,6 +17,7 @@ public class VocabularySummaryDto
     public List<KanjiFormDto>? OtherKanjiForms { get; set; } = new();
     public List<KanaFormDto>? OtherKanaForms { get; set; } = new();
     public List<SenseSummaryDto>? Senses { get; set; } = new();
+    public List<FuriganaDto>? Furigana { get; set; } = new();
     public int? JlptLevel { get; set; }
     public bool IsCommon { get; set; }
 }

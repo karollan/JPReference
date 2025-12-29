@@ -1,3 +1,4 @@
+using Npgsql;
 using Microsoft.OpenApi.Models;
 using Microsoft.EntityFrameworkCore;
 using JLPTReference.Api.Data;
@@ -15,6 +16,12 @@ using JLPTReference.Api.Entities.Vocabulary;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var dataSourceBuilder = new NpgsqlDataSourceBuilder(
+    builder.Configuration.GetConnectionString("DefaultConnection")
+);
+dataSourceBuilder.EnableDynamicJson();
+var dataSource = dataSourceBuilder.Build();
+
 // Add services to the container.
 builder.Services.AddControllers();
 
@@ -31,7 +38,7 @@ builder.Services.AddSwaggerGen(options =>
 
 // Add DbContext with pooled factory (allows both direct injection and factory pattern)
 builder.Services.AddPooledDbContextFactory<ApplicationDBContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(dataSource));
 
 // Allow direct DbContext injection (creates context from the pool)
 builder.Services.AddScoped<ApplicationDBContext>(sp => 
