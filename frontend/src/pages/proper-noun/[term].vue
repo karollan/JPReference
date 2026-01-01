@@ -49,8 +49,8 @@
         >
           <!-- Header Section -->
           <header class="vocab-header mb-6">
-            <div class="d-flex flex-column flex-md-row align-md-end justify-space-between">
-              <div class="main-term">
+            <v-row class="justify-space-between">
+              <v-col class="main-term v-col-auto">
                 <h1 class="display-term font-weight-bold text-h2 text-md-h1 mb-2">
                   <FuriganaText
                     :text="selectedKanjiText || selectedKanaText"
@@ -58,10 +58,10 @@
                     :furigana="properNoun.furigana"
                   />
                 </h1>
-              </div>
+              </v-col>
 
-              <div class="header-actions d-flex flex-column align-end gap-2">
-                <div class="d-flex align-center mb-2">
+              <v-col class="header-actions v-col-auto justify-space-between d-flex flex-column align-top gap-2">
+                <div class="d-flex align-top mb-2">
                   <v-btn
                     color="primary"
                     prepend-icon="mdi-arrow-left"
@@ -71,8 +71,8 @@
                     Back to Search
                   </v-btn>
                 </div>
-              </div>
-            </div>
+              </v-col>
+            </v-row>
             <v-divider class="mt-4 mb-6 border-opacity-25" />
           </header>
 
@@ -269,7 +269,7 @@
                   <h3 class="text-overline font-weight-bold mb-2 text-medium-emphasis">Study Tools</h3>
                   <div class="d-flex flex-column gap-2">
                     <StrokePlayer
-                      :text="selectedFormText"
+                      :text="selectedFormText ?? ''"
                       uri="/kanjivg/"
                     />
                   </div>

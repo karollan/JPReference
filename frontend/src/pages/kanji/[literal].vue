@@ -24,23 +24,23 @@
         <div v-else class="kanji-detail-content animate-fade-in">
           <!-- Header Section -->
           <header class="kanji-header mb-6">
-            <div class="d-flex flex-column flex-md-row align-md-end justify-space-between">
-              <div class="main-char">
-                <div class="d-flex align-end">
-                  <h1 class="display-char font-weight-light text-h1 mb-0 mr-6 font-jp">
+            <v-row class="justify-space-between">
+              <v-col class="v-col-auto main-char">
+                <div class="d-flex flex-column gap-2">
+                  <h1 class="display-char text-h1 font-jp text-center">
                     {{ kanji.literal }}
                   </h1>
-                  <div class="char-meta mb-2">
-                    <div class="text-h6 text-medium-emphasis font-weight-regular">
+                  <div class="char-meta">
+                    <div class="text-body-2 text-medium-emphasis font-weight-regular">
                       <v-icon class="mr-1" icon="mdi-pencil" size="small" />
                       {{ kanji.strokeCount }} strokes
                     </div>
                   </div>
                 </div>
-              </div>
+              </v-col>
 
-              <div class="header-actions d-flex flex-column align-end gap-2">
-                <div class="d-flex align-center mb-2">
+              <v-col class="header-actions v-col-auto justify-space-between d-flex flex-column">
+                <div class="d-flex justify-end">
                   <v-btn
                     color="primary"
                     prepend-icon="mdi-arrow-left"
@@ -50,7 +50,7 @@
                     Back to Search
                   </v-btn>
                 </div>
-                <div class="badges d-flex gap-2 mb-2">
+                <div class="badges d-flex justify-end gap-2">
                   <v-chip
                     v-if="kanji.frequency"
                     color="primary"
@@ -76,8 +76,8 @@
                     Grade {{ kanji.grade }}
                   </v-chip>
                 </div>
-              </div>
-            </div>
+              </v-col>
+            </v-row>
             <v-divider class="mt-4 mb-6 border-opacity-25" />
           </header>
 
@@ -291,6 +291,7 @@
                       :width="90"
                       :height="90"
                       :seriesStyle="seriesStyle"
+                      :seriesFrameStyle="frameStyle"
                     />
                   </div>
                 </v-card>
@@ -432,6 +433,9 @@
     display: "flex",
     wrap: "no-wrap",
     overflow: "auto",
+  })
+  const frameStyle = reactive({
+    flexShrink: 0,
   })
 
   // Computed
@@ -735,11 +739,5 @@
 
 .line-height-1 {
   line-height: 1;
-}
-
-
-// TODO: Remove this when dmak is updated
-:deep(.dmak-series-frame) {
-  flex-shrink: 0;
 }
 </style>

@@ -10,12 +10,14 @@
       :text="text"
       :uri="uri"
       :height="90"
+      :canvas-style="canvasStyle"
       @loaded="onLoaded"
       @drew="onDrew"
     />
 
     <!-- Control Center -->
     <v-card
+      v-if="text && text !== ''"
       class="control-center mx-auto rounded-pill border-thin pa-1"
       elevation="0"
       max-width="300"
@@ -135,7 +137,7 @@ const props = defineProps<{
 const dmakRef = ref<any>(null)
 const isPlaying = ref(true)
 const autoplay = ref(true)
-const speed = ref(3)
+const speed = ref(5)
 const showStrokeNumbers = ref(false)
 const showOptions = ref(false)
 const totalStrokes = ref(0)
@@ -151,7 +153,7 @@ const strokeOptions = computed(() => ({
   order: {
     visible: showStrokeNumbers.value,
     attr: {
-      'font-size': '8',
+      'font-size': '12',
       fill: '#999999'
     }
   },
@@ -164,14 +166,20 @@ const strokeOptions = computed(() => ({
   }
 }))
 
-const gridOptions = computed(() => ({
+const gridOptions = reactive({
   show: true,
   attr: {
     stroke: 'rgba(var(--v-border-color), 0.2)',
     'stroke-width': 0.5,
     'stroke-dasharray': '--'
   }
-}))
+})
+
+const canvasStyle = reactive({
+  display: 'flex',
+  justifyContent: 'center',
+  marginBottom: '8px'
+})
 
 function onLoaded(strokes: any[]) {
   totalStrokes.value = strokes.length
@@ -239,6 +247,11 @@ function back() {
 
 :deep(.v-slider.v-input--horizontal) {
   margin-inline: 0;
+}
+
+:deep(.dmak-container svg) {
+  height: max-content;
+  min-height: 40px;
 }
 </style>
 
