@@ -329,7 +329,7 @@
                   variant="outlined"
                 >
                   <h3 class="text-overline font-weight-bold mb-2 text-medium-emphasis">
-                    Contained Kanji
+                    Related Kanji
                   </h3>
                   <div class="d-flex flex-wrap gap-2">
                     <v-btn

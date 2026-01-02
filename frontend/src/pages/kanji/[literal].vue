@@ -303,7 +303,7 @@
                             variant="outlined"
                           >
                             <v-card-text class="py-3">
-                              <div class="text-caption text-medium-emphasis font-weight-bold line-height-1 mb-1">
+                              <div class="text-caption text-medium-emphasis font-weight-bold line-height-1 mb-1 text-wrap">
                                 {{ cp.displayName }}
                               </div>
                               <div class="font-weight-regular entry-value">
@@ -330,7 +330,7 @@
                             variant="outlined"
                           >
                             <v-card-text class="py-3">
-                              <div class="text-caption text-medium-emphasis font-weight-bold line-height-1 mb-1">
+                              <div class="text-caption text-medium-emphasis font-weight-bold line-height-1 mb-1 text-wrap">
                                 {{ qc.displayName }}
                               </div>
                               <div class="font-weight-regular entry-value">
@@ -358,7 +358,7 @@
                             <v-card-text class="d-flex align-center justify-space-between py-3">
                               <div class="d-flex align-center overflow-hidden">
                                 <div class="text-truncate">
-                                  <div class="text-caption text-medium-emphasis font-weight-bold line-height-1 mb-1">
+                                  <div class="text-caption text-medium-emphasis font-weight-bold line-height-1 mb-1 text-wrap">
                                     {{ ref.displayName }}
                                   </div>
                                   <div class="font-weight-regular entry-value">
@@ -430,10 +430,10 @@
   const kanjiLiteral = computed(() => (route.params as any).literal as string)
 
   const codepointNames: Record<string, string> = {
-    ucs: 'Unicode',
-    jis208: 'JIS X 0208',
-    jis212: 'JIS X 0212',
-    jis213: 'JIS X 0213',
+    ucs: 'Unicode 4.0',
+    jis208: 'JIS X 0208-1997',
+    jis212: 'JIS X 0212-1990',
+    jis213: 'JIS X 0213-2000',
     deroo: 'De Roo',
   }
 
@@ -451,8 +451,9 @@
   const queryCodeNames: Record<string, string> = {
     skip: 'SKIP',
     four_corner: 'Four Corner',
-    deroo: 'De Roo',
+    deroo: '2001 Kanji (De Roo)',
     misclass: 'Misclassification',
+    sh_desc: 'The Kanji Dictionary (Spahn & Hadamitzky)'
   }
 
   const queryCodes = computed(() => {
@@ -470,27 +471,27 @@
     nelson_c: 'Classic Nelson',
     nelson_n: 'New Nelson',
     halpern_njecd: 'Halpern NJECD',
-    halpern_kkld: 'Halpern KKLD',
-    halpern_kkld_2ed: 'Halpern KKLD 2nd Ed.',
+    halpern_kkld: 'The Kodansha Kanji Learners Dictionary',
+    halpern_kkld_2ed: 'The Kodansha Kanji Learners Dictionary 2nd Ed.',
     halpern_kkd: 'The Kodansha Kanji Dictionary',
-    heisig: 'Heisig',
-    heisig6: 'Heisig 6th Ed.',
-    gakken: 'Gakken',
-    oneill_names: 'O\'Neill Names',
-    oneill_kk: 'O\'Neill KK',
+    heisig: 'Remembering The Kanji',
+    heisig6: 'Remembering The Kanji 6th Ed.',
+    gakken: 'A New Dictionary of Kanji Usage',
+    oneill_names: 'Japanese Names',
+    oneill_kk: 'Essential Kanji',
     moro: 'Morohashi (Dai Kan-Wa Jiten)',
-    henshall: 'Henshall',
-    sh_kk: 'SH KK',
-    sh_kk2: 'SH KK2',
-    sakade: 'Sakade',
-    jf_cards: 'JF Cards',
-    henshall3: 'Henshall 3',
-    tutt_cards: 'Tuttle Cards',
+    henshall: 'A Guide To Remembering Japanese Characters',
+    sh_kk: 'Kanji and Kana',
+    sh_kk2: 'Kanji and Kana (2011 edition)',
+    sakade: 'A Guide To Reading and Writing Japanese',
+    jf_cards: 'Japanese Kanji Flashcards, by Max Hodges and Tomoko Okazaki. (Series 1)',
+    henshall3: 'A Guide To Reading and Writing Japanese (3rd Edition)',
+    tutt_cards: 'The Kanji Way to Japanese Language Power',
     crowley: 'Crowley',
     kanji_in_context: 'Kanji in Context',
-    kodansha_compact: 'Kodansha Compact',
-    maniette: 'Maniette',
-    busy_people: 'Japanese for Busy People',
+    kodansha_compact: 'Kodansha Compact Kanji Guide',
+    maniette: 'Les Kanjis dans la tete',
+    busy_people: 'Japanese for Busy People vols I-III',
     kanji_and_kana: 'Kanji & Kana',
     denshi_jisho: 'Denshi Jisho',
   }
