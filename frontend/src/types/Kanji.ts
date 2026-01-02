@@ -1,5 +1,6 @@
 import type { PaginationMetadata } from './Common'
 import type { RadicalSummary } from './Radical'
+import type { VocabularySummary } from './Vocabulary'
 
 export interface KanjiResponse {
   data: KanjiSummary[]
@@ -20,7 +21,7 @@ export interface KanjiDetails {
   queryCodes: KanjiQueryCode[] | null
   nanori: KanjiNanori[] | null
   radicals: RadicalSummary[] | null
-  vocabularyReferences: KanjiVocabulary[] | null
+  vocabularyReferences: KanjiVocabulary | null
 }
 
 // Used to represent a summary of a kanji in search lists
@@ -83,8 +84,6 @@ export interface KanjiListCache {
 }
 
 interface KanjiVocabulary {
-  id: string
-  kanjiId?: string
-  vocabularyId?: string
-  term: string
+  totalCount: number
+  vocabulary: VocabularySummary[]
 }

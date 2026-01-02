@@ -68,7 +68,7 @@
                     variant="tonal"
                     @click="goBack"
                   >
-                    Back to Search
+                    Go back
                   </v-btn>
                 </div>
                 <div class="badges d-flex gap-2 justify-end">
@@ -351,13 +351,24 @@
               <section class="tools-section mb-6">
                 <v-card class="pa-4 rounded-lg border-thin" variant="outlined">
                   <h3 class="text-overline font-weight-bold mb-2 text-medium-emphasis">Study Tools</h3>
-                  <div class="d-flex flex-column gap-2">
+                  <div class="d-flex flex-column align-center gap-2">
                     <StrokePlayer
                       :text="selectedFormText ?? ''"
                       uri="/kanjivg/"
                     />
+                    <v-btn
+                      color="primary"
+                      class="text-none mt-2"
+                      width="300px"
+                      prepend-icon="mdi-volume-high"
+                      variant="outlined"
+                      @click="playPronunciation(selectedKanaText)"
+                    >
+                      Play pronunciation
+                    </v-btn>
                   </div>
                 </v-card>
+                
               </section>
 
               <!-- Metadata/Ids -->
@@ -382,10 +393,7 @@
   import LanguageSelector from '@/components/search/LanguageSelector.vue'
   import { useVocabularyStore } from '@/stores/vocabulary'
   import { DEFAULT_LANGUAGE, languageMatches } from '@/utils/language'
-
-  const playPronunciation = () => {
-    
-  }
+  import { playPronunciation } from '@/utils/audio'
 
   const route = useRoute()
   const router = useRouter()
@@ -540,11 +548,6 @@
     if (!hasKanjiForms.value) {
       selectedFormText.value = kanaText
     }
-  }
-
-  // Build tooltip content for tags
-  function getTagTooltipContent (tags: { description: string }[]): string {
-    return tags.map(t => `• ${t.description}`).join('\n')
   }
 
   // Language Handling

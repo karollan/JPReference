@@ -1,14 +1,19 @@
 using JLPTReference.Api.Data;
 using JLPTReference.Api.DTOs.Kanji;
 using JLPTReference.Api.DTOs.Radical;
+using JLPTReference.Api.DTOs.Search;
+using JLPTReference.Api.Services.Search.QueryBuilder;
 using Microsoft.EntityFrameworkCore;
 using JLPTReference.Api.Repositories.Interfaces;
 namespace JLPTReference.Api.Repositories.Implementations;
 public class KanjiRepository : IKanjiRepository {
 
     private readonly ApplicationDBContext _context;
-    public KanjiRepository(ApplicationDBContext context) {
+    private readonly IVocabularySearchService _vocabularySearchService;
+
+    public KanjiRepository(ApplicationDBContext context, IVocabularySearchService vocabularySearchService) {
         _context = context;
+        _vocabularySearchService = vocabularySearchService;
     }
 
     public async Task<KanjiDetailDto> GetKanjiDetailByLiteralAsync(string literal) {
@@ -19,7 +24,7 @@ public class KanjiRepository : IKanjiRepository {
         if (kanji == null)
             throw new Exception($"Kanji '{literal}' not found");
 
-        // 2️⃣ Load related collections separately
+        // Load related collections separately
         var meanings = await _context.KanjiMeanings
             .Where(m => m.KanjiId == kanji.Id)
             .AsNoTracking()
@@ -102,19 +107,26 @@ public class KanjiRepository : IKanjiRepository {
                 .ThenInclude(v => v.Kana)
             .AsNoTracking()
             .ToListAsync();
+        
+        var vocab = await _vocabularySearchService.SearchAsync(
+            new SearchSpec{
+                Filters = new SearchFilters{
+                    Languages = new List<string>{ "eng" },
+                },
+                Tokens = new List<SearchToken>{
+                    new SearchToken{
+                        RawValue = literal + '%',
+                        Variants = new List<string>(),
+                        HasWildcard = true,
+                        TransliterationBlocked = true
+                    }
+                }
+            },
+            5,
+            1
+        );
 
-        // 3️⃣ Map VocabularyReferences with the "first Kanji or first Kana" logic
-        var vocabDtos = vocabularyReferences.Select(v => new KanjiVocabularyDto
-        {
-            Id = v.Id,
-            KanjiId = v.KanjiId,
-            VocabularyId = v.VocabularyId,
-            Term = (v.Vocabulary.Kanji.Any()
-                    ? v.Vocabulary.Kanji.Select(k => k.Text).FirstOrDefault()
-                    : v.Vocabulary.Kana.Select(k => k.Text).FirstOrDefault()) ?? string.Empty
-        }).ToList();
-
-        // 4️⃣ Assemble the final DTO
+        // Assemble the final DTO
         var dto = new KanjiDetailDto
         {
             Id = kanji.Id,
@@ -130,7 +142,10 @@ public class KanjiRepository : IKanjiRepository {
             QueryCodes = queryCodes,
             Nanori = nanori,
             Radicals = radicals,
-            VocabularyReferences = vocabDtos
+            VocabularyReferences = new KanjiVocabularyDto{
+                TotalCount = vocabularyReferences.Count,
+                Vocabulary = vocab.Data
+            }
         };
 
         if (dto == null) {

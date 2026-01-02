@@ -18,6 +18,7 @@ OPTIMIZATIONS:
 import os
 import sys
 import time
+import psycopg2
 from pathlib import Path
 
 # CRITICAL: Disable output buffering for real-time logs
@@ -31,11 +32,76 @@ sys.path.insert(0, str(script_dir))
 # Import both processors
 from process_data import JLPTDataProcessor
 
+def clean_database():
+    """Clean the database before processing."""
+    print("Cleaning database...", flush=True)
+    
+    db_params = {
+        'host': os.getenv('POSTGRES_HOST', 'localhost'),
+        'port': os.getenv('POSTGRES_PORT', '5432'),
+        'database': os.getenv('POSTGRES_DB', 'jlptreference'),
+        'user': os.getenv('POSTGRES_USER', 'jlptuser'),
+        'password': os.getenv('POSTGRES_PASSWORD', 'jlptpassword')
+    }
+    
+    max_retries = 30
+    retry_delay = 2
+    
+    conn = None
+    for attempt in range(max_retries):
+        try:
+            conn = psycopg2.connect(**db_params)
+            break
+        except psycopg2.OperationalError as e:
+            print(f"Attempt {attempt + 1}/{max_retries}: Database not ready yet - {e}", flush=True)
+            time.sleep(retry_delay)
+            
+    if not conn:
+        print("Failed to connect to database for cleaning", flush=True)
+        return
+
+    try:
+        cursor = conn.cursor()
+        
+        # Truncate tables with CASCADE to remove all data
+        # We also reset identity columns
+        tables = [
+            "jlpt.kanji", 
+            "jlpt.vocabulary", 
+            "jlpt.proper_noun", 
+            "jlpt.radical", 
+            "jlpt.tag"
+        ]
+        
+        print(f"Truncating tables: {', '.join(tables)}", flush=True)
+        cursor.execute(f"TRUNCATE TABLE {', '.join(tables)} RESTART IDENTITY CASCADE;")
+        
+        conn.commit()
+        print("Database fully cleaned successfully.", flush=True)
+        
+    except Exception as e:
+        print(f"Error cleaning database: {e}", flush=True)
+        if conn:
+            conn.rollback()
+        # We don't exit here, we let the processor try and fail if it must, 
+        # or maybe we should exit? duplicate keys will happen if we don't clean.
+        # But failing to clean might be due to other issues. 
+        # Let's verify: if truncate fails, duplicates are guaranteed.
+        sys.exit(1)
+    finally:
+        if conn:
+            conn.close()
+
+
 def main():
     """Main function."""
     print("=" * 60, flush=True)
     print("JLPT Reference Database - Data Processor", flush=True)
     print("=" * 60, flush=True)
+    
+    # Clean the database first
+    clean_database()
+    
     print("", flush=True)
     print("Processing data sources:", flush=True)
     print("- Kanji data from kanjidic2", flush=True)

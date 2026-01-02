@@ -47,7 +47,7 @@
                     variant="tonal"
                     @click="goBack"
                   >
-                    Back to Search
+                    Go back
                   </v-btn>
                 </div>
                 <div class="badges d-flex justify-end gap-2">
@@ -200,62 +200,38 @@
 
               <!-- Associated Vocabulary (Infinite Scroll) -->
               <section class="vocabulary-section mb-8">
-                <h2 class="text-h5 font-weight-bold mb-4 d-flex align-center">
-                  <v-icon class="mr-2" color="success" icon="mdi-book-open-page-variant-outline" start />
-                  Associated Vocabulary
-                  <v-chip class="ml-3" color="success" size="small" variant="flat">
-                    {{ kanji.vocabularyReferences?.length || 0 }}
+                <h2 class="text-h5 font-weight-bold mb-4 d-flex align-center justify-space-between">
+                  <div>
+                    <v-icon class="mr-2" color="success" icon="mdi-book-open-page-variant-outline" start />
+                    Top words containing this kanji
+                  </div>
+                  <v-chip class="ml-3" color="primary" size="small" variant="flat" @click="searchForAllReferences">
+                    Or see all {{ kanji.vocabularyReferences?.totalCount || 0 }} words
                   </v-chip>
                 </h2>
 
-                <v-card class="vocabulary-card bg-surface" flat>
-                  <div v-if="visibleVocabulary.length === 0" class="pa-4 text-medium-emphasis font-italic">
-                    No associated vocabulary found.
-                  </div>
-                  <v-list v-else class="bg-transparent pa-0">
-                    <v-list-item
-                      v-for="(vocab, index) in visibleVocabulary"
-                      :key="vocab.id || index"
-                      class="vocab-item py-2"
-                      :class="{ 'border-bottom': index < visibleVocabulary.length - 1 }"
-                      hover
-                      lines="one"
-                      rounded="lg"
-                      :to="getVocabularyLink(vocab)"
-                    >
-                      <template #prepend>
-                        <v-avatar class="mr-2 text-success" color="success-lighten-5" size="32">
-                          <v-icon size="small">mdi-book-outline</v-icon>
-                        </v-avatar>
-                      </template>
-                      <v-list-item-title class="font-weight-medium font-jp text-body-1">
-                        {{ vocab.term }}
-                      </v-list-item-title>
-                      <template #append>
-                        <v-icon color="medium-emphasis" size="small">mdi-chevron-right</v-icon>
-                      </template>
-                    </v-list-item>
-
-                    <!-- Load More Trigger -->
-                    <div v-if="hasMoreVocabulary" class="d-flex justify-center py-4">
-                      <v-btn
-                        color="primary"
-                        :loading="isLoadingMore"
-                        variant="text"
-                        @click="loadMoreVocabulary"
-                      >
-                        Load More
-                      </v-btn>
-                    </div>
-                  </v-list>
-                </v-card>
+                <div class="vocabulary-iterator overflow-y-auto">
+                  <template v-if="hasVocabulary">
+                    <VocabularySummary
+                      v-for="vocabulary in vocabularyReferences"
+                      :key="vocabulary.id"
+                      :vocabulary="vocabulary"
+                    />
+                  </template>
+                  <template v-else>
+                    <v-card class="pa-8 text-center" variant="outlined">
+                      <v-icon color="grey-lighten-1" size="64">mdi-text-search</v-icon>
+                      <div class="text-h6 mt-4 text-grey">No vocabulary found</div>
+                    </v-card>
+                  </template>
+                </div>
               </section>
             </v-col>
 
             <!-- Sidebar -->
             <v-col cols="12" md="4">
               <!-- Radicals -->
-              <section v-if="kanji.radicals && kanji.radicals.length > 0" class="radicals-section mb-6">
+              <section v-if="kanji?.radicals && kanji.radicals.length > 0" class="radicals-section mb-6">
                 <v-card class="pa-4 rounded-lg border-thin" variant="outlined">
                   <h3 class="text-overline font-weight-bold mb-2 text-medium-emphasis">Radicals</h3>
                   <div class="d-flex flex-wrap gap-2">
@@ -293,6 +269,18 @@
                       :seriesStyle="seriesStyle"
                       :seriesFrameStyle="frameStyle"
                     />
+
+                    <!-- Just put in the literal and let google figure it out :D -->
+                    <v-btn
+                      color="primary"
+                      class="text-none mt-2 align-self-center"
+                      width="300px"
+                      prepend-icon="mdi-volume-high"
+                      variant="outlined"
+                      @click="playPronunciation(kanji.literal)"
+                    >
+                      Play pronunciation
+                    </v-btn>
                   </div>
                 </v-card>
               </section>
@@ -416,6 +404,7 @@
   import LanguageSelector from '@/components/search/LanguageSelector.vue'
   import { useKanjiStore } from '@/stores/kanji'
   import { VueDmak } from 'vue-dmak'
+  import { playPronunciation } from '@/utils/audio'
 
   const route = useRoute()
   const router = useRouter()
@@ -428,7 +417,6 @@
   const readingsTab = ref<string>('')
   const selectedLanguage = ref<string>('en')
   const visibleVocabularyLimit = ref(20)
-  const isLoadingMore = ref(false)
   const seriesStyle = reactive({
     display: "flex",
     wrap: "no-wrap",
@@ -440,8 +428,6 @@
 
   // Computed
   const kanjiLiteral = computed(() => (route.params as any).literal as string)
-
-  const unicode = computed(() => kanji.value?.codepoints?.find(codepoint => codepoint.type === "ucs")?.value || "")
 
   const codepointNames: Record<string, string> = {
     ucs: 'Unicode',
@@ -531,29 +517,13 @@
     return kanji.value?.meanings?.filter(meaning => meaning.language === selectedLanguage.value)?.map(meaning => meaning.meaning) || []
   })
 
-  // Vocabulary Logic
-  const visibleVocabulary = computed(() => {
-    if (!kanji.value?.vocabularyReferences) return []
-    return kanji.value.vocabularyReferences.slice(0, visibleVocabularyLimit.value)
+  const hasVocabulary = computed(() => {
+    return kanji.value?.vocabularyReferences?.vocabulary?.length && kanji.value?.vocabularyReferences?.vocabulary?.length > 0
   })
 
-  const hasMoreVocabulary = computed(() => {
-    if (!kanji.value?.vocabularyReferences) return false
-    return visibleVocabularyLimit.value < kanji.value.vocabularyReferences.length
+  const vocabularyReferences = computed(() => {
+    return kanji.value?.vocabularyReferences?.vocabulary || []
   })
-
-  function loadMoreVocabulary () {
-    isLoadingMore.value = true
-    // Simulate network delay or just nice UX
-    setTimeout(() => {
-      visibleVocabularyLimit.value += 20
-      isLoadingMore.value = false
-    }, 300)
-  }
-
-  function getVocabularyLink (vocab: { term?: string }): string {
-    return vocab.term ? `/vocabulary/${vocab.term}` : '#'
-  }
 
   // Readings Logic
   const readingTypeMap: Record<string, string> = {
@@ -617,23 +587,8 @@
   }
 
   // Actions
-  function showStrokeOrder () {
-    alert(`Stroke order for ${kanji.value?.literal} would be displayed here.`)
-  }
-
-  function playPronunciation () {
-    const onReadings = readingsMap.value.ja_on
-    const text = (onReadings && onReadings.length > 0) ? onReadings[0]!.value : readingsMap.value.ja_kun?.[0]?.value
-
-    if (text) {
-      const utterance = new SpeechSynthesisUtterance(text)
-      utterance.lang = 'ja-JP'
-      speechSynthesis.speak(utterance)
-    }
-  }
-
-  function addToFavorites () {
-    alert(`${kanji.value?.literal} added to favorites!`)
+  function searchForAllReferences () {
+    router.push(`/search?query=*${kanji.value?.literal}*&view=tabbed&tab=vocabulary`)
   }
 
   // Load Data

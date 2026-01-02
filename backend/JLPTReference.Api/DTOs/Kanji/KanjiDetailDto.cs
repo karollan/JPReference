@@ -1,4 +1,6 @@
 using JLPTReference.Api.DTOs.Radical;
+using JLPTReference.Api.DTOs.Vocabulary;
+
 namespace JLPTReference.Api.DTOs.Kanji;
 
 public class KanjiDetailDto
@@ -16,14 +18,12 @@ public class KanjiDetailDto
     public int? Grade { get; set; }
     public int? JlptLevel { get; set; }
     public List<RadicalSummaryDto> Radicals { get; set; } = new();
-    public List<KanjiVocabularyDto> VocabularyReferences { get; set; } = new();
+    public KanjiVocabularyDto VocabularyReferences { get; set; }
 }
 
 public class KanjiVocabularyDto {
-    public Guid Id { get; set; }
-    public Guid? KanjiId { get; set; }
-    public Guid? VocabularyId { get; set; }
-    public required string Term { get; set; }
+    public int TotalCount { get; set;}
+    public List<VocabularySummaryDto> Vocabulary { get; set; } = new();
 }
 
 public class KanjiMeaningDto {
