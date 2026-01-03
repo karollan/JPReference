@@ -109,11 +109,36 @@ CREATE TABLE IF NOT EXISTS kanji_nanori (
 -- ============================================
 -- RADICAL
 -- ============================================
+-- Enriched reference data from reference.txt
+CREATE TABLE IF NOT EXISTS radical_group (
+    id UUID PRIMARY KEY DEFAULT uuidv7(),
+    canonical_literal VARCHAR(10) UNIQUE NOT NULL,
+    kang_xi_number INTEGER,
+    meanings TEXT[],
+    readings TEXT[],
+    notes TEXT[],
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Links any character (from source or reference, including variants) to its group
+CREATE TABLE IF NOT EXISTS radical_group_member (
+    id UUID PRIMARY KEY DEFAULT uuidv7(),
+    group_id UUID NOT NULL REFERENCES radical_group(id) ON DELETE CASCADE,
+    literal VARCHAR(10) NOT NULL,
+    is_canonical BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(group_id, literal)
+);
+
+-- Source list from source.json for search engines and kanji composition
 CREATE TABLE IF NOT EXISTS radical (
     id UUID PRIMARY KEY DEFAULT uuidv7(),
-    literal VARCHAR(1) UNIQUE NOT NULL,
+    literal VARCHAR(10) UNIQUE NOT NULL,
     stroke_count INTEGER,
     code VARCHAR(20),
+    group_id UUID REFERENCES radical_group(id) ON DELETE SET NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -536,10 +561,16 @@ CREATE INDEX IF NOT EXISTS idx_proper_noun_uses_kanji_reverse ON proper_noun_use
 -- RADICAL INDEXES
 -- ============================================
 CREATE INDEX IF NOT EXISTS idx_radical_literal ON radical(literal);
+CREATE INDEX IF NOT EXISTS idx_radical_group_id ON radical(group_id);
 CREATE INDEX IF NOT EXISTS idx_kanji_radical_kanji ON kanji_radical(kanji_id);
 CREATE INDEX IF NOT EXISTS idx_kanji_radical_radical ON kanji_radical(radical_id);
 -- Radical lookup by stroke count
 CREATE INDEX IF NOT EXISTS idx_radical_stroke_count ON radical(stroke_count, literal);
+-- Radical group indexes
+CREATE INDEX IF NOT EXISTS idx_radical_group_canonical ON radical_group(canonical_literal);
+CREATE INDEX IF NOT EXISTS idx_radical_group_kx ON radical_group(kang_xi_number);
+CREATE INDEX IF NOT EXISTS idx_radical_group_member_group ON radical_group_member(group_id);
+CREATE INDEX IF NOT EXISTS idx_radical_group_member_literal ON radical_group_member(literal);
 
 -- ============================================
 -- RELATIONSHIPS INDEXES
@@ -704,6 +735,16 @@ CREATE TRIGGER trigger_kanji_nanori_updated_at
 
 CREATE TRIGGER trigger_radical_updated_at
     BEFORE UPDATE ON radical
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER trigger_radical_group_updated_at
+    BEFORE UPDATE ON radical_group
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER trigger_radical_group_member_updated_at
+    BEFORE UPDATE ON radical_group_member
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 

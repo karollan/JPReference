@@ -648,36 +648,215 @@ class JLPTDataProcessor:
         
         print(f"Total unique tags loaded: {len(self._tag_descriptions)}")
 
+    def _normalize_radical_char(self, char):
+        """Normalize look-alike radical characters (Katakana/Full-width to CJK Ideographs)."""
+        norm_map = {
+            '｜': '丨', '|': '丨',
+            'ノ': '丿',
+            'ハ': '八',
+            'ト': '卜',
+            'ヨ': '彐', 'ユ': '彐',
+            'マ': '龴',
+            'ム': '厶'
+        }
+        return norm_map.get(char, char)
+
+    def _get_radical_group_maps(self):
+        """
+        Load radical grouping maps from reference.txt.
+        Returns (char_to_leader, leader_to_ref_data).
+        """
+        ref_path = self.source_dir / "radfile" / "reference.txt"
+        char_to_leader = {}
+        leader_to_ref_data = {}
+        
+        if not ref_path.exists():
+            print(f"Radical reference file not found: {ref_path}")
+            return char_to_leader, leader_to_ref_data
+        
+        print(f"Building radical group maps from {ref_path}...")
+        with open(ref_path, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if not line: continue
+                
+                parts = line.split('\t')
+                if len(parts) < 7: parts += [''] * (7 - len(parts))
+                
+                leader = self._normalize_radical_char(parts[0])
+                variant = self._normalize_radical_char(parts[1]) if parts[1] else None
+                
+                if variant and char_to_leader.get(variant):
+                    current_leader = char_to_leader[variant]
+                else:
+                    current_leader = char_to_leader.get(leader, leader)
+                
+                char_to_leader[leader] = current_leader
+                if variant:
+                    char_to_leader[variant] = current_leader
+                
+                # Also record the original (un-normalized) characters as mapping to the leader
+                char_to_leader[parts[0]] = current_leader
+                if parts[1]:
+                    char_to_leader[parts[1]] = current_leader
+
+                if current_leader not in leader_to_ref_data:
+                    try:
+                        kxn = int(parts[2]) if parts[2] else None
+                    except ValueError:
+                        kxn = None
+                        
+                    leader_to_ref_data[current_leader] = {
+                        'meanings': [m.strip() for m in parts[5].split(',') if m.strip()],
+                        'readings': [r.strip() for r in parts[4].split('・') if r.strip()],
+                        'variants': {variant} if variant else set(),
+                        'notes': [parts[6]] if parts[6] else [],
+                        'kang_xi_number': kxn
+                    }
+                else:
+                    if variant:
+                        leader_to_ref_data[current_leader]['variants'].add(variant)
+                    if parts[6] and parts[6] not in leader_to_ref_data[current_leader]['notes']:
+                        leader_to_ref_data[current_leader]['notes'].append(parts[6])
+
+        for char, leader in char_to_leader.items():
+            if char != leader:
+                leader_to_ref_data[leader]['variants'].add(char)
+                
+        return char_to_leader, leader_to_ref_data
+
     def process_radical_data(self, conn, cursor):
-        """Process radical data from radfile and kradfile."""
+        """Process radical data using the new three-table model."""
         print("Processing radical data...")
         
-        # Process radfile
-        radfile_path = self.source_dir / "radfile" / "source.json"
-        if radfile_path.exists():
-            with open(radfile_path, 'rb') as f:
-                radicals = ijson.kvitems(f, 'radicals')
-                radical_batch = []
-                
-                for radical_char, radical_data in radicals:
-                    radical_batch.append((
-                        radical_char,
-                        radical_data.get('strokeCount', 0),
-                        radical_data.get('code')
-                    ))
-                    
-                    if len(radical_batch) >= BATCH_SIZE:
-                        self._flush_radical_batch(cursor, radical_batch)
-                        radical_batch.clear()
-                        self.periodic_commit(conn, cursor)
-                
-                if radical_batch:
-                    self._flush_radical_batch(cursor, radical_batch)
-                    self.periodic_commit(conn, cursor, force=True)
+        # === Phase 1: Populate radical_group from reference.txt ===
+        print("Radical Phase 1: Populating radical_group...")
+        ref_path = self.source_dir / "radfile" / "reference.txt"
+        if not ref_path.exists():
+            print(f"Reference file not found: {ref_path}")
+            return
         
-        # Process kradfile
+        # Parse reference.txt and insert into radical_group
+        radical_group_cache = {}  # canonical_literal -> group_id
+        
+        with open(ref_path, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if not line: continue
+                
+                parts = line.split('\t')
+                if len(parts) < 7: parts += [''] * (7 - len(parts))
+                
+                canonical = parts[0]
+                norm_canonical = self._normalize_radical_char(canonical)
+                variant = parts[1] if parts[1] else None
+                
+                try:
+                    kxn = int(parts[2]) if parts[2] else None
+                except ValueError:
+                    kxn = None
+                    
+                readings = [r.strip() for r in parts[4].split('・') if r.strip()]
+                meanings = [m.strip() for m in parts[5].split(',') if m.strip()]
+                notes = [parts[6]] if parts[6] else []
+                
+                if norm_canonical not in radical_group_cache:
+                    cursor.execute("""
+                        INSERT INTO jlpt.radical_group (canonical_literal, kang_xi_number, meanings, readings, notes)
+                        VALUES (%s, %s, %s, %s, %s)
+                        ON CONFLICT (canonical_literal) DO UPDATE SET
+                            kang_xi_number = COALESCE(EXCLUDED.kang_xi_number, jlpt.radical_group.kang_xi_number),
+                            meanings = CASE WHEN array_length(EXCLUDED.meanings, 1) > 0 THEN EXCLUDED.meanings ELSE jlpt.radical_group.meanings END,
+                            readings = CASE WHEN array_length(EXCLUDED.readings, 1) > 0 THEN EXCLUDED.readings ELSE jlpt.radical_group.readings END,
+                            notes = jlpt.radical_group.notes || EXCLUDED.notes,
+                            updated_at = CURRENT_TIMESTAMP
+                        RETURNING id
+                    """, (norm_canonical, kxn, meanings, readings, notes))
+                    result = cursor.fetchone()
+                    if result:
+                        radical_group_cache[norm_canonical] = result[0]
+                        radical_group_cache[canonical] = result[0]
+        
+        self.periodic_commit(conn, cursor)
+        print(f"Created {len(set(radical_group_cache.values()))} radical groups.")
+        
+        # === Phase 2: Populate radical_group_member from reference.txt ===
+        print("Radical Phase 2: Populating radical_group_member...")
+        member_count = 0
+        
+        with open(ref_path, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if not line: continue
+                
+                parts = line.split('\t')
+                if len(parts) < 7: parts += [''] * (7 - len(parts))
+                
+                canonical = parts[0]
+                variant = parts[1] if parts[1] else None
+                norm_canonical = self._normalize_radical_char(canonical)
+                group_id = radical_group_cache.get(norm_canonical)
+                if not group_id: continue
+                
+                # Insert canonical (and normalized canonical) as members
+                for lit, is_canon in [(canonical, True), (variant, False)]:
+                    if not lit: continue
+                    norm_lit = self._normalize_radical_char(lit)
+                    cursor.execute("""
+                        INSERT INTO jlpt.radical_group_member (group_id, literal, is_canonical)
+                        VALUES (%s, %s, %s)
+                        ON CONFLICT (group_id, literal) DO NOTHING
+                    """, (group_id, lit, is_canon))
+                    if lit != norm_lit:
+                        cursor.execute("""
+                            INSERT INTO jlpt.radical_group_member (group_id, literal, is_canonical)
+                            VALUES (%s, %s, %s)
+                            ON CONFLICT (group_id, literal) DO NOTHING
+                        """, (group_id, norm_lit, False))
+                    member_count += 1
+        self.periodic_commit(conn, cursor)
+        print(f"Inserted {member_count} radical_group_member entries.")
+        
+        # Build member -> group_id lookup for source.json linking
+        cursor.execute("SELECT group_id, literal FROM jlpt.radical_group_member")
+        member_to_group = {row[1]: row[0] for row in cursor.fetchall()}
+        
+        # === Phase 3: Populate radical from source.json ===
+        print("Radical Phase 3: Processing source.json...")
+        radfile_path = self.source_dir / "radfile" / "source.json"
+        if not radfile_path.exists():
+            print(f"Radfile source not found: {radfile_path}")
+            return
+
+        radical_batch = []
+        with open(radfile_path, 'rb') as f:
+            radicals_src = ijson.kvitems(f, 'radicals')
+            for char, data in radicals_src:
+                norm_char = self._normalize_radical_char(char)
+                group_id = member_to_group.get(norm_char) or member_to_group.get(char)
+                
+                radical_batch.append((
+                    char,
+                    data.get('strokeCount', 0),
+                    data.get('code'),
+                    group_id
+                ))
+                
+                if len(radical_batch) >= BATCH_SIZE:
+                    self._flush_radical_batch(cursor, radical_batch)
+                    radical_batch.clear()
+                    self.periodic_commit(conn, cursor)
+        
+        if radical_batch:
+            self._flush_radical_batch(cursor, radical_batch)
+            self.periodic_commit(conn, cursor, force=True)
+        
+        print("Radical Phase 3 complete.")
+        
+        # === Phase 4: Process kradfile ===
         kradfile_path = self.source_dir / "kradfile" / "source.json"
         if kradfile_path.exists():
+            print("Radical Phase 4: Processing kradfile...")
             with open(kradfile_path, 'rb') as f:
                 kanji_items = ijson.kvitems(f, 'kanji')
                 relationship_batch = []
@@ -709,26 +888,28 @@ class JLPTDataProcessor:
                         ON CONFLICT DO NOTHING
                     """, relationship_batch)
                     self.periodic_commit(conn, cursor, force=True)
+            print("Radical Phase 4 complete.")
 
     def _flush_radical_batch(self, cursor, radical_batch):
         """Flush radical batch to database."""
         insert_sql = """
-            INSERT INTO jlpt.radical (literal, stroke_count, code)
-            VALUES (%s, %s, %s)
+            INSERT INTO jlpt.radical (literal, stroke_count, code, group_id)
+            VALUES (%s, %s, %s, %s)
             ON CONFLICT (literal) DO UPDATE SET
                 stroke_count = EXCLUDED.stroke_count,
                 code = EXCLUDED.code,
+                group_id = EXCLUDED.group_id,
                 updated_at = CURRENT_TIMESTAMP
-            RETURNING id, literal
+            RETURNING id
         """
         
-        # Insert each radical and cache the ID
         for radical_data in radical_batch:
+            # radical_data: (literal, stroke_count, code, group_id)
             cursor.execute(insert_sql, radical_data)
             result = cursor.fetchone()
             if result:
-                radical_id, radical_char = result
-                self.radical_cache[radical_char] = radical_id
+                radical_id = result[0]
+                self.radical_cache[radical_data[0]] = radical_id
 
     def process_kanji_vocabulary_relationships(self, conn, cursor):
         """Process relationships between kanji and vocabulary."""

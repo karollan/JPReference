@@ -17,7 +17,7 @@ services:
     networks:
       - jlpt-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -27,23 +27,7 @@ services:
         chown -R postgres:postgres /var/lib/postgresql/data &&
         chmod -R 700 /var/lib/postgresql/data &&
         docker-entrypoint.sh postgres
-      "
-      postgres
-      -c max_connections=200
-      -c shared_buffers=256MB
-      -c effective_cache_size=1GB
-      -c maintenance_work_mem=128MB
-      -c checkpoint_completion_target=0.9
-      -c wal_buffers=16MB
-      -c default_statistics_target=100
-      -c random_page_cost=1.1
-      -c effective_io_concurrency=200
-      -c work_mem=32MB
-      -c min_wal_size=1GB
-      -c max_wal_size=4GB
-      -c max_worker_processes=8
-      -c max_parallel_workers_per_gather=4
-      -c max_parallel_workers=8
+      " postgres -c max_connections=200 -c shared_buffers=256MB -c effective_cache_size=1GB -c maintenance_work_mem=128MB -c checkpoint_completion_target=0.9 -c wal_buffers=16MB -c default_statistics_target=100 -c random_page_cost=1.1 -c effective_io_concurrency=200 -c work_mem=32MB -c min_wal_size=1GB -c max_wal_size=4GB -c max_worker_processes=8 -c max_parallel_workers_per_gather=4 -c max_parallel_workers=8
 
   # PgAdmin for database management
   pgadmin:
@@ -123,6 +107,7 @@ services:
       JMDICT_SOURCE_DIR: /app/source
       JMDICT_STATE_FILE: /app/state/.jmdict_state
       KANJI_REF_STATE_FILE: /app/state/.kanji_ref_commit
+      RADICALS_REF_STATE_FILE: /app/state/.radicals_ref_commit
       DATA_SEEDED_FLAG: /app/state/.data_seeded
     volumes:
       - ./database/scripts:/app/scripts
@@ -148,6 +133,11 @@ services:
         echo 'Running Kanji reference sync...'
         python3 -u sync_kanji_reference.py
         KANJI_REF_RESULT=$?
+
+        echo ''
+        echo 'Running Radicals reference sync...'
+        python3 -u sync_radicals.py
+        RADICALS_REF_RESULT=$?
         
         if [ $JMDICT_RESULT -ne 0 ]; then
           echo 'WARNING: JMDict sync had issues (exit code '$JMDICT_RESULT')'
@@ -155,6 +145,10 @@ services:
         
         if [ $KANJI_REF_RESULT -ne 0 ]; then
           echo 'WARNING: Kanji reference sync had issues (exit code '$KANJI_REF_RESULT')'
+        fi
+        
+        if [ $RADICALS_REF_RESULT -ne 0 ]; then
+          echo 'WARNING: Radicals reference sync had issues (exit code '$RADICALS_REF_RESULT')'
         fi
         
         echo '============================================'
