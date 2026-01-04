@@ -26,6 +26,8 @@ public class ApplicationDBContext : DbContext
 
     // Radical
     public DbSet<Radical> Radicals { get; set; }
+    public DbSet<RadicalGroup> RadicalGroups { get; set; }
+    public DbSet<RadicalGroupMember> RadicalGroupMembers { get; set; }
 
     // Vocabulary
     public DbSet<Tag> Tags { get; set; }
@@ -89,6 +91,15 @@ public class ApplicationDBContext : DbContext
         modelBuilder.Entity<Radical>().ToTable("radical", schema: "jlpt");
         modelBuilder.Entity<Radical>().HasKey(r => r.Id);
         modelBuilder.Entity<Radical>().HasIndex(r => r.Literal).IsUnique();
+        modelBuilder.Entity<Radical>().HasOne(r => r.Group).WithMany().HasForeignKey(r => r.GroupId);
+
+        modelBuilder.Entity<RadicalGroup>().ToTable("radical_group", schema: "jlpt");
+        modelBuilder.Entity<RadicalGroup>().HasKey(rg => rg.Id);
+        modelBuilder.Entity<RadicalGroup>().HasIndex(rg => rg.CanonicalLiteral).IsUnique();
+
+        modelBuilder.Entity<RadicalGroupMember>().ToTable("radical_group_member", schema: "jlpt");
+        modelBuilder.Entity<RadicalGroupMember>().HasKey(rgm => rgm.Id);
+        modelBuilder.Entity<RadicalGroupMember>().HasOne(rgm => rgm.Group).WithMany().HasForeignKey(rgm => rgm.GroupId);
 
         // Vocabulary
         modelBuilder.Entity<Tag>().ToTable("tag", schema: "jlpt");

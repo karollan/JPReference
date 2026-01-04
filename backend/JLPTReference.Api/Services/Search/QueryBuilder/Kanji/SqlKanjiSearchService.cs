@@ -142,6 +142,66 @@ public class SqlKanjiSearchService : IKanjiSearchService
         results = results.OrderByDescending(r => r.RelevanceScore).ToList();
 
         var totalPages = totalCount > 0 ? (int)Math.Ceiling((double)totalCount / pageSize) : 0;
+        return new SearchResultKanji
+        {
+            Data = results,
+            Pagination = new PaginationMetadata
+            {
+                TotalCount = (int)totalCount,
+                Page = page,
+                PageSize = pageSize,
+                TotalPages = totalPages
+            }
+        };
+    }
+
+    public async Task<SearchResultKanji> SearchByRadicalsAsync(List<string> radicals, int pageSize, int page)
+    {
+        await using var connection = new NpgsqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        await using var cmd = new NpgsqlCommand(@"
+            SELECT * FROM jlpt.search_kanji_by_radical_literals(
+                @radicals,
+                @pageSize,
+                @pageOffset
+            )", connection);
+
+        cmd.Parameters.Add(new NpgsqlParameter("@radicals", NpgsqlDbType.Array | NpgsqlDbType.Text)
+        {
+            Value = radicals.ToArray()
+        });
+        cmd.Parameters.AddWithValue("@pageSize", pageSize);
+        cmd.Parameters.AddWithValue("@pageOffset", (page - 1) * pageSize);
+
+        var results = new List<KanjiSummaryDto>();
+        long totalCount = 0;
+
+        await using var reader = await cmd.ExecuteReaderAsync();
+
+        while (await reader.ReadAsync())
+        {
+            var dto = new KanjiSummaryDto
+            {
+                Id = reader.GetGuid(0),
+                Literal = reader.GetString(1),
+                Grade = await reader.IsDBNullAsync(2) ? null : reader.GetInt32(2),
+                StrokeCount = reader.GetInt32(3),
+                Frequency = await reader.IsDBNullAsync(4) ? null : reader.GetInt32(4),
+                JlptLevel = await reader.IsDBNullAsync(5) ? null : reader.GetInt32(5),
+                RelevanceScore = 0 // No ranking for radical search yet
+            };
+
+            dto.KunyomiReadings = await ReadJsonColumn<List<KanjiReadingDto>>(reader, 6) ?? new List<KanjiReadingDto>();
+            dto.OnyomiReadings = await ReadJsonColumn<List<KanjiReadingDto>>(reader, 7) ?? new List<KanjiReadingDto>();
+            dto.Meanings = await ReadJsonColumn<List<KanjiMeaningDto>>(reader, 8) ?? new List<KanjiMeaningDto>();
+            dto.Radicals = await ReadJsonColumn<List<RadicalSummaryDto>>(reader, 9) ?? new List<RadicalSummaryDto>();
+
+            totalCount = reader.GetInt64(10);
+            results.Add(dto);
+        }
+
+        var totalPages = totalCount > 0 ? (int)Math.Ceiling((double)totalCount / pageSize) : 0;
 
         return new SearchResultKanji
         {

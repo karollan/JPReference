@@ -150,6 +150,123 @@ public class EfCoreKanjiSearchService : IKanjiSearchService
         };
     }
 
+    public async Task<SearchResultKanji> SearchByRadicalsAsync(List<string> radicals, int pageSize, int page)
+    {
+        await using var context = _contextFactory.CreateDbContext();
+
+        var kanjiIdsQuery = context.KanjiRadicals
+            .Where(kr => radicals.Contains(kr.Radical.Literal))
+            .GroupBy(kr => kr.KanjiId)
+            .Where(g => g.Count() == radicals.Count)
+            .Select(g => g.Key);
+
+        var totalCount = await kanjiIdsQuery.CountAsync();
+
+        var pagedIds = await kanjiIdsQuery
+            .OrderBy(id => id)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        if (pagedIds.Count == 0)
+        {
+            return new SearchResultKanji
+            {
+                Data = new List<KanjiSummaryDto>(),
+                Pagination = new PaginationMetadata
+                {
+                    TotalCount = totalCount,
+                    Page = page,
+                    PageSize = pageSize,
+                    TotalPages = totalCount > 0 ? (int)Math.Ceiling((double)totalCount / pageSize) : 0
+                }
+            };
+        }
+
+        var rows = await context.Kanji
+            .Where(k => pagedIds.Contains(k.Id))
+            .AsNoTracking()
+            .Select(k => new
+            {
+                k.Id,
+                k.Literal,
+                k.Grade,
+                k.StrokeCount,
+                k.Frequency,
+                k.JlptLevelNew,
+                Kunyomi = k.Readings
+                    .Where(r => r.Type == "ja_kun")
+                    .OrderBy(r => r.Id)
+                    .Select(r => new { r.Id, r.Type, r.Value, r.Status, r.OnType })
+                    .ToList(),
+                Onyomi = k.Readings
+                    .Where(r => r.Type == "ja_on")
+                    .OrderBy(r => r.Id)
+                    .Select(r => new { r.Id, r.Type, r.Value, r.Status, r.OnType })
+                    .ToList(),
+                Meanings = k.Meanings
+                    .OrderBy(m => m.Id)
+                    .Select(m => new { m.Id, m.Lang, m.Value })
+                    .ToList(),
+                Radicals = k.Radicals
+                    .OrderBy(r => r.Id)
+                    .Select(r => new { r.Id, Literal = r.Radical.Literal })
+                    .ToList()
+            }).ToListAsync();
+
+        var dtos = rows.Select(r => new KanjiSummaryDto
+        {
+            Id = r.Id,
+            Literal = r.Literal,
+            Grade = r.Grade,
+            StrokeCount = r.StrokeCount,
+            Frequency = r.Frequency,
+            JlptLevel = r.JlptLevelNew,
+            RelevanceScore = 0,
+            KunyomiReadings = r.Kunyomi.Select(k => new KanjiReadingDto
+            {
+                Id = k.Id,
+                Type = k.Type,
+                Value = k.Value,
+                Status = k.Status,
+                OnType = k.OnType
+            }).ToList(),
+            OnyomiReadings = r.Onyomi.Select(k => new KanjiReadingDto
+            {
+                Id = k.Id,
+                Type = k.Type,
+                Value = k.Value,
+                Status = k.Status,
+                OnType = k.OnType
+            }).ToList(),
+            Meanings = r.Meanings.Select(m => new KanjiMeaningDto
+            {
+                Id = m.Id,
+                Language = m.Lang,
+                Meaning = m.Value
+            }).ToList(),
+            Radicals = r.Radicals.Select(rad => new RadicalSummaryDto
+            {
+                Id = rad.Id,
+                Literal = rad.Literal
+            }).ToList(),
+        }).ToList();
+
+        var totalPages = totalCount > 0 ? (int)Math.Ceiling((double)totalCount / pageSize) : 0;
+
+        return new SearchResultKanji
+        {
+            Data = dtos,
+            Pagination = new PaginationMetadata
+            {
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize,
+                TotalPages = totalPages
+            }
+        };
+    }
+
     private void DetermineMatchDetails(
         KanjiMatchInfo info,
         List<string> patterns,
@@ -230,4 +347,3 @@ public class EfCoreKanjiSearchService : IKanjiSearchService
         info.MatchedTextLength = shortestMatchLength == int.MaxValue ? 0 : shortestMatchLength;
     }
 }
-

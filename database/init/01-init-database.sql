@@ -109,7 +109,6 @@ CREATE TABLE IF NOT EXISTS kanji_nanori (
 -- ============================================
 -- RADICAL
 -- ============================================
--- Enriched reference data from reference.txt
 CREATE TABLE IF NOT EXISTS radical_group (
     id UUID PRIMARY KEY DEFAULT uuidv7(),
     canonical_literal VARCHAR(10) UNIQUE NOT NULL,
@@ -132,7 +131,7 @@ CREATE TABLE IF NOT EXISTS radical_group_member (
     UNIQUE(group_id, literal)
 );
 
--- Source list from source.json for search engines and kanji composition
+-- Source list from source.json for search engine and kanji composition
 CREATE TABLE IF NOT EXISTS radical (
     id UUID PRIMARY KEY DEFAULT uuidv7(),
     literal VARCHAR(10) UNIQUE NOT NULL,
@@ -3173,6 +3172,114 @@ BEGIN
         FULL OUTER JOIN (SELECT text FROM jlpt.proper_noun_kana WHERE proper_noun_id = p.id AND is_primary = true LIMIT 1) pka ON true),
         (SELECT cnt FROM counted)
     FROM paginated p;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+-- Helper function to get kanji summaries for a set of IDs
+CREATE OR REPLACE FUNCTION jlpt.get_kanji_summaries(kanji_ids UUID[])
+RETURNS TABLE (
+    id UUID,
+    literal VARCHAR(10),
+    grade INT,
+    stroke_count INT,
+    frequency INT,
+    jlpt_level INT,
+    kunyomi_readings JSON,
+    onyomi_readings JSON,
+    meanings JSON,
+    radicals JSON
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        k.id, k.literal, k.grade, k.stroke_count, k.frequency, k.jlpt_level_new as jlpt_level,
+        (SELECT COALESCE(json_agg(json_build_object('type', kr.type, 'value', kr.value, 'status', kr.status, 'onType', kr.on_type) ORDER BY kr.id), '[]'::json)
+         FROM jlpt.kanji_reading kr WHERE kr.kanji_id = k.id AND kr.type = 'ja_kun') AS kunyomi_readings,
+        (SELECT COALESCE(json_agg(json_build_object('type', kr.type, 'value', kr.value, 'status', kr.status, 'onType', kr.on_type) ORDER BY kr.id), '[]'::json)
+         FROM jlpt.kanji_reading kr WHERE kr.kanji_id = k.id AND kr.type = 'ja_on') AS onyomi_readings,
+        (SELECT COALESCE(json_agg(json_build_object('language', km.lang, 'meaning', km.value) ORDER BY km.id), '[]'::json)
+         FROM jlpt.kanji_meaning km WHERE km.kanji_id = k.id) AS meanings,
+        (SELECT COALESCE(json_agg(json_build_object('id', r.id, 'literal', r.literal) ORDER BY kr.id), '[]'::json)
+         FROM jlpt.kanji_radical kr JOIN jlpt.radical r ON kr.radical_id = r.id WHERE kr.kanji_id = k.id) AS radicals
+    FROM jlpt.kanji k
+    WHERE k.id = ANY(kanji_ids)
+    ORDER BY k.frequency NULLS LAST, k.jlpt_level_new NULLS LAST, k.grade NULLS LAST, k.id;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+-- Get kanjis that contain a specific radical literal
+CREATE OR REPLACE FUNCTION jlpt.get_kanjis_for_radical_literal(radical_literal TEXT)
+RETURNS TABLE (
+    id UUID,
+    literal VARCHAR(10),
+    grade INT,
+    stroke_count INT,
+    frequency INT,
+    jlpt_level INT,
+    kunyomi_readings JSON,
+    onyomi_readings JSON,
+    meanings JSON,
+    radicals JSON
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT * FROM jlpt.get_kanji_summaries(
+        ARRAY(SELECT kr.kanji_id FROM jlpt.kanji_radical kr JOIN jlpt.radical r ON kr.radical_id = r.id WHERE r.literal = radical_literal)
+    );
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+-- Search kanji by a combination of radical literals (must contain ALL)
+CREATE OR REPLACE FUNCTION jlpt.search_kanji_by_radical_literals(
+    radical_literals TEXT[],
+    page_size INT DEFAULT 20,
+    page_offset INT DEFAULT 0
+)
+RETURNS TABLE (
+    id UUID,
+    literal VARCHAR(10),
+    grade INT,
+    stroke_count INT,
+    frequency INT,
+    jlpt_level INT,
+    kunyomi_readings JSON,
+    onyomi_readings JSON,
+    meanings JSON,
+    radicals JSON,
+    total_count BIGINT
+) AS $$
+DECLARE
+    matching_ids UUID[];
+    cnt BIGINT;
+BEGIN
+    -- Find kanjis that contain all of the specified radicals
+    SELECT ARRAY(
+        SELECT kanji_id
+        FROM jlpt.kanji_radical kr
+        JOIN jlpt.radical r ON kr.radical_id = r.id
+        WHERE r.literal = ANY(radical_literals)
+        GROUP BY kanji_id
+        HAVING COUNT(DISTINCT r.literal) = array_length(radical_literals, 1)
+        ORDER BY kanji_id -- Ensure stable sorting for pagination
+    ) INTO matching_ids;
+
+    cnt := COALESCE(array_length(matching_ids, 1), 0);
+
+    IF cnt = 0 THEN
+        RETURN;
+    END IF;
+
+    RETURN QUERY
+    WITH sorted_ids AS (
+        SELECT unnest(matching_ids) as kid
+    ),
+    paged_ids AS (
+        SELECT kid FROM sorted_ids
+        ORDER BY kid -- Simple sort by ID or we could join with kanji table for better sorting
+        LIMIT page_size OFFSET page_offset
+    )
+    SELECT s.*, cnt
+    FROM jlpt.get_kanji_summaries(ARRAY(SELECT kid FROM paged_ids)) s;
 END;
 $$ LANGUAGE plpgsql STABLE;
 

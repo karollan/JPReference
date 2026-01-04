@@ -66,6 +66,8 @@ builder.Services.AddScoped<IVocabularyService, VocabularyService>();
 builder.Services.AddScoped<IVocabularyRepository, VocabularyRepository>();
 builder.Services.AddScoped<IProperNounService, ProperNounService>();
 builder.Services.AddScoped<IProperNounRepository, ProperNounRepository>();
+builder.Services.AddScoped<IRadicalService, RadicalService>();
+builder.Services.AddScoped<IRadicalRepository, RadicalRepository>();
 
 builder.Services.AddScoped<IQueryParser, QueryParser>();
 builder.Services.AddScoped<IVariantGenerator, VariantGenerator>();

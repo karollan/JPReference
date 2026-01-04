@@ -23,6 +23,7 @@ declare module 'vue-router/auto-routes' {
     '/api': RouteRecordInfo<'/api', '/api', Record<never, never>, Record<never, never>>,
     '/kanji/[literal]': RouteRecordInfo<'/kanji/[literal]', '/kanji/:literal', { literal: ParamValue<true> }, { literal: ParamValue<false> }>,
     '/proper-noun/[term]': RouteRecordInfo<'/proper-noun/[term]', '/proper-noun/:term', { term: ParamValue<true> }, { term: ParamValue<false> }>,
+    '/radical/[literal]': RouteRecordInfo<'/radical/[literal]', '/radical/:literal', { literal: ParamValue<true> }, { literal: ParamValue<false> }>,
     '/search': RouteRecordInfo<'/search', '/search', Record<never, never>, Record<never, never>>,
     '/vocabulary/[term]': RouteRecordInfo<'/vocabulary/[term]', '/vocabulary/:term', { term: ParamValue<true> }, { term: ParamValue<false> }>,
   }
@@ -56,6 +57,10 @@ declare module 'vue-router/auto-routes' {
     }
     'src/pages/proper-noun/[term].vue': {
       routes: '/proper-noun/[term]'
+      views: never
+    }
+    'src/pages/radical/[literal].vue': {
+      routes: '/radical/[literal]'
       views: never
     }
     'src/pages/search.vue': {
