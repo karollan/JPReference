@@ -8,7 +8,7 @@ namespace JLPTReference.Api.Controllers;
 /// specialized controller for Vocabulary-related operations.
 /// </summary>
 [ApiController]
-[Route("api/vocabulary")]
+[Route("api/[controller]")]
 [Produces("application/json")]
 public class VocabularyController : ControllerBase {
     private readonly IVocabularyService _vocabularyService;

@@ -8,7 +8,7 @@ namespace JLPTReference.Api.Controllers;
 /// Controller for Proper Noun operations.
 /// </summary>
 [ApiController]
-[Route("api/proper-noun")]
+[Route("api/[controller]")]
 [Produces("application/json")]
 public class ProperNounController : ControllerBase {
     private readonly IProperNounService _properNounService;
