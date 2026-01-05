@@ -1,26 +1,117 @@
 <template>
   <div class="search-autocomplete-wrapper">
-    <div class="search-input-container" :class="{ 'is-focused': isFocused, 'has-error': hasValidationError }">
-      <v-icon class="search-icon" size="20">mdi-magnify</v-icon>
-      <div
-        ref="editableRef"
-        class="search-editable"
-        contenteditable="true"
-        :data-placeholder="placeholder || 'Search'"
-        @blur="handleBlur"
-        @click="handleClick"
-        @focus="handleFocus"
-        @input="handleInput"
-        @keydown="handleKeydown"
-      />
-      <button
-        v-if="searchQuery"
-        class="clear-btn"
-        type="button"
-        @mousedown.prevent="handleClear"
+      <v-tooltip v-if="showRadicalSearch" location="bottom">
+        <template #activator="{ props }">
+            <v-btn
+                v-bind="props"
+                aria-label="Radicals search"
+                class="mr-2"
+                color="primary"
+                icon
+                :variant="radicalPopup ? 'tonal' : 'text'"
+                @click="openRadicalPopup()"
+            >
+            <v-icon size="28">mdi-ideogram-cjk-variant</v-icon>
+            </v-btn>
+        </template>
+        <span>Search by radicals</span>
+    </v-tooltip>
+    <div class="search-autocomplete flex-column">
+      <div class="search-input-container" :class="{ 'is-focused': isFocused, 'has-error': hasValidationError }">
+        <v-icon class="search-icon" size="20">mdi-magnify</v-icon>
+        <div
+          ref="editableRef"
+          class="search-editable"
+          contenteditable="true"
+          :data-placeholder="placeholder || 'Search'"
+          @blur="handleBlur"
+          @click="handleClick"
+          @focus="handleFocus"
+          @input="handleInput"
+          @keydown="handleKeydown"
+        />
+        <button
+          v-if="searchQuery"
+          class="clear-btn"
+          type="button"
+          @mousedown.prevent="handleClear"
+        >
+          <v-icon size="18">mdi-close-circle</v-icon>
+        </button>
+      </div>
+      <v-card
+        v-if="radicalPopup"
+        class="radical-popup mt-2"
       >
-        <v-icon size="18">mdi-close-circle</v-icon>
-      </button>
+        <v-card-item>
+          <div class="d-flex justify-space-between align-center mb-3">
+             <v-card-title class="text-body-2">Compose kanji with radicals</v-card-title>
+             <v-btn
+                variant="text"
+                density="comfortable"
+                color="error"
+                class="px-1"
+                @click="clearRadicalSelection"
+              >
+               Clear Selection
+             </v-btn>
+          </div>
+          
+            <div
+              class="radicals-stream d-flex flex-wrap justify-center align-center ga-1 mb-4 overflow-y-auto"
+            >
+            <template
+              v-for="item in radicalSearchStore.radicalsOrdered" :key="item.strokeCount"
+            >
+              <!-- Stroke number -->
+              <span class="stroke-number text-body-1 font-weight-bold">
+                {{ item.strokeCount }}
+              </span>
+
+              <!-- Radicals -->
+              <span
+                v-for="radical in item.radicals"
+                :key="radical.literal"
+                class="radical"
+                :class="{ 
+                  'radical--selected': radicalSearchStore.selectedRadicalIds.includes(radical.id),
+                  'radical--disabled': !radicalSearchStore.isRadicalCompatible(radical.id)
+                }"
+                @click="onRadicalClick(radical)"
+              >
+                {{ radical.literal }}
+              </span>
+            </template>
+          </div>
+
+          <v-divider v-if="radicalSearchStore.kanjiResults.length > 0" class="mb-3"></v-divider>
+          <div v-if="radicalSearchStore.kanjiResults.length > 0" class="text-body-2 mb-3">Possible Kanji</div>
+
+          <div
+              v-if="radicalSearchStore.kanjiResults.length > 0"
+              class="radicals-stream kanji-results-container d-flex flex-wrap justify-center align-start ga-1"
+            >
+            <template
+              v-for="item in radicalSearchStore.kanjiResultsOrdered" :key="item.strokeCount"
+            >
+              <!-- Stroke number -->
+              <span class="stroke-number text-body-1 font-weight-bold">
+                {{ item.strokeCount }}
+              </span>
+
+              <!-- Kanjis -->
+              <span
+                v-for="kanji in item.kanjis"
+                :key="kanji.literal"
+                class="radical kanji-result"
+                @click="onKanjiClick(kanji)"
+              >
+                {{ kanji.literal }}
+              </span>
+            </template>
+          </div>
+        </v-card-item>
+      </v-card>
     </div>
     <Teleport to="body">
       <div
@@ -54,14 +145,19 @@
 <script setup lang="ts">
   import type { FilterParseState } from '@/utils/filterParser'
   import type { Suggestion } from '@/utils/filterSuggestions'
+  import type { RadicalSummary, KanjiSimple } from '@/types/Radical'
   import { parseFilterState } from '@/utils/filterParser'
   import { getFilterDefinition } from '@/utils/filters'
   import { generateSuggestions } from '@/utils/filterSuggestions'
   import { getFilterValidationError } from '@/utils/filterValidation'
+  import { useRadicalSearchStore } from '@/stores/radical-search'
 
   interface Props {
     placeholder?: string
+    showRadicalSearch?: boolean
   }
+
+  const radicalSearchStore = useRadicalSearchStore()
 
   defineProps<Props>()
 
@@ -72,6 +168,7 @@
   const selectedIndex = ref(0)
   const filterState = ref<FilterParseState | null>(null)
   const popupPosition = ref({ top: 0, left: 0 })
+  const radicalPopup = ref(false)
   // Track committed chip positions (start index in text) to preserve chips even without trailing space
   const committedChipPositions = ref<Set<number>>(new Set())
   const hasValidationError = ref(false)
@@ -91,6 +188,28 @@
     left: `${popupPosition.value.left}px`,
     zIndex: 9999,
   }))
+
+  const openRadicalPopup = () => {
+    radicalPopup.value = !radicalPopup.value
+    if (radicalSearchStore.radicalsList.length === 0) {
+      radicalSearchStore.getRadicalsList()
+    }
+  }
+
+  const onRadicalClick = (radical: RadicalSummary) => {
+    if (!radicalSearchStore.isRadicalCompatible(radical.id)) return
+    radicalSearchStore.toggleRadical(radical.id)
+  }
+
+  const onKanjiClick = (kanji: KanjiSimple) => {
+    const newQuery = `${searchQuery.value}${kanji.literal}`
+    searchQuery.value = newQuery
+    emit('search')
+  }
+
+  const clearRadicalSelection = () => {
+    radicalSearchStore.clearSelection()
+  }
 
   // Render the editable content with filter tags
   // Chips are created when: followed by space, selected from popup, or on blur
@@ -661,11 +780,18 @@
   })
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .search-autocomplete-wrapper {
   position: relative;
   display: flex;
   flex-grow: 1;
+}
+
+.search-autocomplete {
+  display: flex;
+  flex: 1;
+  flex-grow: 1;
+  position: relative;
 }
 
 .search-input-container {
@@ -737,6 +863,74 @@
   background: rgba(var(--v-theme-on-surface), 0.04);
   color: rgba(var(--v-theme-on-surface), 0.6);
 }
+
+.radical-popup {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  z-index: 1000;
+
+  .stroke-number {
+    background-color: rgba(var(--v-theme-on-surface), 0.04);
+    width: 24px;
+  }
+  .radical {
+    cursor: pointer;
+    padding-left: 4px;
+    padding-right: 4px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+    user-select: none;
+    font-size: 1.1rem;
+
+    &--selected {
+      background-color: rgb(var(--v-theme-primary)) !important;
+      color: rgb(var(--v-theme-on-primary));
+    }
+    &--selected:hover {
+      background-color: rgba(var(--v-theme-primary), 0.9) !important;
+    }
+    &--disabled {
+      opacity: 0.3;
+      pointer-events: none;
+      background-color: transparent !important;
+    }
+    &:hover {
+      background-color: rgba(var(--v-theme-on-surface), 0.08);
+    }
+  }
+  .kanji-result {
+    cursor: pointer;
+    transition: background-color 0.2s;
+
+    &:hover {
+      background-color: rgba(var(--v-theme-on-surface), 0.08);
+    }
+  }
+
+  .kanji-results-container {
+    max-height: 200px;
+    overflow-y: auto;
+    align-content: flex-start;
+    
+    /* Custom Scrollbar */
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+    &::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    &::-webkit-scrollbar-thumb {
+      background: rgba(var(--v-theme-on-surface), 0.2);
+      border-radius: 3px;
+    }
+    &::-webkit-scrollbar-thumb:hover {
+      background: rgba(var(--v-theme-on-surface), 0.3);
+    }
+  }
+}
+
 </style>
 
 <style>

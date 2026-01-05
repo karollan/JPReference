@@ -17,6 +17,7 @@
         <div class="d-flex align-center">
           <SearchAutocomplete
             v-model:search-query="searchQuery"
+            :show-radical-search="true"
             @clear="searchQuery = ''"
             @search="handleEnterSearch"
           />

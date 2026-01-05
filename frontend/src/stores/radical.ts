@@ -1,7 +1,7 @@
 import type { RadicalDetails } from '@/types/Radical'
 // Utilities
 import { defineStore } from 'pinia'
-import { RadicalService } from '@/services/radical.service'
+import RadicalService from '@/services/radical.service'
 
 export const useRadicalStore = defineStore('radical', () => {
     // State
@@ -63,4 +63,4 @@ export const useRadicalStore = defineStore('radical', () => {
         loading,
         getRadicalByLiteral,
     }
-})
+}, { persist: true })

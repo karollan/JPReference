@@ -63,4 +63,4 @@ export const useProperNounStore = defineStore('proper-noun', () => {
     loading,
     getProperNounDetails,
   }
-})
+}, { persist: true })

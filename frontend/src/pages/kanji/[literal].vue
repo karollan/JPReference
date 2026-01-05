@@ -205,8 +205,10 @@
                     <v-icon class="mr-2" color="success" icon="mdi-book-open-page-variant-outline" start />
                     Top words containing this kanji
                   </div>
-                  <v-chip class="ml-3" color="primary" size="small" variant="flat" @click="searchForAllReferences">
-                    Or see all {{ kanji.vocabularyReferences?.totalCount || 0 }} words
+                  <v-chip
+                    v-if="kanji.vocabularyReferences?.totalCount! > 0"
+                    class="ml-3" color="primary" size="small" variant="flat" @click="searchForAllReferences">
+                    Or see all {{ kanji.vocabularyReferences?.totalCount! }} words
                   </v-chip>
                 </h2>
 

@@ -20,4 +20,18 @@ public class RadicalController : ControllerBase
         var radical = await _radicalService.GetRadicalByLiteralAsync(literal);
         return Ok(radical);
     }
+
+    [HttpGet("list")]
+    public async Task<IActionResult> GetRadicalsList()
+    {
+        var radicals = await _radicalService.GetRadicalsListAsync();
+        return Ok(radicals);
+    }
+
+    [HttpPost("search")]
+    public async Task<IActionResult> SearchKanjiByRadicals([FromBody] List<Guid> radicalIds)
+    {
+        var results = await _radicalService.SearchKanjiByRadicalsAsync(radicalIds);
+        return Ok(results);
+    }
 }

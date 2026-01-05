@@ -16,6 +16,18 @@ public class RadicalRepository : IRadicalRepository {
         _connectionString = configuration.GetConnectionString("DefaultConnection")!;
     }
 
+    public async Task<List<RadicalSummaryDto>> GetRadicalsListAsync()
+    {
+        return await _context.Radicals
+            .Select(r => new RadicalSummaryDto
+            {
+                Id = r.Id,
+                Literal = r.Literal,
+                StrokeCount = r.StrokeCount
+            })
+            .ToListAsync();
+    }
+
     public async Task<RadicalDetailDto> GetRadicalByLiteralAsync(string literal) {
         // 1. Find the member (variant) matching the input literal
         var member = await _context.RadicalGroupMembers
@@ -121,5 +133,59 @@ public class RadicalRepository : IRadicalRepository {
         }
 
         return results;
+    }
+
+    public async Task<RadicalSearchResultDto> SearchKanjiByRadicalsAsync(List<Guid> radicalIds)
+    {
+        if (radicalIds == null || !radicalIds.Any())
+        {
+            return new RadicalSearchResultDto();
+        }
+
+        // 1. Find Kanji IDs that match ALL selected radicals
+        // We use GROUP BY/HAVING logic for intersection (items that have all specific tags)
+        var query = _context.KanjiRadicals
+            .Where(kr => radicalIds.Contains(kr.RadicalId))
+            .GroupBy(kr => kr.KanjiId)
+            .Where(g => g.Count() == radicalIds.Count)
+            .Select(g => g.Key);
+
+        // Fetch matching Kanji IDs
+        var matchingKanjiIds = await query.ToListAsync();
+
+        if (!matchingKanjiIds.Any()) 
+        {
+             return new RadicalSearchResultDto();
+        }
+
+        // 2. Fetch Kanji Details
+        var kanjiResults = await _context.Kanji
+            .Where(k => matchingKanjiIds.Contains(k.Id))
+            .Select(k => new KanjiSimpleDto
+            {
+                Id = k.Id,
+                Literal = k.Literal,
+                StrokeCount = k.StrokeCount
+            })
+            .OrderBy(k => k.StrokeCount)
+            .ToListAsync();
+
+        // 3. Find "Compatible" Radicals
+        // Fetch all radical IDs associated with ANY of the matching Kanjis.
+        // This tells us which radicals are present in the current result set.
+        // When the user selects one of these "compatible" radicals, the result set will be narrowed down further (or stay same).
+        // Any radical NOT in this list would yield 0 results if added to the current selection (AND logic).
+        
+        var compatibleRadicalIds = await _context.KanjiRadicals
+            .Where(kr => matchingKanjiIds.Contains(kr.KanjiId))
+            .Select(kr => kr.RadicalId)
+            .Distinct()
+            .ToListAsync();
+
+        return new RadicalSearchResultDto
+        {
+            Results = kanjiResults,
+            CompatibleRadicalIds = compatibleRadicalIds
+        };
     }
 }

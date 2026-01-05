@@ -63,4 +63,4 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
     loading,
     getVocabularyDetails,
   }
-})
+}, { persist: true })

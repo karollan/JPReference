@@ -203,4 +203,4 @@ export const useSearchStore = defineStore('search', () => {
     getSearchCache,
     abortSearch,
   }
-})
+}, { persist: true })

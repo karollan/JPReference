@@ -63,4 +63,4 @@ export const useKanjiStore = defineStore('kanji', () => {
     loading,
     getKanjiByLiteral,
   }
-})
+}, { persist: true })
