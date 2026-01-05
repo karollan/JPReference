@@ -34,6 +34,13 @@ builder.Services.AddSwaggerGen(options =>
         Title = "JLPT Reference API",
         Version = "v1"
     });
+
+    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    options.IncludeXmlComments(xmlPath);
+    
+    // Resolve duplicate schema IDs by using full type names
+    options.CustomSchemaIds(x => x.FullName);
 });
 
 // Add DbContext with pooled factory (allows both direct injection and factory pattern)
@@ -112,6 +119,10 @@ var app = builder.Build();
 
 Log.Init(app.Services.GetRequiredService<ILoggerFactory>());
 
+app.UseHttpsRedirection();
+
+app.UseCors("AllowVueApp");
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -121,10 +132,6 @@ if (app.Environment.IsDevelopment())
         options.SwaggerEndpoint("/swagger/v1/swagger.json", "JLPT Reference API v1");
     });
 }
-
-app.UseHttpsRedirection();
-
-app.UseCors("AllowVueApp");
 
 app.UseAuthorization();
 

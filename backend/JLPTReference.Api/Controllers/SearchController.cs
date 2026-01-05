@@ -6,6 +6,7 @@ namespace JLPTReference.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Produces("application/json")]
 public class SearchController : ControllerBase
 {
     private readonly ISearchService _searchService;
@@ -15,7 +16,16 @@ public class SearchController : ControllerBase
         _searchService = searchService;
     }
 
+    /// <summary>
+    /// Performs a global search across Kanji, Vocabulary, and Proper Nouns.
+    /// </summary>
+    /// <param name="query">The search term.</param>
+    /// <param name="types">List of types to include: "kanji", "vocab", "properNoun". Defaults to all.</param>
+    /// <param name="page">Page number.</param>
+    /// <param name="pageSize">Results per page.</param>
+    /// <returns>Combined search results.</returns>
     [HttpGet("")]
+    [ProducesResponseType(typeof(GlobalSearchResponse), 200)]
     public async Task<IActionResult> Search(
         [FromQuery] string query,
         [FromQuery] List<string> types,
@@ -48,8 +58,15 @@ public class SearchController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>
+    /// Searches only for Kanji characters.
+    /// </summary>
+    /// <param name="query">The search term.</param>
+    /// <param name="page">Page number.</param>
+    /// <param name="pageSize">Results per page.</param>
+    /// <returns>Paginated Kanji results.</returns>
     [HttpGet("kanji")]
-
+    [ProducesResponseType(typeof(SearchResultKanji), 200)]
     public async Task<IActionResult> SearchKanji(
         [FromQuery] string query,
         [FromQuery] int page,
@@ -77,7 +94,15 @@ public class SearchController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>
+    /// Searches only for Vocabulary terms.
+    /// </summary>
+    /// <param name="query">The search term.</param>
+    /// <param name="page">Page number.</param>
+    /// <param name="pageSize">Results per page.</param>
+    /// <returns>Paginated Vocabulary results.</returns>
     [HttpGet("vocabulary")]
+    [ProducesResponseType(typeof(SearchResultVocabulary), 200)]
     public async Task<IActionResult> SearchVocabulary(
         [FromQuery] string query,
         [FromQuery] int page,
@@ -104,7 +129,15 @@ public class SearchController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>
+    /// Searches only for Proper Nouns.
+    /// </summary>
+    /// <param name="query">The search term.</param>
+    /// <param name="page">Page number.</param>
+    /// <param name="pageSize">Results per page.</param>
+    /// <returns>Paginated Proper Noun results.</returns>
     [HttpGet("proper-noun")]
+    [ProducesResponseType(typeof(SearchResultProperNoun), 200)]
     public async Task<IActionResult> SearchProperNoun(
         [FromQuery] string query,
         [FromQuery] int page,

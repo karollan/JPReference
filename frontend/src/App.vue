@@ -12,10 +12,10 @@
   onMounted(() => {
     const savedTheme = localStorage.getItem('jlpt-theme')
     if (savedTheme) {
-      theme.global.name.value = savedTheme
+      theme.change(savedTheme)
     } else {
       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-      theme.global.name.value = prefersDark ? 'jlptThemeDark' : 'jlptTheme'
+      theme.change(prefersDark ? 'jlptThemeDark' : 'jlptTheme')
     }
   })
 

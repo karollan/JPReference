@@ -8,8 +8,11 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    ApiViewer: typeof import('./components/api/ApiViewer.vue')['default']
     AppFooter: typeof import('./components/AppFooter.vue')['default']
     AppHeader: typeof import('./components/AppHeader.vue')['default']
+    EndpointGroup: typeof import('./components/api/EndpointGroup.vue')['default']
+    EndpointItem: typeof import('./components/api/EndpointItem.vue')['default']
     FuriganaText: typeof import('./components/common/FuriganaText.vue')['default']
     KanjiSummary: typeof import('./components/search/KanjiSummary.vue')['default']
     KanjiSummarySkeleton: typeof import('./components/search/KanjiSummarySkeleton.vue')['default']
@@ -18,6 +21,8 @@ declare module 'vue' {
     ProperNounSummarySkeleton: typeof import('./components/search/ProperNounSummarySkeleton.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    SchemasList: typeof import('./components/api/SchemasList.vue')['default']
+    SchemaViewer: typeof import('./components/api/SchemaViewer.vue')['default']
     SearchAutocomplete: typeof import('./components/search/SearchAutocomplete.vue')['default']
     StrokePlayer: typeof import('./components/misc/StrokePlayer.vue')['default']
     VocabularySummary: typeof import('./components/search/VocabularySummary.vue')['default']

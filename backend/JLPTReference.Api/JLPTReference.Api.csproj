@@ -7,6 +7,8 @@
     <RootNamespace>JLPTReference.Api</RootNamespace>
     <AssemblyName>JLPTReference.Api</AssemblyName>
     <UserSecretsId>jlptreference-api-{6E2D1B8C-5E8B-43B3-8E3A-5F0E7D6F9B2A}</UserSecretsId>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);1591</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

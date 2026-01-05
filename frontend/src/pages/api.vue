@@ -1,13 +1,14 @@
 <template>
   <v-container>
-    <v-row>
-      <v-col>
-        <h1>API</h1>
-      </v-col>
-    </v-row>
+    <ApiViewer />
   </v-container>
 </template>
 
-<script lang="ts" setup>
-  //
+<script setup lang="ts">
+import ApiViewer from '@/components/api/ApiViewer.vue';
 </script>
+
+<route lang="yaml">
+meta:
+  layout: default
+</route>

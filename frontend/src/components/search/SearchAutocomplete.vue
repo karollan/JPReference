@@ -39,79 +39,82 @@
           <v-icon size="18">mdi-close-circle</v-icon>
         </button>
       </div>
-      <v-card
-        v-if="radicalPopup"
-        class="radical-popup mt-2"
-      >
-        <v-card-item>
-          <div class="d-flex justify-space-between align-center mb-3">
-             <v-card-title class="text-body-2">Compose kanji with radicals</v-card-title>
-             <v-btn
-                variant="text"
-                density="comfortable"
-                color="error"
-                class="px-1"
-                @click="clearRadicalSelection"
+      <v-expand-transition>
+        <v-card
+          v-if="radicalPopup"
+          class="radical-popup mt-2"
+        >
+          <v-card-item>
+            <div class="d-flex justify-space-between align-center mb-3">
+              <v-card-title class="text-body-2 col-sm-6">Compose kanji with radicals</v-card-title>
+              <v-btn
+                  variant="text"
+                  density="comfortable"
+                  color="error"
+                  class="px-1 col-sm-6"
+                  @click="clearRadicalSelection"
+                >
+                Clear Selection
+              </v-btn>
+            </div>
+            
+              <div
+                class="radicals-stream d-flex flex-wrap justify-center align-center ga-1 mb-4 overflow-y-auto"
               >
-               Clear Selection
-             </v-btn>
-          </div>
-          
-            <div
-              class="radicals-stream d-flex flex-wrap justify-center align-center ga-1 mb-4 overflow-y-auto"
-            >
-            <template
-              v-for="item in radicalSearchStore.radicalsOrdered" :key="item.strokeCount"
-            >
-              <!-- Stroke number -->
-              <span class="stroke-number text-body-1 font-weight-bold">
-                {{ item.strokeCount }}
-              </span>
-
-              <!-- Radicals -->
-              <span
-                v-for="radical in item.radicals"
-                :key="radical.literal"
-                class="radical"
-                :class="{ 
-                  'radical--selected': radicalSearchStore.selectedRadicalIds.includes(radical.id),
-                  'radical--disabled': !radicalSearchStore.isRadicalCompatible(radical.id)
-                }"
-                @click="onRadicalClick(radical)"
+              <template
+                v-for="item in radicalSearchStore.radicalsOrdered" :key="item.strokeCount"
               >
-                {{ radical.literal }}
-              </span>
-            </template>
-          </div>
+                <!-- Stroke number -->
+                <span class="stroke-number text-body-1 font-weight-bold">
+                  {{ item.strokeCount }}
+                </span>
 
-          <v-divider v-if="radicalSearchStore.kanjiResults.length > 0" class="mb-3"></v-divider>
-          <div v-if="radicalSearchStore.kanjiResults.length > 0" class="text-body-2 mb-3">Possible Kanji</div>
+                <!-- Radicals -->
+                <span
+                  v-for="radical in item.radicals"
+                  :key="radical.literal"
+                  class="radical"
+                  :class="{ 
+                    'radical--selected': radicalSearchStore.selectedRadicalIds.includes(radical.id),
+                    'radical--disabled': !radicalSearchStore.isRadicalCompatible(radical.id)
+                  }"
+                  @click="onRadicalClick(radical)"
+                >
+                  {{ radical.literal }}
+                </span>
+              </template>
+            </div>
 
-          <div
-              v-if="radicalSearchStore.kanjiResults.length > 0"
-              class="radicals-stream kanji-results-container d-flex flex-wrap justify-center align-start ga-1"
-            >
-            <template
-              v-for="item in radicalSearchStore.kanjiResultsOrdered" :key="item.strokeCount"
-            >
-              <!-- Stroke number -->
-              <span class="stroke-number text-body-1 font-weight-bold">
-                {{ item.strokeCount }}
-              </span>
+            <div v-if="radicalSearchStore.kanjiResults.length > 0">
+              <v-divider  class="mb-3"></v-divider>
+              <div class="text-body-2 mb-3">Possible Kanji</div>
 
-              <!-- Kanjis -->
-              <span
-                v-for="kanji in item.kanjis"
-                :key="kanji.literal"
-                class="radical kanji-result"
-                @click="onKanjiClick(kanji)"
-              >
-                {{ kanji.literal }}
-              </span>
-            </template>
-          </div>
-        </v-card-item>
-      </v-card>
+              <div
+                  class="radicals-stream kanji-results-container d-flex flex-wrap justify-center align-start ga-1"
+                >
+                <template
+                  v-for="item in radicalSearchStore.kanjiResultsOrdered" :key="item.strokeCount"
+                >
+                  <!-- Stroke number -->
+                  <span class="stroke-number text-body-1 font-weight-bold">
+                    {{ item.strokeCount }}
+                  </span>
+
+                  <!-- Kanjis -->
+                  <span
+                    v-for="kanji in item.kanjis"
+                    :key="kanji.literal"
+                    class="radical kanji-result"
+                    @click="onKanjiClick(kanji)"
+                  >
+                    {{ kanji.literal }}
+                  </span>
+                </template>
+              </div>
+            </div>
+          </v-card-item>
+        </v-card>
+      </v-expand-transition>
     </div>
     <Teleport to="body">
       <div
@@ -870,6 +873,12 @@
   left: 0;
   width: 100%;
   z-index: 1000;
+
+  .radicals-stream
+  {
+    max-height: 300px;
+    overflow-y: auto;
+  }
 
   .stroke-number {
     background-color: rgba(var(--v-theme-on-surface), 0.04);
