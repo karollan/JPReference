@@ -31,12 +31,12 @@
       text="About"
       to="/about"
     />
-    <v-btn
+    <!-- <v-btn
       active-color="primary"
       class="text-none"
       text="API"
       to="/api"
-    />
+    /> -->
     <v-btn
       icon
       @click="changeTheme"
