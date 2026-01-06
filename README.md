@@ -41,7 +41,7 @@ Leverages several excellent libraries and projects:
 
 ## Attributions and Resources
 
-This project would not be possible without the incredible data provided by the Japanese language learning community.
+This project would not be possible without the incredible data provided by the Japanese language learning community. The data is not provided with the project, it will be automatically fetched and processed when running docker compose.
 
 ### Dictionary Data
 
