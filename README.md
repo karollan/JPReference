@@ -1,6 +1,6 @@
-# JLPT Reference
+# JP Reference
 
-JLPT Reference is an open source full Japanese dictionary designed to help students master vocabulary and kanji. It provides a modern interface with powerful search capabilities, detailed stroke animations, and comprehensive dictionary data.
+JP Reference is an open source full Japanese dictionary designed to help you master vocabulary and kanji. It provides a modern interface with powerful search capabilities, detailed stroke animations, and comprehensive dictionary data.
 
 ## Features
 
@@ -33,7 +33,7 @@ The project is built using modern web and backend technologies:
 
 ## Libraries and Projects
 
-We leverage several excellent libraries and projects:
+Leverages several excellent libraries and projects:
 
 *   **vue-dmak**: Used for kanji stroke animations. [Link](https://github.com/karollan/vue-dmak)
 *   **jmdict-simplified**: EDRDG XML to JSON parser. [Link](https://github.com/scriptin/jmdict-simplified) | License: [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)
