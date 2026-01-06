@@ -85,6 +85,12 @@ When using Docker Compose for development, you get:
 - **API endpoint updates**: Changes to controllers/services restart the API
 - **Configuration changes**: Updates to `appsettings.json` trigger restart
 
+### **Automatic database initialization**
+- The database is initialized automatically when the container starts for the first time
+- The initialization script is located in the `database/init` directory
+- Datasources are automatically downloaded and processed
+- On each restart the container will check for changes and automatically reprocess the data and update the database
+
 ### **Standard Docker Commands**
 
 You can manage your services using standard `docker-compose` commands:
@@ -199,6 +205,7 @@ The application consists of the following services:
    - Verify `API_URL` in `.env` file
    - Check backend logs: `docker-compose logs backend`
    - Ensure CORS is properly configured
+   - If KanjiVG is not loading (no stroke animations) try to restart the frontend container: `docker-compose restart frontend`
 
 4. **Services not starting**:
    - Check Docker Desktop is running
