@@ -17,10 +17,10 @@ JP Reference is an open source full Japanese dictionary designed to help you mas
 
 ## Visuals
 
-![Search Interface](file:///c:/Projects/JLPTReference/demo/search.jpg)
-![Kanji Details](file:///c:/Projects/JLPTReference/demo/kanji_details.jpg)
-![Custom Tags](file:///c:/Projects/JLPTReference/demo/custom_tags.jpg)
-![Dark Mode](file:///c:/Projects/JLPTReference/demo/about_page_dark_mode.jpg)
+![Search Interface](demo/search.jpg)
+![Kanji Details](demo/kanji_details.jpg)
+![Custom Tags](demo/custom_tags.jpg)
+![Dark Mode](demo/about_page_dark_mode.jpg)
 
 ## Technology Stack
 
@@ -56,4 +56,4 @@ This project would not be possible without the incredible data provided by the J
 
 ## Getting Started
 
-To run the project locally using Docker, please refer to the [Docker Setup Guide](file:///c:/Projects/JLPTReference/DOCKER_README.md).
+To run the project locally using Docker, please refer to the [Docker Setup Guide](./DOCKER_README.md).
