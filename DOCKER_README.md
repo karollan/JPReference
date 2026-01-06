@@ -1,47 +1,19 @@
-# JLPT Reference - Docker Setup
+# JP Reference - Docker Setup
 
-This guide will help you run the entire JLPT Reference application stack using Docker Compose, including the frontend, backend, and database.
+This guide will help you run the entire JP Reference application stack using Docker Compose, including the frontend, backend, and database.
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running
 - Git (to clone the repository)
 
-### Option 1: Development Mode (Recommended for Coding)
-
-**🔥 Live Coding with Hot-Reload Enabled**
-
-#### Windows
-```bash
-start-dev.bat
-```
-
-#### Linux/macOS
-```bash
-chmod +x start-dev.sh
-./start-dev.sh
-```
-
-### Option 2: Production Mode
-
-#### Windows
-```bash
-start.bat
-```
-
-#### Linux/macOS
-```bash
-chmod +x start.sh
-./start.sh
-```
-
-### Option 2: Manual Setup
+### Quick Start
 
 1. **Copy environment configuration:**
    ```bash
-   cp environment.env .env
+   cp example.env .env
    ```
 
 2. **Start all services:**
@@ -54,7 +26,7 @@ chmod +x start.sh
    docker-compose ps
    ```
 
-## 🌐 Service URLs
+## Service URLs
 
 Once all services are running, you can access:
 
@@ -76,7 +48,7 @@ Once all services are running, you can access:
 - Username: `jlptuser`
 - Password: `jlptpassword`
 
-## 🛠️ Environment Configuration
+## Environment Configuration
 
 The application uses environment variables defined in the `.env` file:
 
@@ -99,40 +71,40 @@ PGADMIN_PASSWORD=admin123
 PGADMIN_PORT=8080
 ```
 
-## 🔥 Development Mode Features
+## Development Mode Features
 
-When using the development startup scripts (`start-dev.sh` or `start-dev.bat`), you get:
+When using Docker Compose for development, you get:
 
 ### **Frontend Hot-Reload**
-- ✅ **Vue.js hot-reload**: Changes to `.vue`, `.ts`, `.js` files automatically reload in browser
-- ✅ **Vite fast refresh**: Instant updates without losing component state
-- ✅ **File watching**: Polling enabled for reliable file change detection in Docker
+- **Vue.js hot-reload**: Changes to `.vue`, `.ts`, `.js` files automatically reload in browser
+- **Vite fast refresh**: Instant updates without losing component state
+- **File watching**: Polling enabled for reliable file change detection in Docker
 
 ### **Backend Hot-Reload**
-- ✅ **dotnet watch**: Automatic restart when C# files change
-- ✅ **API endpoint updates**: Changes to controllers/services restart the API
-- ✅ **Configuration changes**: Updates to `appsettings.json` trigger restart
+- **dotnet watch**: Automatic restart when C# files change
+- **API endpoint updates**: Changes to controllers/services restart the API
+- **Configuration changes**: Updates to `appsettings.json` trigger restart
 
-### **Development Commands**
+### **Standard Docker Commands**
+
+You can manage your services using standard `docker-compose` commands:
 
 ```bash
 # View live logs for all services
-./dev-logs.sh
+docker-compose logs -f
 
 # View logs for specific service
-./dev-logs.sh frontend
-./dev-logs.sh backend
-./dev-logs.sh postgres
-
-# Restart specific service
-./dev-restart.sh frontend
-./dev-restart.sh backend
+docker-compose logs -f frontend
+docker-compose logs -f backend
 
 # Restart all services
-./dev-restart.sh
+docker-compose restart
+
+# Restart specific service
+docker-compose restart frontend
 ```
 
-## 📋 Available Commands
+## Available Commands
 
 ### Basic Operations
 
@@ -184,7 +156,7 @@ docker-compose exec frontend sh
 docker-compose exec backend bash
 ```
 
-## 🏗️ Architecture
+## Architecture
 
 The application consists of the following services:
 
@@ -198,7 +170,7 @@ The application consists of the following services:
 - **Technology**: ASP.NET Core, Entity Framework Core, PostgreSQL
 - **Features**: CORS enabled for frontend, Swagger documentation
 
-### Database (PostgreSQL 15)
+### Database (PostgreSQL 18)
 - **Port**: 5432
 - **Features**: Persistent data storage, health checks
 - **Management**: PgAdmin interface available
@@ -207,11 +179,11 @@ The application consists of the following services:
 - **Port**: 8080
 - **Purpose**: Database administration interface
 
-### Kanji Processor (Optional)
-- **Purpose**: Populates database with kanji data
+### Python data processors (Optional)
+- **Purpose**: Fetch data and populate database with it
 - **Profile**: `tools` (runs only when explicitly requested)
 
-## 🔧 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -246,15 +218,13 @@ docker-compose down --rmi all
 docker-compose up --build -d
 ```
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 JLPTReference/
 ├── docker-compose.yml          # Main orchestration file
-├── environment.env             # Environment template
-├── .env                        # Your environment config (created by script)
-├── start.sh                    # Linux/macOS startup script
-├── start.bat                   # Windows startup script
+├── example.env                 # Environment template
+├── .env                        # Your environment config (created from example.env)
 ├── frontend/
 │   ├── Dockerfile              # Frontend container definition
 │   ├── .dockerignore           # Frontend ignore patterns
@@ -265,28 +235,28 @@ JLPTReference/
 │       ├── .dockerignore       # Backend ignore patterns
 │       └── ...
 └── database/
-    ├── docker-compose.yml      # Database-only compose (legacy)
+    ├── init                    # Has database initialization script
     └── ...
 ```
 
-## 🎯 Development Workflow
+## Development Workflow
 
 1. **Make changes** to your code
 2. **Rebuild affected services**: `docker-compose build [service-name]`
 3. **Restart services**: `docker-compose up -d [service-name]`
 4. **View logs**: `docker-compose logs -f [service-name]`
 
-## 📝 Notes
+## Notes
 
 - The application uses Docker volumes for persistent data storage
 - Database data persists between container restarts
 - Frontend and backend have hot-reload enabled for development
 - All services are connected via a custom Docker network (`jlpt-network`)
 
-## 🤝 Contributing
+## Contributing
 
 When making changes:
-1. Update environment variables in `environment.env` if needed
+1. Update environment variables in `example.env` if needed and rename it to `.env`
 2. Test the Docker setup locally
 3. Update this README if you add new services or change configurations
 
