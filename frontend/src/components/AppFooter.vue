@@ -28,11 +28,11 @@
       —
       <a
         class="text-decoration-none on-surface"
-        href="https://vuetifyjs.com/about/licensing/"
+        href="https://github.com/karollan/JPReference?tab=Apache-2.0-1-ov-file"
         rel="noopener noreferrer"
         target="_blank"
       >
-        MIT License
+        Apache 2.0 License
       </a>
     </div>
   </v-footer>
@@ -43,7 +43,7 @@
     {
       title: 'Github Repository',
       icon: `mdi-github`,
-      href: 'https://github.com/karollan/JLPTReference',
+      href: 'https://github.com/karollan/JPReference',
     },
   ]
 </script>
