@@ -1,20 +1,24 @@
-# Use Node.js 24 Alpine as base image
-FROM node:24-alpine
-
-# Set working directory
+# Base stage for dependencies
+FROM node:24-alpine AS base
 WORKDIR /app
-
-# Copy package files first (for better Docker layer caching)
 COPY package.json yarn.lock ./
-
-# Install dependencies
 RUN yarn install --frozen-lockfile
 
-# Copy source code
+# Development stage (used by dev docker-compose)
+FROM base AS development
 COPY . .
-
-# Expose port 3000
 EXPOSE 3000
-
-# Start the development server with hot-reload
 CMD ["yarn", "dev", "--host", "0.0.0.0", "--port", "3000"]
+
+# Build stage
+FROM base AS build
+COPY . .
+# Disable type-check if it causes issues in CI, or keep it for safety
+RUN yarn build
+
+# Production stage
+FROM nginx:alpine AS final
+COPY --from=build /app/dist /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]

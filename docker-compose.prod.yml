@@ -1,0 +1,139 @@
+services:
+  # PostgreSQL Database (Optimized for Production)
+  postgres:
+    image: postgres:18
+    container_name: jlpt-reference-db-prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d
+    networks:
+      - jlpt-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: >
+      postgres  -c max_connections=100  -c shared_buffers=256MB  -c effective_cache_size=1GB  -c maintenance_work_mem=128MB  -c checkpoint_completion_target=0.9  -c wal_buffers=16MB  -c default_statistics_target=100  -c random_page_cost=1.1  -c effective_io_concurrency=64  -c work_mem=32MB  -c min_wal_size=1GB  -c max_wal_size=4GB  -c max_worker_processes=8  -c max_parallel_workers_per_gather=4  -c max_parallel_workers=8
+
+  # .NET Backend API (Production)
+  backend:
+    build:
+      context: ./backend/JLPTReference.Api
+      dockerfile: Dockerfile
+      target: final
+    container_name: jlpt-reference-backend-prod
+    restart: unless-stopped
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:5000
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD};
+      - FrontendUrl=${FRONTEND_URL}
+      - DOTNET_USE_POLLING_FILE_WATCHER=false
+      - DOTNET_RUNNING_IN_CONTAINER=true
+    ports:
+      - "${BACKEND_PORT}:5000"
+    networks:
+      - jlpt-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Vue.js Frontend (Production with Nginx)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: final
+    container_name: jlpt-reference-frontend-prod
+    restart: unless-stopped
+    environment:
+      - VITE_API_URL=${API_URL}
+      - CHOKIDAR_USEPOLLING=false
+      - WATCHPACK_POLLING=false
+    ports:
+      - "${FRONTEND_PORT_PROD:-80}:80"
+    volumes:
+      - kanjivg_data:/usr/share/nginx/html/kanjivg
+    networks:
+      - jlpt-network
+    depends_on:
+      - backend
+
+  # JMDict Processor (Manual Trigger)
+  jmdict-processor:
+    image: gradle:7.6-jdk17
+    container_name: jlpt-reference-jmdict-processor-prod
+    profiles: [ "manual" ]
+    environment:
+      PYTHONUNBUFFERED: 1
+      JMDICT_CACHE_DIR: /app/jmdict-cache
+      JMDICT_SOURCE_DIR: /app/source
+      JMDICT_STATE_FILE: /app/state/.jmdict_state
+      KANJI_REF_STATE_FILE: /app/state/.kanji_ref_commit
+      RADICALS_REF_STATE_FILE: /app/state/.radicals_ref_commit
+      DATA_SEEDED_FLAG: /app/state/.data_seeded
+    volumes:
+      - ./database/scripts:/app/scripts
+      - ./database/source:/app/source
+      - jmdict_cache:/app/jmdict-cache
+      - processor_state:/app/state
+    working_dir: /app/scripts
+    entrypoint: /bin/sh
+    command: -c "apt-get update -q && apt-get install -y -q python3 git curl python3-requests && python3 -u sync_jmdict.py && python3 -u sync_kanji_reference.py && python3 -u sync_radicals.py"
+    networks:
+      - jlpt-network
+
+  # Data Processor (Manual Trigger)
+  data-processor:
+    image: python:3.11-slim
+    container_name: jlpt-reference-data-processor-prod
+    profiles: [ "manual" ]
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PYTHONUNBUFFERED: 1
+      NUM_WORKERS: 8
+      KANJIVG_TARGET_DIR: /app/public/kanjivg
+      KANJIVG_STATE_FILE: /app/state/.kanjivg_commit
+    volumes:
+      - ./database/scripts:/app/scripts
+      - ./database/source:/app/source
+      - kanjivg_data:/app/public/kanjivg
+      - processor_state:/app/state
+    working_dir: /app/scripts
+    command: >
+      sh -c "
+        python -u sync_kanjivg.py &&
+        pip install -r requirements.txt &&
+        python -u run_processor.py &&
+        touch /app/state/.data_seeded
+      "
+    networks:
+      - jlpt-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data_prod:
+  pgadmin_data:
+  processor_state:
+  jmdict_cache:
+  kanjivg_data:
+
+
+networks:
+  jlpt-network:
+    driver: bridge

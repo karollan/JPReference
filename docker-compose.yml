@@ -53,6 +53,7 @@ services:
     build:
       context: ./backend/JLPTReference.Api
       dockerfile: Dockerfile
+      target: development
     container_name: jlpt-reference-backend
     restart: unless-stopped
     environment:
@@ -79,6 +80,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      target: development
     container_name: jlpt-reference-frontend
     restart: unless-stopped
     environment:
