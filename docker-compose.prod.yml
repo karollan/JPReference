@@ -53,6 +53,8 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       target: final
+      args:
+        - VITE_API_URL=${API_URL}
     container_name: jlpt-reference-frontend-prod
     restart: unless-stopped
     environment:

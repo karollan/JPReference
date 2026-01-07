@@ -51,3 +51,5 @@ jobs:
             ${{ steps.image_names.outputs.frontend_image }}:latest
             ${{ steps.image_names.outputs.frontend_image }}:${{ github.sha }}
           target: final
+          build-args: |
+            VITE_API_URL=${{ vars.VITE_API_URL || 'http://localhost:5000/api' }}
