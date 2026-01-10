@@ -390,6 +390,7 @@
   import type { KanaForm, KanjiForm, SenseDetails, SenseExample, SenseGloss } from '@/types/Vocabulary'
   import { computed, onMounted, ref, watch } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
+  import { useHead } from '@unhead/vue'
   import LanguageSelector from '@/components/search/LanguageSelector.vue'
   import { useVocabularyStore } from '@/stores/vocabulary'
   import { DEFAULT_LANGUAGE, languageMatches } from '@/utils/language'
@@ -627,6 +628,21 @@
   function goBack () {
     router.back()
   }
+
+  // SEO
+  useHead({
+    title: computed(() => vocabulary.value ? `Vocabulary: ${selectedKanjiText.value || selectedKanaText.value} - JP Reference` : 'Loading Vocabulary...'),
+    meta: [
+      {
+        name: 'description',
+        content: computed(() => {
+          if (!vocabulary.value) return 'Loading vocabulary details...'
+          const meanings = filteredSenses.value.map(s => getGlossText(s)).join('; ')
+          return `Details for vocabulary ${selectedKanjiText.value || selectedKanaText.value} (${selectedKanaText.value}). Meanings: ${meanings}`
+        })
+      }
+    ]
+  })
 </script>
 
 <style lang="scss" scoped>

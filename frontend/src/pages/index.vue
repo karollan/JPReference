@@ -44,6 +44,8 @@
 </template>
 
 <script lang="ts" setup>
+  import { useHead } from '@unhead/vue'
+
   const router = useRouter()
   const searchQuery = ref('')
 
@@ -57,6 +59,16 @@
       }
     })
   }
+
+  useHead({
+    title: 'Japanese Dictionary - JP Reference',
+    meta: [
+      {
+        name: 'description',
+        content: 'A comprehensive Japanese dictionary for Japanese students. Search for vocabulary, kanji, proper nouns, and radicals.'
+      }
+    ]
+  })
 </script>
 <style lang="scss" scoped>
 .home {

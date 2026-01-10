@@ -249,6 +249,7 @@
   import type { RadicalDetails } from '@/types/Radical'
   import { computed, onMounted, ref, watch, reactive } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
+  import { useHead } from '@unhead/vue'
   import { useRadicalStore } from '@/stores/radical'
   import { VueDmak } from 'vue-dmak'
   import { playPronunciation } from '@/utils/audio'
@@ -334,6 +335,21 @@
     } else {
       loadRadical()
     }
+  })
+
+    // SEO
+  useHead({
+    title: computed(() => radical.value ? `Radical: ${selectedLiteral.value || radical.value.literal} - JP Reference` : 'Loading Radical...'),
+    meta: [
+      {
+        name: 'description',
+        content: computed(() => {
+          if (!radical.value) return 'Loading radical details...'
+          const meanings = radical.value.meanings?.join(', ')
+          return `Details for radical ${selectedLiteral.value || radical.value.literal}. Meanings: ${meanings}. Strokes: ${radical.value.strokeCount}`
+        })
+      }
+    ]
   })
 </script>
 

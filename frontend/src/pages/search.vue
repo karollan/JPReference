@@ -373,6 +373,7 @@
   import VocabularySummary from '@/components/search/VocabularySummary.vue'
   import VocabularySummarySkeleton from '@/components/search/VocabularySummarySkeleton.vue'
   import { useSearchStore } from '@/stores/search'
+  import { useHead } from '@unhead/vue'
 
   const route = useRoute()
   const router = useRouter()
@@ -518,6 +519,16 @@
 
     debouncedSearch()
   }, { immediate: true })
+
+  useHead({
+    title: computed(() => searchQuery.value ? `Search: ${searchQuery.value} - JP Reference` : 'Search - JLPT Reference'),
+    meta: [
+      {
+        name: 'description',
+        content: computed(() => searchQuery.value ? `Search results for "${searchQuery.value}" in Japanese dictionary.` : 'Search for Japanese vocabulary, kanji, and proper nouns.')
+      }
+    ]
+  })
 </script>
 <style lang="scss" scoped>
 .content {

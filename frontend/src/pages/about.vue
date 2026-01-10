@@ -138,6 +138,8 @@
 </template>
 
 <script setup lang="ts">
+import { useHead } from '@unhead/vue'
+
 const features = [
   {
     title: 'Smart Search',
@@ -230,6 +232,16 @@ const libraries = [
   { name: 'jmdict-simplified', purpose: 'EDRDG XML to JSON parser', link: 'https://github.com/scriptin/jmdict-simplified', license: 'Creative Commons Attribution-ShareAlike 4.0 (CC BY-SA 4.0)', licenseLink: 'https://creativecommons.org/licenses/by-sa/4.0/'},
   { name: 'WanaKana-net', purpose: 'Transliteriation of Hiragana, Katakana and Romaji', link: 'https://github.com/MartinZikmund/WanaKana-net/tree/dev'}
 ]
+
+useHead({
+  title: 'About - JP Reference',
+  meta: [
+    {
+      name: 'description',
+      content: 'Learn more about the JP Reference project, its features, and the dictionary data sources used.'
+    }
+  ]
+})
 </script>
 
 <style scoped>

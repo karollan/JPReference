@@ -180,6 +180,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      FRONTEND_URL: ${FRONTEND_URL}
       PYTHONUNBUFFERED: 1
       PYTHONIOENCODING: utf-8
       LANG: C.UTF-8
@@ -191,6 +192,7 @@ services:
       - ./database/scripts:/app/scripts
       - ./database/source:/app/source
       - ./frontend/public/kanjivg:/app/public/kanjivg
+      - ./backend/JLPTReference.Api/wwwroot/sitemap:/app/sitemap
       - processor_state:/app/state
     working_dir: /app/scripts
     command: >
@@ -219,6 +221,10 @@ services:
         if [ $? -eq 0 ]; then
           echo 'Data processor: Seeding successful. Creating flag file.'
           touch /app/state/.data_seeded
+          
+          echo 'Data processor: Generating static sitemaps...'
+          python -u generate_sitemaps.py
+          
           echo 'Data processor: Done.'
           exit 0
         else

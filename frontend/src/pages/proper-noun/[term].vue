@@ -305,6 +305,7 @@
   import type { KanaForm, KanjiForm, TranslationDetails } from '@/types/ProperNoun'
   import { computed, onMounted, ref, watch } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
+  import { useHead } from '@unhead/vue'
   import LanguageSelector from '@/components/search/LanguageSelector.vue'
   import { useProperNounStore } from '@/stores/proper-noun'
   import { DEFAULT_LANGUAGE, languageMatches } from '@/utils/language'
@@ -492,6 +493,21 @@
   function goBack () {
     router.back()
   }
+
+  // SEO
+  useHead({
+    title: computed(() => properNoun.value ? `Proper Noun: ${selectedKanjiText.value || selectedKanaText.value} - JP Reference` : 'Loading Proper Noun...'),
+    meta: [
+      {
+        name: 'description',
+        content: computed(() => {
+          if (!properNoun.value) return 'Loading proper noun details...'
+          const translations = filteredTranslations.value.map(t => getTranslationText(t)).join('; ')
+          return `Details for proper noun ${selectedKanjiText.value || selectedKanaText.value} (${selectedKanaText.value}). Translations: ${translations}`
+        })
+      }
+    ]
+  })
 </script>
 
 <style lang="scss" scoped>

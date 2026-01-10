@@ -401,8 +401,9 @@
 
 <script setup lang="ts">
   import type { KanjiDetails } from '@/types/Kanji'
-  import { computed, onMounted, ref, watch } from 'vue'
+  import { computed, onMounted, ref, watch, reactive } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
+  import { useHead } from '@unhead/vue'
   import LanguageSelector from '@/components/search/LanguageSelector.vue'
   import { useKanjiStore } from '@/stores/kanji'
   import { VueDmak } from 'vue-dmak'
@@ -624,6 +625,26 @@
     loadKanji()
   })
 
+  // SEO
+  useHead({
+    title: computed(() => kanji.value ? `Kanji: ${kanji.value.literal} - JP Reference` : 'Loading Kanji...'),
+    meta: [
+      {
+        name: 'description',
+        content: computed(() => {
+          if (!kanji.value) return 'Loading kanji details...'
+          const meanings = groupedMeanings.value.join(', ')
+          const on = readingsMap.value.ja_on?.map(r => r.value).join(', ')
+          const kun = readingsMap.value.ja_kun?.map(r => r.value).join(', ')
+          return `Details for kanji ${kanji.value.literal}. Meanings: ${meanings}. Readings: ${on ? 'On: ' + on : ''} ${kun ? ' Kun: ' + kun : ''}`
+        })
+      },
+      {
+        property: 'og:title',
+        content: computed(() => kanji.value ? `Kanji: ${kanji.value.literal}` : 'Kanji Details')
+      }
+    ]
+  })
 </script>
 
 <style lang="scss" scoped>

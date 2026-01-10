@@ -425,6 +425,14 @@
     "@typescript-eslint/types" "8.46.0"
     eslint-visitor-keys "^4.2.1"
 
+"@unhead/vue@^2.1.1":
+  version "2.1.1"
+  resolved "https://registry.npmjs.org/@unhead/vue/-/vue-2.1.1.tgz"
+  integrity sha512-WYa8ORhfv7lWDSoNpkMKhbW1Dbsux/3HqMcVkZS3xZ2/c/VrcChLj+IMadpCd1WNR0srITfRJhBYZ1i9hON5Qw==
+  dependencies:
+    hookable "^5.5.3"
+    unhead "2.1.1"
+
 "@vitejs/plugin-vue@^6.0.1":
   version "6.0.1"
   resolved "https://registry.npmjs.org/@vitejs/plugin-vue/-/plugin-vue-6.0.1.tgz"
@@ -2386,6 +2394,13 @@ undici-types@~6.21.0:
   resolved "https://registry.npmjs.org/undici-types/-/undici-types-6.21.0.tgz"
   integrity sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==
 
+unhead@2.1.1:
+  version "2.1.1"
+  resolved "https://registry.npmjs.org/unhead/-/unhead-2.1.1.tgz"
+  integrity sha512-NOt8n2KybAOxSLfNXegAVai4SGU8bPKqWnqCzNAvnRH2i8mW+0bbFjN/L75LBgCSTiOjJSpANe5w2V34Grr7Cw==
+  dependencies:
+    hookable "^5.5.3"
+
 unimport@^5.4.0:
   version "5.4.1"
   resolved "https://registry.npmjs.org/unimport/-/unimport-5.4.1.tgz"
@@ -2597,7 +2612,7 @@ vue-tsc@^3.0.7:
     "@volar/typescript" "2.4.23"
     "@vue/language-core" "3.1.1"
 
-"vue@^2.7.0 || ^3.2.25", "vue@^2.7.0 || ^3.5.11", vue@^3.0.0, vue@^3.2.0, vue@^3.2.25, vue@^3.2.4, vue@^3.4.0, vue@^3.5.0, vue@^3.5.21, "vue@2 || 3", vue@3.5.22:
+"vue@^2.7.0 || ^3.2.25", "vue@^2.7.0 || ^3.5.11", vue@^3.0.0, vue@^3.2.0, vue@^3.2.25, vue@^3.2.4, vue@^3.4.0, vue@^3.5.0, vue@^3.5.21, vue@>=3.5.18, "vue@2 || 3", vue@3.5.22:
   version "3.5.22"
   resolved "https://registry.npmjs.org/vue/-/vue-3.5.22.tgz"
   integrity sha512-toaZjQ3a/G/mYaLSbV+QsQhIdMo9x5rrqIpYRObsJ6T/J+RyCSFwN2LHNVH9v8uIcljDNa3QzPVdv3Y6b9hAJQ==
