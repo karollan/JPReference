@@ -277,9 +277,24 @@ h2 {
   position: fixed;
   bottom: calc(var(--v-layout-bottom) + 8px);
   right: 8px;
+  background-color: rgba(0, 0, 0, 0.1);
+  padding: 4px 8px;
+  border-radius: 4px;
+  backdrop-filter: blur(8px);
   pointer-events: none; /* Let clicks pass through if needed, though it's text */
   user-select: none;
   z-index: 100;
   opacity: 0.7;
+}
+
+@media (max-width: 600px) {
+  .db-update-info {
+    position: static;
+    display: block;
+    text-align: center;
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+    transform: none;
+  }
 }
 </style>
