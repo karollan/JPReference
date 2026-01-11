@@ -108,7 +108,7 @@
               </v-btn>
             </div>
             <v-divider class="mb-4 mt-2 flex-shrink-0" />
-            <div class="vocabulary-iterator overflow-y-auto flex-grow-1 pa-2" style="min-height: 0;">
+            <div class="vocabulary-iterator overflow-y-auto flex-grow-1 pa-2" style="min-height: auto; max-height: 100%;">
               <template v-if="searchStore.loading">
                 <VocabularySummarySkeleton v-for="i in 3" :key="i" />
               </template>
@@ -120,7 +120,7 @@
                 />
               </template>
               <template v-else>
-                <v-card class="pa-8 text-center h-100 justify-center align-center d-flex flex-column" variant="outlined">
+                <v-card class="pa-8 text-center justify-center align-center d-flex flex-column" variant="outlined">
                   <v-icon color="grey-lighten-1" size="64">mdi-text-search</v-icon>
                   <div class="text-h6 mt-4 text-grey">No vocabulary found</div>
                 </v-card>
@@ -136,7 +136,7 @@
             md="4"
           >
             <!-- Kanji Section (60%) -->
-            <div class="d-flex flex-column flex-grow-1 flex-md-grow-0 section-kanji" :class="{'h-auto': !$vuetify.display.mdAndUp}" style="min-height: 55%;">
+            <div class="d-flex flex-column flex-grow-1 flex-md-grow-0 section-kanji" :class="{'h-auto': !$vuetify.display.mdAndUp}" style="min-height: auto; max-height: 55%;">
               <div class="d-flex justify-space-between align-center mb-2 flex-shrink-0">
                 <div class="text-left section-title">
                   <span>Kanji</span>
@@ -173,7 +173,7 @@
             </div>
 
             <!-- Proper Nouns Section (40%) -->
-            <div class="d-flex flex-column flex-grow-1 flex-md-grow-0 section-proper" :class="{'h-auto': !$vuetify.display.mdAndUp}" style="min-height: 45%;">
+            <div class="d-flex flex-column flex-grow-1 flex-md-grow-0 section-proper" :class="{'h-auto': !$vuetify.display.mdAndUp}" style="min-height: auto; max-height: 45%;">
               <div class="d-flex justify-space-between align-center mb-2 mt-md-0 mt-4 flex-shrink-0">
                 <div class="text-left section-title">
                   <span>Proper Nouns</span>
@@ -264,9 +264,9 @@
           </v-tabs>
         </div>
 
-        <v-tabs-window v-model="currentTab" class="flex-grow-1 overflow-y-auto d-flex flex-column h-100">
+        <v-tabs-window v-model="currentTab" class="flex-grow-1 overflow-y-auto d-flex flex-column">
           <!-- Vocabulary Tab -->
-          <v-tabs-window-item value="vocabulary" class="h-100">
+          <v-tabs-window-item value="vocabulary">
             <div class="tab-content overflow-y-auto h-100">
               <template v-if="searchStore.loading">
                 <VocabularySummarySkeleton v-for="i in 5" :key="i" />
@@ -298,7 +298,7 @@
           </v-tabs-window-item>
 
           <!-- Kanji Tab -->
-          <v-tabs-window-item value="kanji" class="h-100">
+          <v-tabs-window-item value="kanji">
             <div class="tab-content overflow-y-auto h-100">
               <template v-if="searchStore.loading">
                 <KanjiSummarySkeleton v-for="i in 5" :key="i" />
@@ -330,7 +330,7 @@
           </v-tabs-window-item>
 
           <!-- Proper Nouns Tab -->
-          <v-tabs-window-item value="properNouns" class="h-100">
+          <v-tabs-window-item value="properNouns">
             <div class="tab-content overflow-y-auto h-100">
               <template v-if="searchStore.loading">
                 <ProperNounSummarySkeleton v-for="i in 5" :key="i" />

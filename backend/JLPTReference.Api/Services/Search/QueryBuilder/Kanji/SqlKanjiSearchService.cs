@@ -31,13 +31,20 @@ public class SqlKanjiSearchService : IKanjiSearchService
 
     public async Task<SearchResultKanji> SearchAsync(SearchSpec spec, int pageSize, int page)
     {
-        var patterns = SearchPatternUtils.GetPatterns(spec.Tokens);
+        // Build per-token patterns for global AND matching across fields
+        var patternsPerToken = SearchPatternUtils.GetPatternsPerToken(spec.Tokens);
+        var tokenVariantCounts = SearchPatternUtils.GetTokenVariantCounts(spec.Tokens);
+        var combinedPatterns = SearchPatternUtils.GetCombinedPatterns(spec.Tokens);
+
         var hasWildcard = spec.Tokens?.Any(t => t.HasWildcard) ?? false;
 
-        var exactTerms = patterns
+        // Flatten patterns for exact term extraction
+        var allPatterns = patternsPerToken.SelectMany(p => p).ToList();
+        var exactTerms = allPatterns
             .Select(p => p.TrimEnd('%'))
             .Where(p => !string.IsNullOrEmpty(p) && !hasWildcard)
             .Select(SearchPatternUtils.UnescapeLikePattern)
+            .Distinct()
             .ToArray();
 
         var filters = spec.Filters ?? new SearchFilters();
@@ -48,6 +55,8 @@ public class SqlKanjiSearchService : IKanjiSearchService
         await using var cmd = new NpgsqlCommand(@"
             SELECT * FROM jlpt.search_kanji_ranked(
                 @patterns,
+                @tokenVariantCounts,
+                @combinedPatterns,
                 @exactTerms,
                 @hasWildcard,
                 @jlptMin,
@@ -63,9 +72,18 @@ public class SqlKanjiSearchService : IKanjiSearchService
                 @pageOffset
             )", connection);
 
+        // Add parameters
         cmd.Parameters.Add(new NpgsqlParameter("@patterns", NpgsqlDbType.Array | NpgsqlDbType.Text)
         {
-            Value = patterns.Count > 0 ? patterns.ToArray() : DBNull.Value
+            Value = allPatterns.Count > 0 ? allPatterns.ToArray() : DBNull.Value
+        });
+        cmd.Parameters.Add(new NpgsqlParameter("@tokenVariantCounts", NpgsqlDbType.Array | NpgsqlDbType.Integer)
+        {
+            Value = tokenVariantCounts.Length > 0 ? tokenVariantCounts : DBNull.Value
+        });
+        cmd.Parameters.Add(new NpgsqlParameter("@combinedPatterns", NpgsqlDbType.Array | NpgsqlDbType.Text) 
+        { 
+            Value = combinedPatterns.Count > 0 ? combinedPatterns.ToArray() : DBNull.Value 
         });
         cmd.Parameters.Add(new NpgsqlParameter("@exactTerms", NpgsqlDbType.Array | NpgsqlDbType.Text)
         {

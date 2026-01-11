@@ -31,6 +31,62 @@ public static class SearchPatternUtils
     }
 
     /// <summary>
+    /// Generates SQL LIKE patterns grouped by token for per-token AND matching.
+    /// Each inner list contains variant patterns for one token.
+    /// This enables "all words must match somewhere" logic rather than
+    /// "all words must match in same field" logic.
+    /// </summary>
+    public static List<List<string>> GetPatternsPerToken(List<SearchToken>? tokens)
+    {
+        if (tokens == null || tokens.Count == 0)
+            return new List<List<string>>();
+        
+        return tokens.Select(t => 
+            (t.TransliterationBlocked ? new[] { t.RawValue } : t.Variants.ToArray())
+                .Select(v => v + "%")
+                .ToList()
+        ).ToList();
+    }
+
+    /// <summary>
+    /// Gets the count of variants for each token.
+    /// Used alongside flattened patterns array to reconstruct token groupings in SQL.
+    /// For tokens with multiple variants (e.g., "toku" -> ["とく", "トク", "toku"]),
+    /// only ONE variant needs to match (OR within token), but ALL tokens must match (AND across tokens).
+    /// </summary>
+    public static int[] GetTokenVariantCounts(List<SearchToken>? tokens)
+    {
+        if (tokens == null || tokens.Count == 0)
+            return Array.Empty<int>();
+        
+        return tokens.Select(t => 
+            t.TransliterationBlocked ? 1 : t.Variants.Count
+        ).ToArray();
+    }
+
+    /// <summary>
+    /// Generates combined phrase patterns for searching sequences in a single field.
+    /// e.g. ["to", "wake", "up"] -> ["to%wake%up%"]
+    /// Handles variants: ["coach", "toku"] -> ["coach%とく%", "coach%トク%", "coach%toku%"]
+    /// </summary>
+    public static List<string> GetCombinedPatterns(List<SearchToken>? tokens)
+    {
+        if (tokens == null || tokens.Count < 2) 
+            return new List<string>();
+
+        // Cartesian product of variants
+        return tokens
+            .Select(t => t.TransliterationBlocked ? new[] { t.RawValue } : t.Variants.ToArray())
+            .Aggregate(
+                new List<string> { "" },
+                (acc, variants) =>
+                    acc.SelectMany(prefix => variants.Select(v => prefix == "" ? v : prefix + "%" + v)).ToList()
+            )
+            .Select(p => p + "%") // Add trailing wildcard
+            .ToList();
+    }
+
+    /// <summary>
     /// Converts a SQL LIKE pattern to a .NET regex pattern.
     /// Handles % (multi-char), _ (single-char), and escaped characters.
     /// </summary>
