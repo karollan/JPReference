@@ -88,7 +88,8 @@ public class RadicalRepository : IRadicalRepository {
             Readings = group.Readings,
             Notes = group.Notes,
             Variants = variantsDtos,
-            Kanji = topLevelKanjiList.Take(10).ToList()
+            Kanji = topLevelKanjiList.Take(10).ToList(),
+            UpdatedAt = group.UpdatedAt
         };
     }
 

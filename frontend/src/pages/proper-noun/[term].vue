@@ -296,7 +296,8 @@
               <section class="meta-section">
                 <div class="text-caption text-disabled font-mono">
                   ID: {{ properNoun.id }}<br>
-                  JMnedict ID: {{ properNoun.jmnedictId }}
+                  JMnedict ID: {{ properNoun.jmnedictId }}<br>
+                  Last update: {{ updatedAtFormatted }}
                 </div>
               </section>
             </v-col>
@@ -350,6 +351,13 @@
   // Determine if this is a kanji-based word or kana-only word
   const hasKanjiForms = computed(() => {
     return properNoun.value?.kanjiForms && properNoun.value.kanjiForms.length > 0
+  })
+
+  const updatedAtFormatted = computed(() => {
+    return new Date(properNoun.value?.updatedAt as Date).toLocaleString(undefined, {
+      dateStyle: 'short',
+      timeStyle: 'short'
+    })
   })
 
   // Initialize selection when proper noun loads

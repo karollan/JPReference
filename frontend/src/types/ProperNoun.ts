@@ -13,6 +13,7 @@ export interface ProperNounDetails {
   translations: TranslationDetails[]
   furigana: Furigana[] | null
   containedKanji: KanjiInfo[]
+  updatedAt: Date
 }
 
 // Used to represent a summary of a proper noun in search lists

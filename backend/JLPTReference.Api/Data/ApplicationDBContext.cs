@@ -3,6 +3,7 @@ using JLPTReference.Api.Entities.Radical;
 using JLPTReference.Api.Entities.Vocabulary;
 using JLPTReference.Api.Entities.ProperNoun;
 using JLPTReference.Api.Entities.Relations;
+using JLPTReference.Api.Entities.Meta;
 using JLPTReference.Api.DTOs.Search;
 using Microsoft.EntityFrameworkCore;
 
@@ -61,6 +62,9 @@ public class ApplicationDBContext : DbContext
     public DbSet<KanjiRadical> KanjiRadicals { get; set; }
     public DbSet<VocabularyUsesKanji> VocabularyUsesKanji { get; set; }
     public DbSet<ProperNounUsesKanji> ProperNounUsesKanji { get; set; }
+
+    // Meta
+    public DbSet<DatabaseStatus> DatabaseStatus { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder) 
     {
@@ -218,6 +222,10 @@ public class ApplicationDBContext : DbContext
         modelBuilder.Entity<ProperNounUsesKanji>().ToTable("proper_noun_uses_kanji", schema: "jlpt");
         modelBuilder.Entity<ProperNounUsesKanji>().HasKey(pnuk => pnuk.Id);
         modelBuilder.Entity<ProperNounUsesKanji>().HasIndex(pnuk => new { pnuk.ProperNounId, pnuk.KanjiId }).IsUnique();
+
+        // Meta
+        modelBuilder.Entity<DatabaseStatus>().ToTable("status", schema: "jlpt");
+        modelBuilder.Entity<DatabaseStatus>().HasKey(ds => ds.Id);
 
         // Apply snake case to all properties
         foreach(var entity in modelBuilder.Model.GetEntityTypes())

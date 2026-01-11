@@ -70,7 +70,8 @@ def clean_database():
             "jlpt.vocabulary", 
             "jlpt.proper_noun", 
             "jlpt.radical", 
-            "jlpt.tag"
+            "jlpt.tag",
+            "jlpt.status"
         ]
         
         print(f"Truncating tables: {', '.join(tables)}", flush=True)
@@ -92,6 +93,40 @@ def clean_database():
         if conn:
             conn.close()
 
+
+
+def update_status():
+    """Update the database status with the current timestamp."""
+    print("Updating database status...", flush=True)
+    
+    db_params = {
+        'host': os.getenv('POSTGRES_HOST', 'localhost'),
+        'port': os.getenv('POSTGRES_PORT', '5432'),
+        'database': os.getenv('POSTGRES_DB', 'jlptreference'),
+        'user': os.getenv('POSTGRES_USER', 'jlptuser'),
+        'password': os.getenv('POSTGRES_PASSWORD', 'jlptpassword')
+    }
+    
+    conn = None
+    try:
+        conn = psycopg2.connect(**db_params)
+        cursor = conn.cursor()
+        
+        # Insert the status record (id=1 is enforced by check constraint)
+        # using NOW() for the timestamp
+        cursor.execute("INSERT INTO jlpt.status (id, last_update) VALUES (1, NOW()) ON CONFLICT (id) DO UPDATE SET last_update = NOW();")
+        
+        conn.commit()
+        print("Database status updated successfully.", flush=True)
+        return True
+    except Exception as e:
+        print(f"Error updating database status: {e}", flush=True)
+        if conn:
+            conn.rollback()
+        return False
+    finally:
+        if conn:
+            conn.close()
 
 def main():
     """Main function."""
@@ -134,6 +169,7 @@ def main():
                 print("=" * 60, flush=True)
                 print(f"✅ Data processing completed successfully in {elapsed:.2f} seconds!", flush=True)
                 print("=" * 60, flush=True)
+                update_status()
                 return 0
             else:
                 print("❌ Data processing failed!", flush=True)
@@ -160,6 +196,7 @@ def main():
             print("=" * 60, flush=True)
             print(f"✅ Data processing completed successfully in {elapsed:.2f} seconds!", flush=True)
             print("=" * 60, flush=True)
+            update_status()
             return 0
         else:
             print("❌ Data processing failed!", flush=True)

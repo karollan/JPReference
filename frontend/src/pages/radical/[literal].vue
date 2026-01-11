@@ -197,7 +197,7 @@
               </section>
 
               <!-- Other details -->
-              <section class="other-details-section">
+              <section class="other-details-section mb-6">
                 <v-card class="pa-4 rounded-lg border-thin" variant="outlined">
                   <h3 class="text-overline font-weight-bold mb-2 text-medium-emphasis">Other Info</h3>
                   <div class="reference-grid sidebar-grid">
@@ -236,6 +236,12 @@
                     </v-card>
                   </div>
                 </v-card>
+              </section>
+              <!-- Metadata/Ids -->
+              <section class="meta-section">
+                <div class="text-caption text-disabled font-mono">
+                  Last update: {{ updatedAtFormatted }}
+                </div>
               </section>
             </v-col>
           </v-row>
@@ -276,6 +282,13 @@
   })
 
   // Computed
+  const updatedAtFormatted = computed(() => {
+    return new Date(radical.value?.updatedAt as Date).toLocaleString(undefined, {
+      dateStyle: 'short',
+      timeStyle: 'short'
+    })
+  })
+
   const literal = computed(() => (route.params as any).literal as string)
 
   const variantKanji = computed(() => {

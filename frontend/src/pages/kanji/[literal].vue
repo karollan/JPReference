@@ -289,7 +289,7 @@
               </section>
 
               <!-- Other details accordion -->
-              <section class="other-details-section">
+              <section class="other-details-section mb-6">
                 <v-card class="pa-4 rounded-lg border-thin" variant="outlined">
                   <h3 class="text-overline font-weight-bold mb-2 text-medium-emphasis">Other Info</h3>
                   <v-expansion-panels variant="accordion">
@@ -392,6 +392,12 @@
                   </v-expansion-panels>
                 </v-card>
               </section>
+              <!-- Metadata/Ids -->
+              <section class="meta-section">
+                <div class="text-caption text-disabled font-mono">
+                  Last update: {{ updatedAtFormatted }}
+                </div>
+              </section>
             </v-col>
           </v-row>
         </div>
@@ -454,6 +460,13 @@
     jis213: 'JIS X 0213-2000',
     deroo: 'De Roo',
   }
+
+  const updatedAtFormatted = computed(() => {
+    return new Date(kanji.value?.updatedAt as Date).toLocaleString(undefined, {
+      dateStyle: 'short',
+      timeStyle: 'short'
+    })
+  })
 
   const codepoints = computed(() => {
     return kanji.value?.codepoints?.map(codepoint => {

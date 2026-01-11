@@ -302,7 +302,8 @@ public class VocabularyRepository : IVocabularyRepository {
             KanaForms = kanaForms,
             Senses = senses,
             ContainedKanji = kanjiReferences,
-            Furigana = furigana
+            Furigana = furigana,
+            UpdatedAt = vocabulary.UpdatedAt
         };
     }
 }

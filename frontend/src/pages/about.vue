@@ -134,11 +134,17 @@
         </v-col>
       </v-row>
     </section>
+
+    <div v-if="lastUpdate" class="db-update-info text-caption text-medium-emphasis">
+      Last database update: {{ formattedLastUpdate }}
+    </div>
   </v-container>
 </template>
 
 <script setup lang="ts">
+import type { Status } from '@/types/Status'
 import { useHead } from '@unhead/vue'
+import { StatusService } from '@/services/status.service'
 
 const features = [
   {
@@ -242,6 +248,20 @@ useHead({
     }
   ]
 })
+const lastUpdate = ref<string | null>(null)
+
+const formattedLastUpdate = computed(() => {
+  if (!lastUpdate.value) return 'Unknown'
+  return new Date(lastUpdate.value).toLocaleString()
+})
+
+onMounted(async () => {
+  try {
+    lastUpdate.value = (await StatusService.getDatabaseStatus()).lastUpdate
+  } catch (error) {
+    console.error('Failed to fetch database status', error)
+  }
+})
 </script>
 
 <style scoped>
@@ -251,5 +271,15 @@ useHead({
 
 h2 {
   text-align: center;
+}
+
+.db-update-info {
+  position: fixed;
+  bottom: calc(var(--v-layout-bottom) + 8px);
+  right: 8px;
+  pointer-events: none; /* Let clicks pass through if needed, though it's text */
+  user-select: none;
+  z-index: 100;
+  opacity: 0.7;
 }
 </style>

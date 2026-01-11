@@ -27,6 +27,14 @@ END;
 $$ language 'plpgsql';
 
 -- ============================================
+-- META
+-- ============================================
+CREATE TABLE IF NOT EXISTS status (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    last_update TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================
 -- KANJI
 -- ============================================
 CREATE TABLE IF NOT EXISTS kanji (

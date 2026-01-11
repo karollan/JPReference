@@ -381,7 +381,8 @@
               <section class="meta-section">
                 <div class="text-caption text-disabled font-mono">
                   ID: {{ vocabulary.id }}<br>
-                  JMdict ID: {{ vocabulary.jmdictId }}
+                  JMdict ID: {{ vocabulary.jmdictId }}<br>
+                  Last update: {{ updatedAtFormatted }}
                 </div>
               </section>
             </v-col>
@@ -413,7 +414,6 @@
   const selectedFormText = ref<string | null>(null)
 
   const term = computed(() => (route.params as any).term as string)
-
   // Fetch data
   async function loadData () {
     if (term.value) {
@@ -432,12 +432,18 @@
 
   const vocabulary = computed(() => store.vocabularyDetails)
 
+  const updatedAtFormatted = computed(() => {
+    return new Date(vocabulary.value?.updatedAt as Date).toLocaleString(undefined, {
+      dateStyle: 'short',
+      timeStyle: 'short'
+    })
+  })
+
   // Determine if this is a kanji-based word or kana-only word
   const hasKanjiForms = computed(() => {
     return vocabulary.value?.kanjiForms && vocabulary.value.kanjiForms.length > 0
   })
 
-  // Initialize selection when vocabulary loads
   // Initialize selection when vocabulary loads
   watch(() => vocabulary.value, v => {
     if (!v) return

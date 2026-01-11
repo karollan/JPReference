@@ -14,6 +14,7 @@ export interface VocabularyDetails {
   furigana: Furigana[] | null
   jlptLevel?: number
   containedKanji: KanjiInfo[]
+  updatedAt: Date
 }
 
 // Used to represent a summary of a vocabulary in search lists
