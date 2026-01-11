@@ -237,7 +237,8 @@ public class ProperNounRepository : IProperNounRepository {
             KanaForms = kanaForms,
             Translations = translations,
             ContainedKanji = containedKanjiForms,
-            Furigana = furigana
+            Furigana = furigana,
+            UpdatedAt = properNoun.UpdatedAt
         };
     }
 }

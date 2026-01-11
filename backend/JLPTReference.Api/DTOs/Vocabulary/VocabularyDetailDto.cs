@@ -11,6 +11,7 @@ public class VocabularyDetailDto
     public List<SenseDto> Senses { get; set; } = new();
     public List<FuriganaDto> Furigana { get; set; } = new();
     public int? JlptLevel { get; set; }
+    public DateTime UpdatedAt { get; set; }
     // Cross-references
     public List<KanjiInfoDto> ContainedKanji { get; set; } = new();
 }

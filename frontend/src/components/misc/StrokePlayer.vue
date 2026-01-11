@@ -1,23 +1,25 @@
 <template>
   <v-card class="stroke-player bg-transparent" flat>
     <!-- VueDmak Component -->
-    <VueDmak
-      ref="dmakRef"
-      :autoplay="autoplay"
-      :grid="gridOptions"
-      :step="stepValue"
-      :stroke="strokeOptions"
-      :text="text"
-      :uri="uri"
-      :height="90"
-      :canvas-style="canvasStyle"
-      @loaded="onLoaded"
-      @drew="onDrew"
-    />
+    <div v-show="hasData">
+      <VueDmak
+        ref="dmakRef"
+        :autoplay="autoplay"
+        :grid="gridOptions"
+        :step="stepValue"
+        :stroke="strokeOptions"
+        :text="text"
+        :uri="uri"
+        :height="90"
+        :canvas-style="canvasStyle"
+        @loaded="onLoaded"
+        @drew="onDrew"
+      />
+    </div>
 
     <!-- Control Center -->
     <v-card
-      v-if="text && text !== ''"
+      v-if="hasData"
       class="control-center mx-auto rounded-pill border-thin pa-1"
       elevation="0"
       max-width="300"
@@ -141,6 +143,7 @@ const speed = ref(5)
 const showStrokeNumbers = ref(false)
 const showOptions = ref(false)
 const totalStrokes = ref(0)
+const hasData = ref(true)
 
 // Map speed (1-10) to step (0.03 to 0.003)
 const stepValue = computed(() => 0.03 / speed.value)
@@ -181,9 +184,13 @@ const canvasStyle = reactive({
   marginBottom: '8px'
 })
 
-function onLoaded(strokes: any[]) {
+function onLoaded(event: any) {
+  const strokes = event?.strokes ?? event ?? []
+  const dataAvailable = event?.hasData ?? (Array.isArray(event) && event.length > 0)
+  
   totalStrokes.value = strokes.length
-  isPlaying.value = true
+  hasData.value = dataAvailable
+  isPlaying.value = dataAvailable
 }
 
 function onDrew(pointer: number) {

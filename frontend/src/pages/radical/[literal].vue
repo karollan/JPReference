@@ -197,7 +197,7 @@
               </section>
 
               <!-- Other details -->
-              <section class="other-details-section">
+              <section class="other-details-section mb-6">
                 <v-card class="pa-4 rounded-lg border-thin" variant="outlined">
                   <h3 class="text-overline font-weight-bold mb-2 text-medium-emphasis">Other Info</h3>
                   <div class="reference-grid sidebar-grid">
@@ -237,6 +237,12 @@
                   </div>
                 </v-card>
               </section>
+              <!-- Metadata/Ids -->
+              <section class="meta-section">
+                <div class="text-caption text-disabled font-mono">
+                  Last update: {{ updatedAtFormatted }}
+                </div>
+              </section>
             </v-col>
           </v-row>
         </div>
@@ -249,6 +255,7 @@
   import type { RadicalDetails } from '@/types/Radical'
   import { computed, onMounted, ref, watch, reactive } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
+  import { useHead } from '@unhead/vue'
   import { useRadicalStore } from '@/stores/radical'
   import { VueDmak } from 'vue-dmak'
   import { playPronunciation } from '@/utils/audio'
@@ -275,6 +282,13 @@
   })
 
   // Computed
+  const updatedAtFormatted = computed(() => {
+    return new Date(radical.value?.updatedAt as Date).toLocaleString(undefined, {
+      dateStyle: 'short',
+      timeStyle: 'short'
+    })
+  })
+
   const literal = computed(() => (route.params as any).literal as string)
 
   const variantKanji = computed(() => {
@@ -334,6 +348,21 @@
     } else {
       loadRadical()
     }
+  })
+
+    // SEO
+  useHead({
+    title: computed(() => radical.value ? `Radical: ${selectedLiteral.value || radical.value.literal} - JP Reference` : 'Loading Radical...'),
+    meta: [
+      {
+        name: 'description',
+        content: computed(() => {
+          if (!radical.value) return 'Loading radical details...'
+          const meanings = radical.value.meanings?.join(', ')
+          return `Details for radical ${selectedLiteral.value || radical.value.literal}. Meanings: ${meanings}. Strokes: ${radical.value.strokeCount}`
+        })
+      }
+    ]
   })
 </script>
 

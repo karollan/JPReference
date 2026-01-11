@@ -13,6 +13,7 @@ public class RadicalDetailDto
     public List<string> Meanings { get; set; } = new();
     public List<string> Readings { get; set; } = new();
     public List<string> Notes { get; set; } = new();
+    public DateTime UpdatedAt { get; set; }
 
     public List<KanjiSummaryDto> Kanji { get; set; } = new();
 }

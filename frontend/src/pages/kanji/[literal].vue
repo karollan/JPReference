@@ -201,7 +201,7 @@
               <!-- Associated Vocabulary (Infinite Scroll) -->
               <section class="vocabulary-section mb-8">
                 <h2 class="text-h5 font-weight-bold mb-4 d-flex align-center justify-space-between">
-                  <div>
+                  <div class="text-xs-body-2">
                     <v-icon class="mr-2" color="success" icon="mdi-book-open-page-variant-outline" start />
                     Top words containing this kanji
                   </div>
@@ -268,6 +268,7 @@
                       view="series"
                       :width="90"
                       :height="90"
+                      :stroke="seriesStroke"
                       :seriesStyle="seriesStyle"
                       :seriesFrameStyle="frameStyle"
                     />
@@ -288,7 +289,7 @@
               </section>
 
               <!-- Other details accordion -->
-              <section class="other-details-section">
+              <section class="other-details-section mb-6">
                 <v-card class="pa-4 rounded-lg border-thin" variant="outlined">
                   <h3 class="text-overline font-weight-bold mb-2 text-medium-emphasis">Other Info</h3>
                   <v-expansion-panels variant="accordion">
@@ -391,6 +392,12 @@
                   </v-expansion-panels>
                 </v-card>
               </section>
+              <!-- Metadata/Ids -->
+              <section class="meta-section">
+                <div class="text-caption text-disabled font-mono">
+                  Last update: {{ updatedAtFormatted }}
+                </div>
+              </section>
             </v-col>
           </v-row>
         </div>
@@ -401,16 +408,19 @@
 
 <script setup lang="ts">
   import type { KanjiDetails } from '@/types/Kanji'
-  import { computed, onMounted, ref, watch } from 'vue'
+  import { computed, onMounted, ref, watch, reactive } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
+  import { useHead } from '@unhead/vue'
   import LanguageSelector from '@/components/search/LanguageSelector.vue'
   import { useKanjiStore } from '@/stores/kanji'
   import { VueDmak } from 'vue-dmak'
+  import { useTheme } from 'vuetify'
   import { playPronunciation } from '@/utils/audio'
 
   const route = useRoute()
   const router = useRouter()
   const kanjiStore = useKanjiStore()
+  const theme = useTheme()
 
   // State
   const loading = ref(true)
@@ -429,6 +439,18 @@
   })
 
   // Computed
+  const seriesStroke = computed(() => {
+    return theme.global.current.value.dark ? {
+      attr: {
+        stroke: "white"
+      }
+    } : {
+      attr: {
+        stroke: "black"
+      }
+    }
+  })
+  
   const kanjiLiteral = computed(() => (route.params as any).literal as string)
 
   const codepointNames: Record<string, string> = {
@@ -438,6 +460,13 @@
     jis213: 'JIS X 0213-2000',
     deroo: 'De Roo',
   }
+
+  const updatedAtFormatted = computed(() => {
+    return new Date(kanji.value?.updatedAt as Date).toLocaleString(undefined, {
+      dateStyle: 'short',
+      timeStyle: 'short'
+    })
+  })
 
   const codepoints = computed(() => {
     return kanji.value?.codepoints?.map(codepoint => {
@@ -624,6 +653,26 @@
     loadKanji()
   })
 
+  // SEO
+  useHead({
+    title: computed(() => kanji.value ? `Kanji: ${kanji.value.literal} - JP Reference` : 'Loading Kanji...'),
+    meta: [
+      {
+        name: 'description',
+        content: computed(() => {
+          if (!kanji.value) return 'Loading kanji details...'
+          const meanings = groupedMeanings.value.join(', ')
+          const on = readingsMap.value.ja_on?.map(r => r.value).join(', ')
+          const kun = readingsMap.value.ja_kun?.map(r => r.value).join(', ')
+          return `Details for kanji ${kanji.value.literal}. Meanings: ${meanings}. Readings: ${on ? 'On: ' + on : ''} ${kun ? ' Kun: ' + kun : ''}`
+        })
+      },
+      {
+        property: 'og:title',
+        content: computed(() => kanji.value ? `Kanji: ${kanji.value.literal}` : 'Kanji Details')
+      }
+    ]
+  })
 </script>
 
 <style lang="scss" scoped>

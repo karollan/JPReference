@@ -1,25 +1,52 @@
 <template>
   <div v-if="displayedLanguages.length > 0" class="language-selector">
-    <v-btn
-      v-for="lang in displayedLanguages"
-      :key="lang"
-      v-ripple
-      :aria-label="getLanguageName(lang)"
-      class="language-btn"
-      :color="selectedLanguage === lang ? 'primary' : 'default'"
+    <!-- Mobile view: Dropdown -->
+    <v-select
+      v-if="isMobile"
+      v-model="selectedLanguage"
+      :items="languageOptions"
       density="compact"
-      size="x-small"
-      :variant="selectedLanguage === lang ? 'tonal' : 'text'"
-      @click.stop="selectLanguage(lang)"
+      variant="outlined"
+      hide-details
+      class="language-dropdown"
+      @update:model-value="selectLanguage"
+      @click.stop=""
     >
-      {{ getLanguageFlag(lang) }}
-    </v-btn>
+      <template #selection="{ item }">
+        <span>{{ getLanguageFlag(item.value) }}</span>
+      </template>
+      <template #item="{ item, props: itemProps }">
+        <v-list-item v-bind="itemProps" :title="`${getLanguageFlag(item.value)} ${getLanguageName(item.value)}`" />
+      </template>
+    </v-select>
+
+    <!-- Desktop view: Horizontal buttons -->
+    <template v-else>
+      <v-btn
+        v-for="lang in displayedLanguages"
+        :key="lang"
+        v-ripple
+        :aria-label="getLanguageName(lang)"
+        class="language-btn"
+        :color="selectedLanguage === lang ? 'primary' : 'default'"
+        density="compact"
+        size="x-small"
+        :variant="selectedLanguage === lang ? 'tonal' : 'text'"
+        @click.stop="selectLanguage(lang)"
+      >
+        {{ getLanguageFlag(lang) }}
+      </v-btn>
+    </template>
   </div>
 </template>
 
 <script lang="ts" setup>
   import { computed, ref, watch } from 'vue'
+  import { useDisplay } from 'vuetify'
   import { DEFAULT_LANGUAGE, getLanguageFlag, getLanguageName, languageMatches } from '@/utils/language'
+
+  const { xs, sm } = useDisplay()
+  const isMobile = computed(() => xs.value || sm.value)
 
   const props = defineProps<{
     availableLanguages: string[]
@@ -45,6 +72,13 @@
       seen.add(normalized)
       return true
     })
+  })
+
+  const languageOptions = computed(() => {
+    return displayedLanguages.value.map(lang => ({
+      value: lang,
+      title: `${getLanguageFlag(lang)} ${getLanguageName(lang)}`,
+    }))
   })
 
   function emitSelection (language: string) {
@@ -99,5 +133,20 @@
     min-width: 32px !important;
     padding: 0 4px !important;
     font-size: 1.2rem;
+}
+
+.language-dropdown {
+    max-width: 80px;
+    min-width: 60px;
+
+    :deep(.v-field__input) {
+      padding: 4px 8px;
+      min-height: 32px;
+      font-size: 1.2rem;
+    }
+
+    :deep(.v-field__append-inner) {
+      padding-top: 4px;
+    }
 }
 </style>

@@ -1,27 +1,12 @@
 <template>
   <div class="search-autocomplete-wrapper">
-      <v-tooltip v-if="showRadicalSearch" location="bottom">
-        <template #activator="{ props }">
-            <v-btn
-                v-bind="props"
-                aria-label="Radicals search"
-                class="mr-2"
-                color="primary"
-                icon
-                :variant="radicalPopup ? 'tonal' : 'text'"
-                @click="openRadicalPopup()"
-            >
-            <v-icon size="28">mdi-ideogram-cjk-variant</v-icon>
-            </v-btn>
-        </template>
-        <span>Search by radicals</span>
-    </v-tooltip>
     <div class="search-autocomplete flex-column">
       <div class="search-input-container" :class="{ 'is-focused': isFocused, 'has-error': hasValidationError }">
         <v-icon class="search-icon" size="20">mdi-magnify</v-icon>
         <div
           ref="editableRef"
           class="search-editable"
+          :class="{ 'search-editable--mobile': mdAndDown }"
           contenteditable="true"
           :data-placeholder="placeholder || 'Search'"
           @blur="handleBlur"
@@ -38,6 +23,30 @@
         >
           <v-icon size="18">mdi-close-circle</v-icon>
         </button>
+        
+        <!-- Divider before action buttons -->
+        <div v-if="showRadicalSearch || true" class="action-divider" />
+        
+        <!-- Action buttons group -->
+        <div class="action-buttons">
+          <v-tooltip v-if="showRadicalSearch" location="bottom" :persistent="false">
+            <template #activator="{ props }">
+              <v-btn
+                v-bind="props"
+                aria-label="Radicals search"
+                color="primary"
+                icon
+                size="x-small"
+                :variant="radicalPopup ? 'tonal' : 'text'"
+                @click="openRadicalPopup()"
+              >
+                <v-icon size="22">mdi-ideogram-cjk-variant</v-icon>
+              </v-btn>
+            </template>
+            <span>Search by radicals</span>
+          </v-tooltip>
+          <SearchGuide />
+        </div>
       </div>
       <v-expand-transition>
         <v-card
@@ -48,6 +57,7 @@
             <div class="d-flex justify-space-between align-center mb-3">
               <v-card-title class="text-body-2 col-sm-6">Compose kanji with radicals</v-card-title>
               <v-btn
+                  v-if="!mobile"
                   variant="text"
                   density="comfortable"
                   color="error"
@@ -56,6 +66,14 @@
                 >
                 Clear Selection
               </v-btn>
+              <v-icon
+                  v-else
+                  color="red"
+                  size="22"
+                  @click="clearRadicalSelection"
+                >
+                mdi-delete-outline
+              </v-icon>
             </div>
             
               <div
@@ -154,6 +172,10 @@
   import { generateSuggestions } from '@/utils/filterSuggestions'
   import { getFilterValidationError } from '@/utils/filterValidation'
   import { useRadicalSearchStore } from '@/stores/radical-search'
+  import SearchGuide from './SearchGuide.vue'
+  import { useDisplay } from 'vuetify'
+
+  const { mobile, mdAndDown } = useDisplay()
 
   interface Props {
     placeholder?: string
@@ -840,6 +862,10 @@
   white-space: pre-wrap;
   text-align: left;
   color: rgb(var(--v-theme-on-surface));
+
+  &--mobile {
+    font-size: 14px;
+  }
 }
 
 .search-editable:empty::before {
@@ -867,6 +893,21 @@
   color: rgba(var(--v-theme-on-surface), 0.6);
 }
 
+.action-divider {
+  width: 1px;
+  height: 24px;
+  background-color: rgba(var(--v-theme-on-surface), 0.12);
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
+.action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
 .radical-popup {
   position: absolute;
   top: 100%;
@@ -878,6 +919,10 @@
   {
     max-height: 300px;
     overflow-y: auto;
+
+    @media (max-width: 600px) {
+      max-height: 200px;
+    }
   }
 
   .stroke-number {
@@ -892,6 +937,17 @@
     transition: background-color 0.2s;
     user-select: none;
     font-size: 1.1rem;
+    min-width: 28px;
+    min-height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    @media (max-width: 600px) {
+      font-size: 1rem;
+      min-width: 40px;
+      min-height: 40px;
+    }
 
     &--selected {
       background-color: rgb(var(--v-theme-primary)) !important;
@@ -912,6 +968,16 @@
   .kanji-result {
     cursor: pointer;
     transition: background-color 0.2s;
+    min-width: 28px;
+    min-height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    @media (max-width: 600px) {
+      min-width: 40px;
+      min-height: 40px;
+    }
 
     &:hover {
       background-color: rgba(var(--v-theme-on-surface), 0.08);
@@ -922,17 +988,25 @@
     max-height: 200px;
     overflow-y: auto;
     align-content: flex-start;
+
+    @media (max-width: 600px) {
+      max-height: 150px;
+    }
     
     /* Custom Scrollbar */
     &::-webkit-scrollbar {
-      width: 6px;
+      width: 8px;
+
+      @media (max-width: 600px) {
+        width: 6px;
+      }
     }
     &::-webkit-scrollbar-track {
       background: transparent;
     }
     &::-webkit-scrollbar-thumb {
       background: rgba(var(--v-theme-on-surface), 0.2);
-      border-radius: 3px;
+      border-radius: 4px;
     }
     &::-webkit-scrollbar-thumb:hover {
       background: rgba(var(--v-theme-on-surface), 0.3);

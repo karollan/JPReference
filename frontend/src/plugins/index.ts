@@ -11,9 +11,12 @@ import pinia from '../stores'
 
 // Plugins
 import vuetify from './vuetify'
+import { createHead } from '@unhead/vue/client'
 
-export function registerPlugins (app: App) {
+export function registerPlugins(app: App) {
+  const head = createHead()
   app
+    .use(head)
     .use(vuetify)
     .use(router)
     .use(pinia)

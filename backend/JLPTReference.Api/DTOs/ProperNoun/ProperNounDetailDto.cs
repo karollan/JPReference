@@ -11,6 +11,7 @@ public class ProperNounDetailDto
     public List<TranslationDto> Translations { get; set; } = new();
     public List<FuriganaDto> Furigana { get; set; } = new();
     public List<KanjiInfoDto> ContainedKanji { get; set; } = new();
+    public DateTime UpdatedAt { get; set; }
 }
 
 public class KanjiInfoDto

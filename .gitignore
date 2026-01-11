@@ -39,7 +39,7 @@ build/
 .env.development.local
 .env.test.local
 .env.production.local
-environment.env
+example.env
 
 # IDE files
 .vscode/
@@ -93,6 +93,11 @@ jspm_packages/
 # Database source content
 database/source/*
 
+# Sitemaps
+backend/JLPTReference.Api/wwwroot/sitemap/*.xml
+backend/JLPTReference.Api/wwwroot/sitemap/*.txt
+
 # Source code for components
 vue-dmak
+vue-dmak-test
 frontend/public/kanjivg

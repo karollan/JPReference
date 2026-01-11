@@ -27,6 +27,14 @@ END;
 $$ language 'plpgsql';
 
 -- ============================================
+-- META
+-- ============================================
+CREATE TABLE IF NOT EXISTS status (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    last_update TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================
 -- KANJI
 -- ============================================
 CREATE TABLE IF NOT EXISTS kanji (
@@ -876,6 +884,8 @@ CREATE TRIGGER trigger_proper_noun_uses_kanji_updated_at
 -- SEARCH FUNCTIONS FOR DICTIONARY API
 -- ============================================
 
+-- DEPRECATED: Use search_vocabulary_ranked, search_kanji_ranked, search_proper_noun_ranked instead
+-- This function uses deprecated similarity-based search logic
 -- Function to search global by text with pagination
 CREATE OR REPLACE FUNCTION search_global_by_text(
     queries TEXT[],
@@ -1531,6 +1541,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- DEPRECATED: Use search_kanji_ranked instead
+-- This function uses deprecated similarity-based search logic
 -- Function to search kanji by text (readings or meanings)
 CREATE OR REPLACE FUNCTION search_kanji_by_text(
     queries TEXT[],
@@ -2018,6 +2030,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- DEPRECATED: Use search_proper_noun_ranked instead
+-- This function uses deprecated similarity-based search logic
 -- Function to get proper nouns by text
 CREATE OR REPLACE FUNCTION search_proper_noun_by_text(
     queries TEXT[],
@@ -2296,7 +2310,9 @@ $$ LANGUAGE plpgsql;
 
 -- Functions to search by complex user query
 CREATE OR REPLACE FUNCTION jlpt.search_kanji_ranked(
-    patterns TEXT[],                    -- Pre-built LIKE patterns (e.g., '食%')
+    patterns TEXT[],                    -- Individual patterns - each must match somewhere in entry
+    token_variant_counts INT[],         -- Number of variants per token (for OR within, AND across)
+    combined_patterns TEXT[],           -- Combined phrase patterns (for OR against whole token logic)
     exact_terms TEXT[],                 -- Exact terms for ranking (without wildcards)
     has_user_wildcard BOOLEAN,          -- Whether user used wildcards
     jlpt_min INT,                       -- Filter: JLPT levels (0 = no min)
@@ -2371,88 +2387,149 @@ BEGIN
         RETURN;
     END IF;
 
-    -- Main search with patterns
+    -- Main search with patterns - each pattern must match somewhere in the entry
     RETURN QUERY
     WITH 
-    -- Match on literal
-    literal_matches AS (
-        SELECT 
-            k.id as kanji_id,
-            k.literal as matched_text,
-            16 as location_flag,
-            CASE 
-                WHEN NOT has_user_wildcard AND k.literal = ANY(exact_terms) THEN 1000
-                WHEN NOT has_user_wildcard AND EXISTS (SELECT 1 FROM unnest(exact_terms) et WHERE k.literal LIKE et || '%') THEN 500
-                ELSE CASE WHEN has_user_wildcard THEN 100 ELSE 200 END
-            END as quality
-        FROM jlpt.kanji k
-        WHERE k.literal LIKE ANY(patterns)
-    ),
-    -- Match on readings
-    reading_matches AS (
-        SELECT DISTINCT ON (kr.kanji_id)
-            kr.kanji_id,
-            kr.value as matched_text,
-            32 as location_flag,
-            CASE 
-                WHEN NOT has_user_wildcard AND kr.value = ANY(exact_terms) THEN 1000
-                WHEN NOT has_user_wildcard AND EXISTS (SELECT 1 FROM unnest(exact_terms) et WHERE kr.value LIKE et || '%') THEN 500
-                ELSE CASE WHEN has_user_wildcard THEN 100 ELSE 200 END
-            END as quality
-        FROM jlpt.kanji_reading kr
-        WHERE kr.value LIKE ANY(patterns)
-        ORDER BY kr.kanji_id,
-            CASE WHEN NOT has_user_wildcard AND kr.value = ANY(exact_terms) THEN 0 ELSE 1 END,
-            length(kr.value)
-    ),
-    -- Match on meanings (with optional language filter)
-    meaning_matches AS (
-        SELECT DISTINCT ON (km.kanji_id)
-            km.kanji_id,
-            km.value as matched_text,
-            64 as location_flag,
-            CASE 
-                WHEN NOT has_user_wildcard AND lower(km.value) = ANY(SELECT lower(unnest(exact_terms))) THEN 1000
-                WHEN NOT has_user_wildcard AND EXISTS (SELECT 1 FROM unnest(exact_terms) et WHERE km.value ILIKE et || '%') THEN 500
-                ELSE CASE WHEN has_user_wildcard THEN 100 ELSE 200 END
-            END as quality
-        FROM jlpt.kanji_meaning km
+    -- Step 1: Find candidate kanji IDs matching ANY pattern (uses indexes)
+    candidate_ids AS (
+        SELECT k.id as kanji_id FROM jlpt.kanji k WHERE k.literal LIKE ANY(patterns)
+        UNION
+        SELECT DISTINCT kr.kanji_id FROM jlpt.kanji_reading kr WHERE kr.value LIKE ANY(patterns)
+        UNION
+        SELECT DISTINCT km.kanji_id 
+        FROM jlpt.kanji_meaning km 
         WHERE km.value ILIKE ANY(patterns)
-          -- When language filter is specified, only match meanings in those languages
-          AND (langs IS NULL OR array_length(langs, 1) IS NULL OR km.lang = ANY(langs))
-        ORDER BY km.kanji_id,
-            CASE WHEN NOT has_user_wildcard AND lower(km.value) = ANY(SELECT lower(unnest(exact_terms))) THEN 0 ELSE 1 END,
-            length(km.value)
+            AND (langs IS NULL OR array_length(langs, 1) IS NULL OR km.lang = ANY(langs))
     ),
-    -- Combine matches
-    match_info AS (
+    -- Step 2: Filter candidates to those matching ALL patterns
+    -- We need to handle variant groups: (P1 OR P2) AND (P3) AND (P4 OR P5 OR P6)
+    -- OR if a combined pattern matches a single field (phrase search)
+    matching_kanji_ids AS (
+        SELECT c.kanji_id
+        FROM candidate_ids c
+        JOIN jlpt.kanji k ON k.id = c.kanji_id
+        WHERE (
+            -- Option A: Check that ALL tokens have at least one matching variant
+            (SELECT bool_and(token_match)
+            FROM (
+                SELECT 
+                    -- For each token, check if ANY of its variants match
+                    bool_or(
+                        k.literal LIKE pattern
+                        OR EXISTS (SELECT 1 FROM jlpt.kanji_reading kr WHERE kr.kanji_id = k.id AND kr.value LIKE pattern)
+                        OR EXISTS (
+                            SELECT 1 FROM jlpt.kanji_meaning km 
+                            WHERE km.kanji_id = k.id 
+                            AND km.value ILIKE pattern
+                            AND (langs IS NULL OR array_length(langs, 1) IS NULL OR km.lang = ANY(langs))
+                        )
+                    ) as token_match
+                FROM (
+                    -- Unnest patterns with their token index
+                    SELECT 
+                        p.pattern,
+                        t.token_index
+                    FROM (
+                        -- Generate ranges for each token based on variant counts
+                        -- token_index | start_idx | end_idx
+                        SELECT 
+                            ordinality as token_index,
+                            sum(vc) OVER (ORDER BY ordinality) - vc + 1 as start_idx,
+                            sum(vc) OVER (ORDER BY ordinality) as end_idx
+                        FROM unnest(token_variant_counts) WITH ORDINALITY as t(vc, ordinality)
+                    ) t
+                    JOIN unnest(patterns) WITH ORDINALITY as p(pattern, ordinality) 
+                    ON p.ordinality BETWEEN t.start_idx AND t.end_idx
+                ) p_with_token
+                GROUP BY token_index
+            ) token_checks)
+
+            OR
+
+            -- Option B: Combined pattern matches a single field (Phrase Match)
+            (combined_patterns IS NOT NULL AND EXISTS (
+                SELECT 1
+                WHERE 
+                    k.literal LIKE ANY(combined_patterns)
+                    OR EXISTS (SELECT 1 FROM jlpt.kanji_reading kr WHERE kr.kanji_id = k.id AND kr.value LIKE ANY(combined_patterns))
+                    OR EXISTS (
+                        SELECT 1 FROM jlpt.kanji_meaning km 
+                        WHERE km.kanji_id = k.id 
+                        AND km.value ILIKE ANY(combined_patterns)
+                        AND (langs IS NULL OR array_length(langs, 1) IS NULL OR km.lang = ANY(langs))
+                    )
+            ))
+        )
+    ),
+    -- For matched kanji, compute match quality and location
+    match_details AS (
         SELECT 
-            kanji_id,
-            MAX(quality) as best_quality,
-            BIT_OR(location_flag)::INT as locations,
-            MIN(length(matched_text)) as shortest_match
-        FROM (
-            SELECT kanji_id, matched_text, location_flag, quality FROM literal_matches
-            UNION ALL
-            SELECT kanji_id, matched_text, location_flag, quality FROM reading_matches
-            UNION ALL
-            SELECT kanji_id, matched_text, location_flag, quality FROM meaning_matches
-        ) all_matches
-        WHERE quality > 0
-        GROUP BY kanji_id
+            mk.kanji_id,
+            -- Best quality across all patterns
+            MAX(
+                CASE 
+                    -- Check literal exact match
+                    WHEN EXISTS (
+                        SELECT 1 FROM jlpt.kanji kx 
+                        WHERE kx.id = mk.kanji_id 
+                        AND kx.literal = ANY(exact_terms)
+                    ) THEN 1000
+                    -- Check reading exact match
+                    WHEN EXISTS (
+                        SELECT 1 FROM jlpt.kanji_reading kr 
+                        WHERE kr.kanji_id = mk.kanji_id 
+                        AND kr.value = ANY(exact_terms)
+                    ) THEN 1000
+                    -- Check meaning exact match
+                    WHEN EXISTS (
+                        SELECT 1 FROM jlpt.kanji_meaning km 
+                        WHERE km.kanji_id = mk.kanji_id 
+                        AND lower(km.value) = ANY(SELECT lower(unnest(exact_terms)))
+                    ) THEN 1000
+                    -- Check prefix matches
+                    WHEN NOT has_user_wildcard AND EXISTS (
+                        SELECT 1 FROM jlpt.kanji kx, unnest(exact_terms) et
+                        WHERE kx.id = mk.kanji_id AND kx.literal LIKE et || '%'
+                    ) THEN 500
+                    WHEN NOT has_user_wildcard AND EXISTS (
+                        SELECT 1 FROM jlpt.kanji_reading kr, unnest(exact_terms) et
+                        WHERE kr.kanji_id = mk.kanji_id AND kr.value LIKE et || '%'
+                    ) THEN 500
+                    WHEN NOT has_user_wildcard AND EXISTS (
+                        SELECT 1 FROM jlpt.kanji_meaning km, unnest(exact_terms) et
+                        WHERE km.kanji_id = mk.kanji_id AND km.value ILIKE et || '%'
+                    ) THEN 500
+                    -- Wildcard or contains
+                    WHEN has_user_wildcard THEN 100
+                    ELSE 200
+                END
+            ) as best_quality,
+            -- Compute match location bitmask
+            (
+                CASE WHEN EXISTS (SELECT 1 FROM jlpt.kanji kx WHERE kx.id = mk.kanji_id AND kx.literal LIKE ANY(patterns)) THEN 16 ELSE 0 END
+                | CASE WHEN EXISTS (SELECT 1 FROM jlpt.kanji_reading kr WHERE kr.kanji_id = mk.kanji_id AND kr.value LIKE ANY(patterns)) THEN 32 ELSE 0 END
+                | CASE WHEN EXISTS (
+                    SELECT 1 FROM jlpt.kanji_meaning km 
+                    WHERE km.kanji_id = mk.kanji_id AND km.value ILIKE ANY(patterns)
+                ) THEN 64 ELSE 0 END
+            )::INT as locations,
+            -- Shortest matched text length
+            COALESCE(
+                (SELECT length(kx.literal) FROM jlpt.kanji kx WHERE kx.id = mk.kanji_id AND kx.literal LIKE ANY(patterns)),
+                (SELECT MIN(length(kr.value)) FROM jlpt.kanji_reading kr WHERE kr.kanji_id = mk.kanji_id AND kr.value LIKE ANY(patterns)),
+                (SELECT MIN(length(km.value)) FROM jlpt.kanji_meaning km WHERE km.kanji_id = mk.kanji_id AND km.value ILIKE ANY(patterns)),
+                0
+            ) as shortest_match
+        FROM matching_kanji_ids mk
+        GROUP BY mk.kanji_id
     ),
-    -- Apply language filter: for meaning matches, we already filtered by language in meaning_matches.
-    -- For kanji/reading matches (Japanese text), we always show them - the language filter only affects
-    -- which meanings can match, not whether to exclude kanji that lack meanings in filter languages.
+    -- Apply language filter
     language_filtered AS (
-        SELECT mi.*
-        FROM match_info mi
+        SELECT md.*
+        FROM match_details md
         WHERE (langs IS NULL OR array_length(langs, 1) IS NULL)
-           -- If match came from meanings (bit 64), it was already filtered by language in meaning_matches
-           OR (mi.locations & 64 = 64)
-           -- If match came from kanji literal or readings (bits 16 or 32), always include them
-           -- These are Japanese text matches - don't filter by meaning language availability
-           OR (mi.locations & (16 | 32)) != 0
+           OR (md.locations & 64 = 64)  -- Has meaning match (already language-filtered)
+           OR (md.locations & (16 | 32)) != 0  -- Has literal or reading match
     ),
     -- Apply other filters
     filtered AS (
@@ -2497,7 +2574,9 @@ END;
 $$ LANGUAGE plpgsql STABLE;
 
 CREATE OR REPLACE FUNCTION jlpt.search_vocabulary_ranked(
-    patterns TEXT[],                    -- Pre-built LIKE patterns (e.g., 'たべ%')
+    patterns TEXT[],                    -- Flat array of all patterns
+    token_variant_counts INT[],         -- Number of variants per token (for OR within, AND across)
+    combined_patterns TEXT[],           -- Combined phrase patterns (for OR against whole token logic)
     exact_terms TEXT[],                 -- Exact terms for ranking (without wildcards)
     has_user_wildcard BOOLEAN,          -- Whether user used wildcards
     jlpt_min INT,                       -- Filter: JLPT levels (0 = no min)
@@ -2639,94 +2718,164 @@ BEGIN
         RETURN;
     END IF;
 
-    -- Main search query with patterns
+    -- Main search query with patterns - each pattern must match somewhere in the entry
     RETURN QUERY
     WITH 
-    -- Find kana matches
-    kana_matches AS (
-        SELECT DISTINCT ON (vk.vocabulary_id)
-            vk.vocabulary_id,
-            vk.text as matched_text,
-            1 as location_flag,
-            CASE 
-                WHEN NOT has_user_wildcard AND vk.text = ANY(exact_terms) THEN 1000
-                WHEN NOT has_user_wildcard AND EXISTS (SELECT 1 FROM unnest(exact_terms) et WHERE vk.text LIKE et || '%') THEN 500
-                ELSE CASE WHEN has_user_wildcard THEN 100 ELSE 200 END
-            END as quality
-        FROM jlpt.vocabulary_kana vk
-        WHERE vk.text LIKE ANY(patterns)
-        ORDER BY vk.vocabulary_id, 
-            CASE WHEN NOT has_user_wildcard AND vk.text = ANY(exact_terms) THEN 0 ELSE 1 END,
-            length(vk.text)
-    ),
-    -- Find kanji matches
-    kanji_matches AS (
-        SELECT DISTINCT ON (vk.vocabulary_id)
-            vk.vocabulary_id,
-            vk.text as matched_text,
-            2 as location_flag,
-            CASE 
-                WHEN NOT has_user_wildcard AND vk.text = ANY(exact_terms) THEN 1000
-                WHEN NOT has_user_wildcard AND EXISTS (SELECT 1 FROM unnest(exact_terms) et WHERE vk.text LIKE et || '%') THEN 500
-                ELSE CASE WHEN has_user_wildcard THEN 100 ELSE 200 END
-            END as quality
-        FROM jlpt.vocabulary_kanji vk
-        WHERE vk.text LIKE ANY(patterns)
-        ORDER BY vk.vocabulary_id,
-            CASE WHEN NOT has_user_wildcard AND vk.text = ANY(exact_terms) THEN 0 ELSE 1 END,
-            length(vk.text)
-    ),
-    -- Find gloss matches (with optional language filter and sense order for first_sense detection)
-    gloss_matches AS (
-        SELECT DISTINCT ON (vs.vocabulary_id)
-            vs.vocabulary_id,
-            vsg.text as matched_text,
-            4 as location_flag,
-            CASE 
-                WHEN NOT has_user_wildcard AND lower(vsg.text) = ANY(SELECT lower(unnest(exact_terms))) THEN 1000
-                WHEN NOT has_user_wildcard AND EXISTS (SELECT 1 FROM unnest(exact_terms) et WHERE vsg.text ILIKE et || '%') THEN 500
-                ELSE CASE WHEN has_user_wildcard THEN 100 ELSE 200 END
-            END as quality,
-            (ROW_NUMBER() OVER (PARTITION BY vs.vocabulary_id ORDER BY vs.id, vsg.id)) as sense_order
-        FROM jlpt.vocabulary_sense vs
+    -- Step 1: Find candidate vocabulary IDs matching ANY pattern (uses indexes)
+    candidate_ids AS (
+        SELECT DISTINCT vk.vocabulary_id FROM jlpt.vocabulary_kana vk WHERE vk.text LIKE ANY(patterns)
+        UNION
+        SELECT DISTINCT vj.vocabulary_id FROM jlpt.vocabulary_kanji vj WHERE vj.text LIKE ANY(patterns)
+        UNION
+        SELECT DISTINCT vs.vocabulary_id 
+        FROM jlpt.vocabulary_sense vs 
         JOIN jlpt.vocabulary_sense_gloss vsg ON vs.id = vsg.sense_id
         WHERE vsg.text ILIKE ANY(patterns)
-          -- When language filter is specified, only match glosses in those languages
-          AND (langs IS NULL OR array_length(langs, 1) IS NULL OR vsg.lang = ANY(langs))
-        ORDER BY vs.vocabulary_id,
-            CASE WHEN NOT has_user_wildcard AND lower(vsg.text) = ANY(SELECT lower(unnest(exact_terms))) THEN 0 ELSE 1 END,
-            length(vsg.text)
+            AND (langs IS NULL OR array_length(langs, 1) IS NULL OR vsg.lang = ANY(langs))
     ),
-    -- Combine matches and compute aggregates per vocabulary
-    match_info AS (
+    -- Step 2: Filter candidates to those matching ALL patterns
+    -- We need to handle variant groups: (P1 OR P2) AND (P3) AND (P4 OR P5 OR P6)
+    -- OR if a combined pattern matches a single field (phrase search)
+    matching_vocab_ids AS (
+        SELECT c.vocabulary_id
+        FROM candidate_ids c
+        WHERE (
+            -- Option A: Check that ALL tokens have at least one matching variant (AND across tokens)
+            (SELECT bool_and(token_match)
+            FROM (
+                SELECT 
+                    -- For each token, check if ANY of its variants match
+                    bool_or(
+                        EXISTS (SELECT 1 FROM jlpt.vocabulary_kana vk WHERE vk.vocabulary_id = c.vocabulary_id AND vk.text LIKE pattern)
+                        OR EXISTS (SELECT 1 FROM jlpt.vocabulary_kanji vj WHERE vj.vocabulary_id = c.vocabulary_id AND vj.text LIKE pattern)
+                        OR EXISTS (
+                            SELECT 1 FROM jlpt.vocabulary_sense vs 
+                            JOIN jlpt.vocabulary_sense_gloss vsg ON vs.id = vsg.sense_id
+                            WHERE vs.vocabulary_id = c.vocabulary_id 
+                            AND vsg.text ILIKE pattern
+                            AND (langs IS NULL OR array_length(langs, 1) IS NULL OR vsg.lang = ANY(langs))
+                        )
+                    ) as token_match
+                FROM (
+                    -- Unnest patterns with their token index
+                    SELECT 
+                        p.pattern,
+                        t.token_index
+                    FROM (
+                        -- Generate ranges for each token based on variant counts
+                        -- token_index | start_idx | end_idx
+                        SELECT 
+                            ordinality as token_index,
+                            sum(vc) OVER (ORDER BY ordinality) - vc + 1 as start_idx,
+                            sum(vc) OVER (ORDER BY ordinality) as end_idx
+                        FROM unnest(token_variant_counts) WITH ORDINALITY as t(vc, ordinality)
+                    ) t
+                    JOIN unnest(patterns) WITH ORDINALITY as p(pattern, ordinality) 
+                    ON p.ordinality BETWEEN t.start_idx AND t.end_idx
+                ) p_with_token
+                GROUP BY token_index
+            ) token_checks)
+            
+            OR
+            
+            -- Option B: Combined pattern matches a single field (Phrase Match)
+            (combined_patterns IS NOT NULL AND EXISTS (
+                SELECT 1 
+                WHERE 
+                    EXISTS (SELECT 1 FROM jlpt.vocabulary_kana vk WHERE vk.vocabulary_id = c.vocabulary_id AND vk.text LIKE ANY(combined_patterns))
+                    OR EXISTS (SELECT 1 FROM jlpt.vocabulary_kanji vj WHERE vj.vocabulary_id = c.vocabulary_id AND vj.text LIKE ANY(combined_patterns))
+                    OR EXISTS (
+                        SELECT 1 FROM jlpt.vocabulary_sense vs 
+                        JOIN jlpt.vocabulary_sense_gloss vsg ON vs.id = vsg.sense_id
+                        WHERE vs.vocabulary_id = c.vocabulary_id 
+                        AND vsg.text ILIKE ANY(combined_patterns)
+                        AND (langs IS NULL OR array_length(langs, 1) IS NULL OR vsg.lang = ANY(langs))
+                    )
+            ))
+        )
+    ),
+    -- For matched vocabularies, compute match quality and location per pattern
+    match_details AS (
         SELECT 
-            vocabulary_id,
-            MAX(quality) as best_quality,
-            BIT_OR(location_flag) | CASE WHEN BOOL_OR(location_flag = 4 AND sense_order = 1) THEN 8 ELSE 0 END as locations,
-            MIN(length(matched_text)) as shortest_match
-        FROM (
-            SELECT vocabulary_id, matched_text, location_flag, quality, NULL::BIGINT as sense_order FROM kana_matches
-            UNION ALL
-            SELECT vocabulary_id, matched_text, location_flag, quality, NULL FROM kanji_matches
-            UNION ALL
-            SELECT vocabulary_id, matched_text, location_flag, quality, sense_order FROM gloss_matches
-        ) all_matches
-        WHERE quality > 0
-        GROUP BY vocabulary_id
+            mv.vocabulary_id,
+            -- Best quality across all patterns
+            MAX(
+                CASE 
+                    -- Check kana exact match
+                    WHEN EXISTS (
+                        SELECT 1 FROM jlpt.vocabulary_kana vk 
+                        WHERE vk.vocabulary_id = mv.vocabulary_id 
+                        AND vk.text = ANY(exact_terms)
+                    ) THEN 1000
+                    -- Check kanji exact match
+                    WHEN EXISTS (
+                        SELECT 1 FROM jlpt.vocabulary_kanji vj 
+                        WHERE vj.vocabulary_id = mv.vocabulary_id 
+                        AND vj.text = ANY(exact_terms)
+                    ) THEN 1000
+                    -- Check gloss exact match
+                    WHEN EXISTS (
+                        SELECT 1 FROM jlpt.vocabulary_sense vs 
+                        JOIN jlpt.vocabulary_sense_gloss vsg ON vs.id = vsg.sense_id
+                        WHERE vs.vocabulary_id = mv.vocabulary_id 
+                        AND lower(vsg.text) = ANY(SELECT lower(unnest(exact_terms)))
+                    ) THEN 1000
+                    -- Check prefix matches
+                    WHEN NOT has_user_wildcard AND EXISTS (
+                        SELECT 1 FROM jlpt.vocabulary_kana vk, unnest(exact_terms) et
+                        WHERE vk.vocabulary_id = mv.vocabulary_id AND vk.text LIKE et || '%'
+                    ) THEN 500
+                    WHEN NOT has_user_wildcard AND EXISTS (
+                        SELECT 1 FROM jlpt.vocabulary_kanji vj, unnest(exact_terms) et
+                        WHERE vj.vocabulary_id = mv.vocabulary_id AND vj.text LIKE et || '%'
+                    ) THEN 500
+                    WHEN NOT has_user_wildcard AND EXISTS (
+                        SELECT 1 FROM jlpt.vocabulary_sense vs 
+                        JOIN jlpt.vocabulary_sense_gloss vsg ON vs.id = vsg.sense_id,
+                        unnest(exact_terms) et
+                        WHERE vs.vocabulary_id = mv.vocabulary_id AND vsg.text ILIKE et || '%'
+                    ) THEN 500
+                    -- Wildcard or contains
+                    WHEN has_user_wildcard THEN 100
+                    ELSE 200
+                END
+            ) as best_quality,
+            -- Compute match location bitmask
+            (
+                CASE WHEN EXISTS (SELECT 1 FROM jlpt.vocabulary_kana vk WHERE vk.vocabulary_id = mv.vocabulary_id AND vk.text LIKE ANY(patterns)) THEN 1 ELSE 0 END
+                | CASE WHEN EXISTS (SELECT 1 FROM jlpt.vocabulary_kanji vj WHERE vj.vocabulary_id = mv.vocabulary_id AND vj.text LIKE ANY(patterns)) THEN 2 ELSE 0 END
+                | CASE WHEN EXISTS (
+                    SELECT 1 FROM jlpt.vocabulary_sense vs 
+                    JOIN jlpt.vocabulary_sense_gloss vsg ON vs.id = vsg.sense_id
+                    WHERE vs.vocabulary_id = mv.vocabulary_id AND vsg.text ILIKE ANY(patterns)
+                ) THEN 4 ELSE 0 END
+                | CASE WHEN EXISTS (
+                    SELECT 1 FROM jlpt.vocabulary_sense vs 
+                    JOIN jlpt.vocabulary_sense_gloss vsg ON vs.id = vsg.sense_id
+                    WHERE vs.vocabulary_id = mv.vocabulary_id AND vsg.text ILIKE ANY(patterns)
+                    AND vs.id = (SELECT vs2.id FROM jlpt.vocabulary_sense vs2 WHERE vs2.vocabulary_id = mv.vocabulary_id ORDER BY vs2.id LIMIT 1)
+                ) THEN 8 ELSE 0 END
+            ) as locations,
+            -- Shortest matched text length
+            COALESCE(
+                (SELECT MIN(length(vk.text)) FROM jlpt.vocabulary_kana vk WHERE vk.vocabulary_id = mv.vocabulary_id AND vk.text LIKE ANY(patterns)),
+                (SELECT MIN(length(vj.text)) FROM jlpt.vocabulary_kanji vj WHERE vj.vocabulary_id = mv.vocabulary_id AND vj.text LIKE ANY(patterns)),
+                (SELECT MIN(length(vsg.text)) FROM jlpt.vocabulary_sense vs JOIN jlpt.vocabulary_sense_gloss vsg ON vs.id = vsg.sense_id WHERE vs.vocabulary_id = mv.vocabulary_id AND vsg.text ILIKE ANY(patterns)),
+                0
+            ) as shortest_match
+        FROM matching_vocab_ids mv
+        GROUP BY mv.vocabulary_id
     ),
-    -- Apply language filter: for gloss matches, we already filtered by language in gloss_matches.
-    -- For kana/kanji matches (Japanese text), we still want to show them but require term has content in filter languages.
+    -- Apply language filter for non-gloss matches
     language_filtered AS (
-        SELECT mi.*
-        FROM match_info mi
+        SELECT md.*
+        FROM match_details md
         WHERE (langs IS NULL OR array_length(langs, 1) IS NULL)
-           -- If match came from gloss (bit 4), we already filtered in gloss_matches so it's valid
-           -- If match came from kana/kanji too (bits 1 or 2), check language existence
-           OR (mi.locations & 4 = 4)  -- Has gloss match (already language-filtered)
-           OR ((mi.locations & (1 | 2)) != 0 AND EXISTS (
+           OR (md.locations & 4 = 4)  -- Has gloss match (already language-filtered)
+           OR ((md.locations & (1 | 2)) != 0 AND EXISTS (
                SELECT 1 FROM jlpt.vocabulary_sense vs
                JOIN jlpt.vocabulary_sense_gloss vsg ON vs.id = vsg.sense_id 
-               WHERE vs.vocabulary_id = mi.vocabulary_id AND vsg.lang = ANY(langs)
+               WHERE vs.vocabulary_id = md.vocabulary_id AND vsg.lang = ANY(langs)
            ))
     ),
     -- Apply other filters
@@ -2850,7 +2999,9 @@ END;
 $$ LANGUAGE plpgsql STABLE;
 
 CREATE OR REPLACE FUNCTION jlpt.search_proper_noun_ranked(
-    patterns TEXT[],                    -- Pre-built LIKE patterns
+    patterns TEXT[],                    -- Individual patterns - each must match somewhere in entry
+    token_variant_counts INT[],         -- Number of variants per token (for OR within, AND across)
+    combined_patterns TEXT[],           -- Combined phrase patterns (for OR against whole token logic)
     exact_terms TEXT[],                 -- Exact terms for ranking (without wildcards)
     has_user_wildcard BOOLEAN,          -- Whether user used wildcards
     filter_tags TEXT[],                 -- Filter: tags
@@ -2983,90 +3134,158 @@ BEGIN
         RETURN;
     END IF;
 
-    -- Main search with patterns
+    -- Main search with patterns - each pattern must match somewhere in the entry
     RETURN QUERY
     WITH 
-    kanji_matches AS (
-        SELECT DISTINCT ON (pk.proper_noun_id)
-            pk.proper_noun_id,
-            pk.text as matched_text,
-            2 as location_flag,
-            CASE 
-                WHEN NOT has_user_wildcard AND pk.text = ANY(exact_terms) THEN 1000
-                WHEN NOT has_user_wildcard AND EXISTS (SELECT 1 FROM unnest(exact_terms) et WHERE pk.text LIKE et || '%') THEN 500
-                ELSE CASE WHEN has_user_wildcard THEN 100 ELSE 200 END
-            END as quality
-        FROM jlpt.proper_noun_kanji pk
-        WHERE pk.text LIKE ANY(patterns)
-        ORDER BY pk.proper_noun_id,
-            CASE WHEN NOT has_user_wildcard AND pk.text = ANY(exact_terms) THEN 0 ELSE 1 END,
-            length(pk.text)
-    ),
-    kana_matches AS (
-        SELECT DISTINCT ON (pk.proper_noun_id)
-            pk.proper_noun_id,
-            pk.text as matched_text,
-            1 as location_flag,
-            CASE 
-                WHEN NOT has_user_wildcard AND pk.text = ANY(exact_terms) THEN 1000
-                WHEN NOT has_user_wildcard AND EXISTS (SELECT 1 FROM unnest(exact_terms) et WHERE pk.text LIKE et || '%') THEN 500
-                ELSE CASE WHEN has_user_wildcard THEN 100 ELSE 200 END
-            END as quality
-        FROM jlpt.proper_noun_kana pk
-        WHERE pk.text LIKE ANY(patterns)
-        ORDER BY pk.proper_noun_id,
-            CASE WHEN NOT has_user_wildcard AND pk.text = ANY(exact_terms) THEN 0 ELSE 1 END,
-            length(pk.text)
-    ),
-    -- Translation matches (with optional language filter)
-    translation_matches AS (
-        SELECT DISTINCT ON (pt.proper_noun_id)
-            pt.proper_noun_id,
-            ptt.text as matched_text,
-            128 as location_flag,
-            CASE 
-                WHEN NOT has_user_wildcard AND lower(ptt.text) = ANY(SELECT lower(unnest(exact_terms))) THEN 1000
-                WHEN NOT has_user_wildcard AND EXISTS (SELECT 1 FROM unnest(exact_terms) et WHERE ptt.text ILIKE et || '%') THEN 500
-                ELSE CASE WHEN has_user_wildcard THEN 100 ELSE 200 END
-            END as quality
-        FROM jlpt.proper_noun_translation pt
+    -- Step 1: Find candidate proper noun IDs matching ANY pattern (uses indexes)
+    candidate_ids AS (
+        SELECT DISTINCT pk.proper_noun_id FROM jlpt.proper_noun_kanji pk WHERE pk.text LIKE ANY(patterns)
+        UNION
+        SELECT DISTINCT pk.proper_noun_id FROM jlpt.proper_noun_kana pk WHERE pk.text LIKE ANY(patterns)
+        UNION
+        SELECT DISTINCT pt.proper_noun_id 
+        FROM jlpt.proper_noun_translation pt 
         JOIN jlpt.proper_noun_translation_text ptt ON pt.id = ptt.translation_id
         WHERE ptt.text ILIKE ANY(patterns)
-          -- When language filter is specified, only match translations in those languages
-          AND (langs IS NULL OR array_length(langs, 1) IS NULL OR ptt.lang = ANY(langs))
-        ORDER BY pt.proper_noun_id,
-            CASE WHEN NOT has_user_wildcard AND lower(ptt.text) = ANY(SELECT lower(unnest(exact_terms))) THEN 0 ELSE 1 END,
-            length(ptt.text)
+            AND (langs IS NULL OR array_length(langs, 1) IS NULL OR ptt.lang = ANY(langs))
     ),
-    match_info AS (
+    -- Step 2: Filter candidates to those matching ALL patterns
+    -- We need to handle variant groups: (P1 OR P2) AND (P3) AND (P4 OR P5 OR P6)
+    -- OR if a combined pattern matches a single field (phrase search)
+    matching_proper_noun_ids AS (
+        SELECT c.proper_noun_id
+        FROM candidate_ids c
+        WHERE (
+            -- Option A: Check that ALL tokens have at least one matching variant
+            (SELECT bool_and(token_match)
+            FROM (
+                SELECT 
+                    -- For each token, check if ANY of its variants match
+                    bool_or(
+                        EXISTS (SELECT 1 FROM jlpt.proper_noun_kanji pk WHERE pk.proper_noun_id = c.proper_noun_id AND pk.text LIKE pattern)
+                        OR EXISTS (SELECT 1 FROM jlpt.proper_noun_kana pk WHERE pk.proper_noun_id = c.proper_noun_id AND pk.text LIKE pattern)
+                        OR EXISTS (
+                            SELECT 1 FROM jlpt.proper_noun_translation pt 
+                            JOIN jlpt.proper_noun_translation_text ptt ON pt.id = ptt.translation_id
+                            WHERE pt.proper_noun_id = c.proper_noun_id 
+                            AND ptt.text ILIKE pattern
+                            AND (langs IS NULL OR array_length(langs, 1) IS NULL OR ptt.lang = ANY(langs))
+                        )
+                    ) as token_match
+                FROM (
+                    -- Unnest patterns with their token index
+                    SELECT 
+                        p.pattern,
+                        t.token_index
+                    FROM (
+                        -- Generate ranges for each token based on variant counts
+                        -- token_index | start_idx | end_idx
+                        SELECT 
+                            ordinality as token_index,
+                            sum(vc) OVER (ORDER BY ordinality) - vc + 1 as start_idx,
+                            sum(vc) OVER (ORDER BY ordinality) as end_idx
+                        FROM unnest(token_variant_counts) WITH ORDINALITY as t(vc, ordinality)
+                    ) t
+                    JOIN unnest(patterns) WITH ORDINALITY as p(pattern, ordinality) 
+                    ON p.ordinality BETWEEN t.start_idx AND t.end_idx
+                ) p_with_token
+                GROUP BY token_index
+            ) token_checks)
+
+            OR
+
+            -- Option B: Combined pattern matches a single field (Phrase Match)
+            (combined_patterns IS NOT NULL AND EXISTS (
+                SELECT 1
+                WHERE 
+                    EXISTS (SELECT 1 FROM jlpt.proper_noun_kanji pk WHERE pk.proper_noun_id = c.proper_noun_id AND pk.text LIKE ANY(combined_patterns))
+                    OR EXISTS (SELECT 1 FROM jlpt.proper_noun_kana pk WHERE pk.proper_noun_id = c.proper_noun_id AND pk.text LIKE ANY(combined_patterns))
+                    OR EXISTS (
+                        SELECT 1 FROM jlpt.proper_noun_translation pt 
+                        JOIN jlpt.proper_noun_translation_text ptt ON pt.id = ptt.translation_id
+                        WHERE pt.proper_noun_id = c.proper_noun_id 
+                        AND ptt.text ILIKE ANY(combined_patterns)
+                        AND (langs IS NULL OR array_length(langs, 1) IS NULL OR ptt.lang = ANY(langs))
+                    )
+            ))
+        )
+    ),
+    -- For matched proper nouns, compute match quality and location
+    match_details AS (
         SELECT 
-            proper_noun_id,
-            MAX(quality) as best_quality,
-            BIT_OR(location_flag) as locations,
-            MIN(length(matched_text)) as shortest_match
-        FROM (
-            SELECT proper_noun_id, matched_text, location_flag, quality FROM kanji_matches
-            UNION ALL
-            SELECT proper_noun_id, matched_text, location_flag, quality FROM kana_matches
-            UNION ALL
-            SELECT proper_noun_id, matched_text, location_flag, quality FROM translation_matches
-        ) all_matches
-        WHERE quality > 0
-        GROUP BY proper_noun_id
+            mp.proper_noun_id,
+            -- Best quality across all patterns
+            MAX(
+                CASE 
+                    -- Check kanji exact match
+                    WHEN EXISTS (
+                        SELECT 1 FROM jlpt.proper_noun_kanji pk 
+                        WHERE pk.proper_noun_id = mp.proper_noun_id 
+                        AND pk.text = ANY(exact_terms)
+                    ) THEN 1000
+                    -- Check kana exact match
+                    WHEN EXISTS (
+                        SELECT 1 FROM jlpt.proper_noun_kana pk 
+                        WHERE pk.proper_noun_id = mp.proper_noun_id 
+                        AND pk.text = ANY(exact_terms)
+                    ) THEN 1000
+                    -- Check translation exact match
+                    WHEN EXISTS (
+                        SELECT 1 FROM jlpt.proper_noun_translation pt 
+                        JOIN jlpt.proper_noun_translation_text ptt ON pt.id = ptt.translation_id
+                        WHERE pt.proper_noun_id = mp.proper_noun_id 
+                        AND lower(ptt.text) = ANY(SELECT lower(unnest(exact_terms)))
+                    ) THEN 1000
+                    -- Check prefix matches
+                    WHEN NOT has_user_wildcard AND EXISTS (
+                        SELECT 1 FROM jlpt.proper_noun_kanji pk, unnest(exact_terms) et
+                        WHERE pk.proper_noun_id = mp.proper_noun_id AND pk.text LIKE et || '%'
+                    ) THEN 500
+                    WHEN NOT has_user_wildcard AND EXISTS (
+                        SELECT 1 FROM jlpt.proper_noun_kana pk, unnest(exact_terms) et
+                        WHERE pk.proper_noun_id = mp.proper_noun_id AND pk.text LIKE et || '%'
+                    ) THEN 500
+                    WHEN NOT has_user_wildcard AND EXISTS (
+                        SELECT 1 FROM jlpt.proper_noun_translation pt 
+                        JOIN jlpt.proper_noun_translation_text ptt ON pt.id = ptt.translation_id,
+                        unnest(exact_terms) et
+                        WHERE pt.proper_noun_id = mp.proper_noun_id AND ptt.text ILIKE et || '%'
+                    ) THEN 500
+                    -- Wildcard or contains
+                    WHEN has_user_wildcard THEN 100
+                    ELSE 200
+                END
+            ) as best_quality,
+            -- Compute match location bitmask
+            (
+                CASE WHEN EXISTS (SELECT 1 FROM jlpt.proper_noun_kana pk WHERE pk.proper_noun_id = mp.proper_noun_id AND pk.text LIKE ANY(patterns)) THEN 1 ELSE 0 END
+                | CASE WHEN EXISTS (SELECT 1 FROM jlpt.proper_noun_kanji pk WHERE pk.proper_noun_id = mp.proper_noun_id AND pk.text LIKE ANY(patterns)) THEN 2 ELSE 0 END
+                | CASE WHEN EXISTS (
+                    SELECT 1 FROM jlpt.proper_noun_translation pt 
+                    JOIN jlpt.proper_noun_translation_text ptt ON pt.id = ptt.translation_id
+                    WHERE pt.proper_noun_id = mp.proper_noun_id AND ptt.text ILIKE ANY(patterns)
+                ) THEN 128 ELSE 0 END
+            ) as locations,
+            -- Shortest matched text length
+            COALESCE(
+                (SELECT MIN(length(pk.text)) FROM jlpt.proper_noun_kanji pk WHERE pk.proper_noun_id = mp.proper_noun_id AND pk.text LIKE ANY(patterns)),
+                (SELECT MIN(length(pk.text)) FROM jlpt.proper_noun_kana pk WHERE pk.proper_noun_id = mp.proper_noun_id AND pk.text LIKE ANY(patterns)),
+                (SELECT MIN(length(ptt.text)) FROM jlpt.proper_noun_translation pt JOIN jlpt.proper_noun_translation_text ptt ON pt.id = ptt.translation_id WHERE pt.proper_noun_id = mp.proper_noun_id AND ptt.text ILIKE ANY(patterns)),
+                0
+            ) as shortest_match
+        FROM matching_proper_noun_ids mp
+        GROUP BY mp.proper_noun_id
     ),
-    -- Apply language filter: for translation matches, we already filtered by language in translation_matches.
-    -- For kana/kanji matches (Japanese text), we still want to show them but require term has content in filter languages.
+    -- Apply language filter
     language_filtered AS (
-        SELECT mi.*
-        FROM match_info mi
+        SELECT md.*
+        FROM match_details md
         WHERE (langs IS NULL OR array_length(langs, 1) IS NULL)
-           -- If match came from translation (bit 128), we already filtered in translation_matches so it's valid
-           -- If match came from kana/kanji too (bits 1 or 2), check language existence
-           OR (mi.locations & 128 = 128)  -- Has translation match (already language-filtered)
-           OR ((mi.locations & (1 | 2)) != 0 AND EXISTS (
+           OR (md.locations & 128 = 128)  -- Has translation match (already language-filtered)
+           OR ((md.locations & (1 | 2)) != 0 AND EXISTS (
                SELECT 1 FROM jlpt.proper_noun_translation pt 
                JOIN jlpt.proper_noun_translation_text ptt ON pt.id = ptt.translation_id 
-               WHERE pt.proper_noun_id = mi.proper_noun_id AND ptt.lang = ANY(langs)
+               WHERE pt.proper_noun_id = md.proper_noun_id AND ptt.lang = ANY(langs)
            ))
     ),
     filtered AS (

@@ -15,7 +15,7 @@
           <span v-if="item.required" class="text-error mr-2">*</span>
           <span class="text-caption text-medium-emphasis">{{ item.subtitle }}</span>
           
-          <v-tooltip v-if="item.description" activator="parent" location="top" max-width="300">
+          <v-tooltip v-if="item.description" activator="parent" location="top" max-width="300" :persistent="false">
             {{ item.description }}
           </v-tooltip>
         </div>

@@ -22,6 +22,7 @@ export interface KanjiDetails {
   nanori: KanjiNanori[] | null
   radicals: RadicalSummary[] | null
   vocabularyReferences: KanjiVocabulary | null
+  updatedAt: Date
 }
 
 // Used to represent a summary of a kanji in search lists

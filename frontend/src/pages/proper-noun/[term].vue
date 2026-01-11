@@ -170,6 +170,9 @@
                         :key="`kf-${idx}`"
                         :disabled="!form.tags?.length"
                         location="top"
+                        :open-on-click="isMobile"
+                        :open-on-hover="!isMobile"
+                        :persistent="false"
                       >
                         <template #activator="{ props: tooltipProps }">
                           <v-chip
@@ -207,6 +210,9 @@
                         :key="`kn-${idx}`"
                         :disabled="!form.tags?.length"
                         location="top"
+                        :open-on-click="isMobile"
+                        :open-on-hover="!isMobile"
+                        :persistent="false"
                       >
                         <template #activator="{ props: tooltipProps }">
                           <v-chip
@@ -290,7 +296,8 @@
               <section class="meta-section">
                 <div class="text-caption text-disabled font-mono">
                   ID: {{ properNoun.id }}<br>
-                  JMnedict ID: {{ properNoun.jmnedictId }}
+                  JMnedict ID: {{ properNoun.jmnedictId }}<br>
+                  Last update: {{ updatedAtFormatted }}
                 </div>
               </section>
             </v-col>
@@ -305,15 +312,18 @@
   import type { KanaForm, KanjiForm, TranslationDetails } from '@/types/ProperNoun'
   import { computed, onMounted, ref, watch } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
+  import { useHead } from '@unhead/vue'
   import LanguageSelector from '@/components/search/LanguageSelector.vue'
   import { useProperNounStore } from '@/stores/proper-noun'
   import { DEFAULT_LANGUAGE, languageMatches } from '@/utils/language'
   import { playPronunciation } from '@/utils/audio'
+  import { useResponsiveTooltip } from '@/composables/useResponsiveTooltip'
 
   const route = useRoute()
   const router = useRouter()
   const store = useProperNounStore()
   const selectedLanguage = ref<string>(DEFAULT_LANGUAGE)
+  const { isMobile } = useResponsiveTooltip()
 
   // Selection state - for kanji words we select kanji, for kana-only we select kana
   const selectedFormText = ref<string | null>(null)
@@ -341,6 +351,13 @@
   // Determine if this is a kanji-based word or kana-only word
   const hasKanjiForms = computed(() => {
     return properNoun.value?.kanjiForms && properNoun.value.kanjiForms.length > 0
+  })
+
+  const updatedAtFormatted = computed(() => {
+    return new Date(properNoun.value?.updatedAt as Date).toLocaleString(undefined, {
+      dateStyle: 'short',
+      timeStyle: 'short'
+    })
   })
 
   // Initialize selection when proper noun loads
@@ -492,6 +509,21 @@
   function goBack () {
     router.back()
   }
+
+  // SEO
+  useHead({
+    title: computed(() => properNoun.value ? `Proper Noun: ${selectedKanjiText.value || selectedKanaText.value} - JP Reference` : 'Loading Proper Noun...'),
+    meta: [
+      {
+        name: 'description',
+        content: computed(() => {
+          if (!properNoun.value) return 'Loading proper noun details...'
+          const translations = filteredTranslations.value.map(t => getTranslationText(t)).join('; ')
+          return `Details for proper noun ${selectedKanjiText.value || selectedKanaText.value} (${selectedKanaText.value}). Translations: ${translations}`
+        })
+      }
+    ]
+  })
 </script>
 
 <style lang="scss" scoped>

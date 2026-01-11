@@ -226,6 +226,9 @@
                         :key="`kf-${idx}`"
                         :disabled="!form.tags?.length && !form.isCommon"
                         location="top"
+                        :open-on-click="isMobile"
+                        :open-on-hover="!isMobile"
+                        :persistent="false"
                       >
                         <template #activator="{ props: tooltipProps }">
                           <v-chip
@@ -277,6 +280,9 @@
                         :key="`kn-${idx}`"
                         :disabled="!form.tags?.length && !form.isCommon"
                         location="top"
+                        :open-on-click="isMobile"
+                        :open-on-hover="!isMobile"
+                        :persistent="false"
                       >
                         <template #activator="{ props: tooltipProps }">
                           <v-chip
@@ -375,7 +381,8 @@
               <section class="meta-section">
                 <div class="text-caption text-disabled font-mono">
                   ID: {{ vocabulary.id }}<br>
-                  JMdict ID: {{ vocabulary.jmdictId }}
+                  JMdict ID: {{ vocabulary.jmdictId }}<br>
+                  Last update: {{ updatedAtFormatted }}
                 </div>
               </section>
             </v-col>
@@ -390,21 +397,23 @@
   import type { KanaForm, KanjiForm, SenseDetails, SenseExample, SenseGloss } from '@/types/Vocabulary'
   import { computed, onMounted, ref, watch } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
+  import { useHead } from '@unhead/vue'
   import LanguageSelector from '@/components/search/LanguageSelector.vue'
   import { useVocabularyStore } from '@/stores/vocabulary'
   import { DEFAULT_LANGUAGE, languageMatches } from '@/utils/language'
   import { playPronunciation } from '@/utils/audio'
+  import { useResponsiveTooltip } from '@/composables/useResponsiveTooltip'
 
   const route = useRoute()
   const router = useRouter()
   const store = useVocabularyStore()
   const selectedLanguage = ref<string>(DEFAULT_LANGUAGE)
+  const { isMobile } = useResponsiveTooltip()
 
   // Selection state - for kanji words we select kanji, for kana-only we select kana
   const selectedFormText = ref<string | null>(null)
 
   const term = computed(() => (route.params as any).term as string)
-
   // Fetch data
   async function loadData () {
     if (term.value) {
@@ -423,12 +432,18 @@
 
   const vocabulary = computed(() => store.vocabularyDetails)
 
+  const updatedAtFormatted = computed(() => {
+    return new Date(vocabulary.value?.updatedAt as Date).toLocaleString(undefined, {
+      dateStyle: 'short',
+      timeStyle: 'short'
+    })
+  })
+
   // Determine if this is a kanji-based word or kana-only word
   const hasKanjiForms = computed(() => {
     return vocabulary.value?.kanjiForms && vocabulary.value.kanjiForms.length > 0
   })
 
-  // Initialize selection when vocabulary loads
   // Initialize selection when vocabulary loads
   watch(() => vocabulary.value, v => {
     if (!v) return
@@ -627,6 +642,21 @@
   function goBack () {
     router.back()
   }
+
+  // SEO
+  useHead({
+    title: computed(() => vocabulary.value ? `Vocabulary: ${selectedKanjiText.value || selectedKanaText.value} - JP Reference` : 'Loading Vocabulary...'),
+    meta: [
+      {
+        name: 'description',
+        content: computed(() => {
+          if (!vocabulary.value) return 'Loading vocabulary details...'
+          const meanings = filteredSenses.value.map(s => getGlossText(s)).join('; ')
+          return `Details for vocabulary ${selectedKanjiText.value || selectedKanaText.value} (${selectedKanaText.value}). Meanings: ${meanings}`
+        })
+      }
+    ]
+  })
 </script>
 
 <style lang="scss" scoped>

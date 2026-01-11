@@ -134,10 +134,18 @@
         </v-col>
       </v-row>
     </section>
+
+    <div v-if="lastUpdate" class="db-update-info text-caption text-medium-emphasis">
+      Last database update: {{ formattedLastUpdate }}
+    </div>
   </v-container>
 </template>
 
 <script setup lang="ts">
+import type { Status } from '@/types/Status'
+import { useHead } from '@unhead/vue'
+import { StatusService } from '@/services/status.service'
+
 const features = [
   {
     title: 'Smart Search',
@@ -230,10 +238,63 @@ const libraries = [
   { name: 'jmdict-simplified', purpose: 'EDRDG XML to JSON parser', link: 'https://github.com/scriptin/jmdict-simplified', license: 'Creative Commons Attribution-ShareAlike 4.0 (CC BY-SA 4.0)', licenseLink: 'https://creativecommons.org/licenses/by-sa/4.0/'},
   { name: 'WanaKana-net', purpose: 'Transliteriation of Hiragana, Katakana and Romaji', link: 'https://github.com/MartinZikmund/WanaKana-net/tree/dev'}
 ]
+
+useHead({
+  title: 'About - JP Reference',
+  meta: [
+    {
+      name: 'description',
+      content: 'Learn more about the JP Reference project, its features, and the dictionary data sources used.'
+    }
+  ]
+})
+const lastUpdate = ref<string | null>(null)
+
+const formattedLastUpdate = computed(() => {
+  if (!lastUpdate.value) return 'Unknown'
+  return new Date(lastUpdate.value).toLocaleString()
+})
+
+onMounted(async () => {
+  try {
+    lastUpdate.value = (await StatusService.getDatabaseStatus()).lastUpdate
+  } catch (error) {
+    console.error('Failed to fetch database status', error)
+  }
+})
 </script>
 
 <style scoped>
 .min-height-dense {
   min-height: 32px !important;
+}
+
+h2 {
+  text-align: center;
+}
+
+.db-update-info {
+  position: fixed;
+  bottom: calc(var(--v-layout-bottom) + 8px);
+  right: 8px;
+  background-color: rgba(0, 0, 0, 0.1);
+  padding: 4px 8px;
+  border-radius: 4px;
+  backdrop-filter: blur(8px);
+  pointer-events: none; /* Let clicks pass through if needed, though it's text */
+  user-select: none;
+  z-index: 100;
+  opacity: 0.7;
+}
+
+@media (max-width: 600px) {
+  .db-update-info {
+    position: static;
+    display: block;
+    text-align: center;
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+    transform: none;
+  }
 }
 </style>

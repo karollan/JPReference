@@ -14,6 +14,7 @@ using JLPTReference.Api.Entities.Kanji;
 using JLPTReference.Api.Entities.ProperNoun;
 using JLPTReference.Api.Entities.Vocabulary;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Caching.Memory;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,6 +26,7 @@ var dataSource = dataSourceBuilder.Build();
 
 // Add services to the container.
 builder.Services.AddControllers();
+builder.Services.AddMemoryCache();
 
 // Swagger/OpenAPI configuration
 builder.Services.AddEndpointsApiExplorer();
@@ -103,17 +105,52 @@ builder.Services.AddSingleton(ProperNounRankingProfile.Default);
 // Search services - switch between EF Core and SQL implementations
 // Set "Search:UseSqlSearch" to true in appsettings to use the optimized SQL functions
 var useSqlSearch = builder.Configuration.GetValue<bool>("Search:UseSqlSearch", false);
+
 if (useSqlSearch)
 {
-    builder.Services.AddScoped<IVocabularySearchService, SqlVocabularySearchService>();
-    builder.Services.AddScoped<IKanjiSearchService, SqlKanjiSearchService>();
-    builder.Services.AddScoped<IProperNounSearchService, SqlProperNounSearchService>();
+    // Register the concrete SQL implementation
+    builder.Services.AddScoped<SqlVocabularySearchService>();
+    builder.Services.AddScoped<SqlKanjiSearchService>();
+    builder.Services.AddScoped<SqlProperNounSearchService>();
+
+    // Register the abstract interface to use the cached wrapper, injecting the SQL implementation
+    builder.Services.AddScoped<IVocabularySearchService>(sp =>
+        new CachedVocabularySearchService(
+            sp.GetRequiredService<SqlVocabularySearchService>(),
+            sp.GetRequiredService<IMemoryCache>()));
+
+    builder.Services.AddScoped<IKanjiSearchService>(sp =>
+        new CachedKanjiSearchService(
+            sp.GetRequiredService<SqlKanjiSearchService>(),
+            sp.GetRequiredService<IMemoryCache>()));
+
+    builder.Services.AddScoped<IProperNounSearchService>(sp =>
+        new CachedProperNounSearchService(
+            sp.GetRequiredService<SqlProperNounSearchService>(),
+            sp.GetRequiredService<IMemoryCache>()));
 }
 else
 {
-    builder.Services.AddScoped<IVocabularySearchService, EfCoreVocabularySearchService>();
-    builder.Services.AddScoped<IKanjiSearchService, EfCoreKanjiSearchService>();
-    builder.Services.AddScoped<IProperNounSearchService, EfCoreProperNounSearchService>();
+    // Register the concrete EF Core implementation
+    builder.Services.AddScoped<EfCoreVocabularySearchService>();
+    builder.Services.AddScoped<EfCoreKanjiSearchService>();
+    builder.Services.AddScoped<EfCoreProperNounSearchService>();
+
+    // Register the abstract interface to use the cached wrapper, injecting the EF implementation
+    builder.Services.AddScoped<IVocabularySearchService>(sp =>
+        new CachedVocabularySearchService(
+            sp.GetRequiredService<EfCoreVocabularySearchService>(),
+            sp.GetRequiredService<IMemoryCache>()));
+
+    builder.Services.AddScoped<IKanjiSearchService>(sp =>
+        new CachedKanjiSearchService(
+            sp.GetRequiredService<EfCoreKanjiSearchService>(),
+            sp.GetRequiredService<IMemoryCache>()));
+
+    builder.Services.AddScoped<IProperNounSearchService>(sp =>
+        new CachedProperNounSearchService(
+            sp.GetRequiredService<EfCoreProperNounSearchService>(),
+            sp.GetRequiredService<IMemoryCache>()));
 }
 
 
@@ -145,6 +182,7 @@ app.Use(async (context, next) =>
     await next();
 });
 
+app.UseStaticFiles();
 app.UseCors("AllowVueApp");
 app.UseRateLimiter();
 

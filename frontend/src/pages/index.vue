@@ -6,6 +6,7 @@
       <v-col cols="12">
         <h1
           class="home__title"
+          :class="{ 'home__title--mobile': mdAndDown }"
         >
           Japanese Dictionary
         </h1>
@@ -13,6 +14,7 @@
       <v-col cols="12">
         <h5
           class="home__subtitle"
+          :class="{ 'home__subtitle--mobile': mdAndDown }"
         >
           Your essential resource for Japanese vocabulary and kanji. Start searching to accelerate your learning
         </h5>
@@ -21,6 +23,7 @@
         <SearchAutocomplete
           v-model:search-query="searchQuery"
           placeholder="Search for vocabulary or kanji"
+          :show-radical-search="true"
           @clear="searchQuery = ''"
           @search="handleSearch"
         />
@@ -44,8 +47,14 @@
 </template>
 
 <script lang="ts" setup>
+  import { useHead } from '@unhead/vue'
+  import { useDisplay } from 'vuetify'
+
+  const { mdAndDown } = useDisplay()
+
   const router = useRouter()
   const searchQuery = ref('')
+
 
   const disabled = computed(() => searchQuery.value.trim().length === 0)
   function handleSearch () {
@@ -57,6 +66,16 @@
       }
     })
   }
+
+  useHead({
+    title: 'Japanese Dictionary - JP Reference',
+    meta: [
+      {
+        name: 'description',
+        content: 'A comprehensive Japanese dictionary for Japanese students. Search for vocabulary, kanji, proper nouns, and radicals.'
+      }
+    ]
+  })
 </script>
 <style lang="scss" scoped>
 .home {
@@ -69,12 +88,22 @@
   &__title {
     font-size:3.5rem;
     margin-bottom: 1.5rem;
+
+    &--mobile {
+      font-size:2.5rem;
+      margin-bottom: 0.5rem;
+    }
   }
 
   &__subtitle {
     font-size:1.125rem;
     margin-bottom: 2.5rem;
     font-weight: normal;
+
+    &--mobile {
+      font-size:1rem;
+      margin-bottom: 0.5rem;
+    }
   }
 
   &__actions {

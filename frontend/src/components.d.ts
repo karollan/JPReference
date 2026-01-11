@@ -24,6 +24,7 @@ declare module 'vue' {
     SchemasList: typeof import('./components/api/SchemasList.vue')['default']
     SchemaViewer: typeof import('./components/api/SchemaViewer.vue')['default']
     SearchAutocomplete: typeof import('./components/search/SearchAutocomplete.vue')['default']
+    SearchGuide: typeof import('./components/search/SearchGuide.vue')['default']
     StrokePlayer: typeof import('./components/misc/StrokePlayer.vue')['default']
     VocabularySummary: typeof import('./components/search/VocabularySummary.vue')['default']
     VocabularySummarySkeleton: typeof import('./components/search/VocabularySummarySkeleton.vue')['default']

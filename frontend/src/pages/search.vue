@@ -7,13 +7,11 @@
     <v-row
       class="content d-flex flex-row"
       justify="center"
-      style="align-content: flex-start;"
+      style="align-content: flex-start; min-height: 0;"
     >
-      <!-- Search Bar -->
-      <v-col
-        ref="searchColumn"
-        cols="12"
-      >
+      <v-col cols="12" class="d-flex flex-column h-100" style="min-height: 0;">
+        <!-- Search Bar -->
+        <div class="w-100 flex-shrink-0 mb-4">
         <div class="d-flex align-center">
           <SearchAutocomplete
             v-model:search-query="searchQuery"
@@ -22,7 +20,7 @@
             @search="handleEnterSearch"
           />
 
-          <v-tooltip location="bottom">
+          <v-tooltip location="bottom" :persistent="false">
             <template #activator="{ props }">
               <v-btn
                 v-bind="props"
@@ -80,22 +78,22 @@
             {{ searchStore.error }}
           </v-alert>
         </v-col>
-      </v-col>
+        </div>
 
-      <!-- Unified View -->
-      <v-col
-        v-if="searchStore.viewMode === 'unified'"
-        class="results-container"
-        cols="12"
-      >
-        <v-row>
+        <div
+          v-if="searchStore.viewMode === 'unified'"
+          class="results-container w-100 flex-grow-1 d-flex flex-column"
+          style="min-height: 0"
+        >
+          <v-row class="flex-grow-1" style="min-height: 0;">
           <!-- Vocabulary Column -->
           <v-col
-            class="d-flex flex-column"
+            class="d-flex flex-column h-100"
+            style="min-height: 0;"
             cols="12"
             md="8"
           >
-            <div class="d-flex justify-space-between align-center mb-2">
+            <div class="d-flex justify-space-between align-center mb-2 flex-shrink-0">
               <div class="text-left section-title">
                 <span>Vocabulary</span>
               </div>
@@ -109,8 +107,8 @@
                 See All {{ vocabularyCount }} Results
               </v-btn>
             </div>
-            <v-divider class="mb-4 mt-2" />
-            <div class="vocabulary-iterator overflow-y-auto" :style="{ maxHeight: resultColumnHeight }">
+            <v-divider class="mb-4 mt-2 flex-shrink-0" />
+            <div class="vocabulary-iterator overflow-y-auto flex-grow-1 pa-2" style="min-height: auto; max-height: 100%;">
               <template v-if="searchStore.loading">
                 <VocabularySummarySkeleton v-for="i in 3" :key="i" />
               </template>
@@ -122,7 +120,7 @@
                 />
               </template>
               <template v-else>
-                <v-card class="pa-8 text-center" variant="outlined">
+                <v-card class="pa-8 text-center justify-center align-center d-flex flex-column" variant="outlined">
                   <v-icon color="grey-lighten-1" size="64">mdi-text-search</v-icon>
                   <div class="text-h6 mt-4 text-grey">No vocabulary found</div>
                 </v-card>
@@ -132,90 +130,95 @@
 
           <!-- Kanji & Proper Nouns Column -->
           <v-col
-            class="d-flex flex-column"
+            class="d-flex flex-column h-100"
+            style="min-height: 0;"
             cols="12"
             md="4"
           >
-            <!-- Kanji Section -->
-            <div class="d-flex justify-space-between align-center mb-2">
-              <div class="text-left section-title">
-                <span>Kanji</span>
+            <!-- Kanji Section (60%) -->
+            <div class="d-flex flex-column flex-grow-1 flex-md-grow-0 section-kanji" :class="{'h-auto': !$vuetify.display.mdAndUp}" style="min-height: auto; max-height: 55%;">
+              <div class="d-flex justify-space-between align-center mb-2 flex-shrink-0">
+                <div class="text-left section-title">
+                  <span>Kanji</span>
+                </div>
+                <v-btn
+                  v-if="!searchStore.loading && kanjiCount > 5"
+                  color="primary"
+                  size="small"
+                  variant="text"
+                  @click="showAllResults('kanji')"
+                >
+                  See All {{ kanjiCount }}
+                </v-btn>
               </div>
-              <v-btn
-                v-if="!searchStore.loading && kanjiCount > 5"
-                color="primary"
-                size="small"
-                variant="text"
-                @click="showAllResults('kanji')"
-              >
-                See All {{ kanjiCount }}
-              </v-btn>
-            </div>
-            <v-divider class="mb-4 mt-2" />
-            <div class="kanji-iterator overflow-y-auto mb-6" :style="{ maxHeight: sideColumnHeight }">
-              <template v-if="searchStore.loading">
-                <KanjiSummarySkeleton v-for="i in 2" :key="i" />
-              </template>
-              <template v-else-if="limitedKanji.length > 0">
-                <KanjiSummary
-                  v-for="kanji in limitedKanji"
-                  :key="kanji.id"
-                  :kanji="kanji"
-                />
-              </template>
-              <template v-else>
-                <v-card class="pa-6 text-center" variant="outlined">
-                  <v-icon color="grey-lighten-1" size="48">mdi-ideogram-cjk</v-icon>
-                  <div class="text-body-2 mt-2 text-grey">No kanji found</div>
-                </v-card>
-              </template>
+              <v-divider class="mb-4 mt-2 flex-shrink-0" />
+              <div class="kanji-iterator overflow-y-auto mb-md-6 mb-4 flex-grow-1 pa-2">
+                <template v-if="searchStore.loading">
+                  <KanjiSummarySkeleton v-for="i in 2" :key="i" />
+                </template>
+                <template v-else-if="limitedKanji.length > 0">
+                  <KanjiSummary
+                    v-for="kanji in limitedKanji"
+                    :key="kanji.id"
+                    :kanji="kanji"
+                  />
+                </template>
+                <template v-else>
+                  <v-card class="pa-6 text-center h-100 justify-center align-center d-flex flex-column" variant="outlined">
+                    <v-icon color="grey-lighten-1" size="48">mdi-ideogram-cjk</v-icon>
+                    <div class="text-body-2 mt-2 text-grey">No kanji found</div>
+                  </v-card>
+                </template>
+              </div>
             </div>
 
-            <!-- Proper Nouns Section -->
-            <div class="d-flex justify-space-between align-center mb-2 mt-4">
-              <div class="text-left section-title">
-                <span>Proper Nouns</span>
+            <!-- Proper Nouns Section (40%) -->
+            <div class="d-flex flex-column flex-grow-1 flex-md-grow-0 section-proper" :class="{'h-auto': !$vuetify.display.mdAndUp}" style="min-height: auto; max-height: 45%;">
+              <div class="d-flex justify-space-between align-center mb-2 mt-md-0 mt-4 flex-shrink-0">
+                <div class="text-left section-title">
+                  <span>Proper Nouns</span>
+                </div>
+                <v-btn
+                  v-if="!searchStore.loading && properNounCount > 5"
+                  color="primary"
+                  size="small"
+                  variant="text"
+                  @click="showAllResults('properNouns')"
+                >
+                  See All {{ properNounCount }}
+                </v-btn>
               </div>
-              <v-btn
-                v-if="!searchStore.loading && properNounCount > 5"
-                color="primary"
-                size="small"
-                variant="text"
-                @click="showAllResults('properNouns')"
-              >
-                See All {{ properNounCount }}
-              </v-btn>
-            </div>
-            <v-divider class="mb-4 mt-2" />
-            <div class="proper-noun-iterator overflow-y-auto" :style="{ maxHeight: sideColumnHeight }">
-              <template v-if="searchStore.loading">
-                <ProperNounSummarySkeleton v-for="i in 2" :key="i" />
-              </template>
-              <template v-else-if="limitedProperNouns.length > 0">
-                <ProperNounSummary
-                  v-for="properNoun in limitedProperNouns"
-                  :key="properNoun.id"
-                  :proper-noun="properNoun"
-                />
-              </template>
-              <template v-else>
-                <v-card class="pa-6 text-center" variant="outlined">
-                  <v-icon color="grey-lighten-1" size="48">mdi-account</v-icon>
-                  <div class="text-body-2 mt-2 text-grey">No proper nouns found</div>
-                </v-card>
-              </template>
+              <v-divider class="mb-4 mt-2 flex-shrink-0" />
+              <div class="proper-noun-iterator overflow-y-auto flex-grow-1 pa-2">
+                <template v-if="searchStore.loading">
+                  <ProperNounSummarySkeleton v-for="i in 2" :key="i" />
+                </template>
+                <template v-else-if="limitedProperNouns.length > 0">
+                  <ProperNounSummary
+                    v-for="properNoun in limitedProperNouns"
+                    :key="properNoun.id"
+                    :proper-noun="properNoun"
+                  />
+                </template>
+                <template v-else>
+                  <v-card class="pa-6 text-center h-100 justify-center align-center d-flex flex-column" variant="outlined">
+                    <v-icon color="grey-lighten-1" size="48">mdi-account</v-icon>
+                    <div class="text-body-2 mt-2 text-grey">No proper nouns found</div>
+                  </v-card>
+                </template>
+              </div>
             </div>
           </v-col>
         </v-row>
-      </v-col>
+        </div>
 
       <!-- Tabbed View -->
-      <v-col
-        v-else
-        class="results-container"
-        cols="12"
-      >
-        <div class="tab-header mb-4">
+        <div
+          v-else
+          class="results-container w-100 flex-grow-1 d-flex flex-column"
+          style="min-height: 0"
+        >
+        <div class="tab-header mb-4 flex-shrink-0">
           <v-tabs
             v-model="currentTab"
             class="flex-grow-1 tab-nav"
@@ -261,10 +264,10 @@
           </v-tabs>
         </div>
 
-        <v-tabs-window v-model="currentTab">
+        <v-tabs-window v-model="currentTab" class="flex-grow-1 overflow-y-auto d-flex flex-column">
           <!-- Vocabulary Tab -->
           <v-tabs-window-item value="vocabulary">
-            <div class="tab-content overflow-y-auto" :style="{ maxHeight: tabContentHeight }">
+            <div class="tab-content overflow-y-auto h-100">
               <template v-if="searchStore.loading">
                 <VocabularySummarySkeleton v-for="i in 5" :key="i" />
               </template>
@@ -286,7 +289,7 @@
                 </div>
               </template>
               <template v-else>
-                <v-card class="pa-12 text-center" variant="outlined">
+                <v-card class="pa-12 text-center h-100 justify-center align-center d-flex flex-column" variant="outlined">
                   <v-icon color="grey-lighten-1" size="96">mdi-text-search</v-icon>
                   <div class="text-h5 mt-4 text-grey">No vocabulary found</div>
                 </v-card>
@@ -296,7 +299,7 @@
 
           <!-- Kanji Tab -->
           <v-tabs-window-item value="kanji">
-            <div class="tab-content overflow-y-auto" :style="{ maxHeight: tabContentHeight }">
+            <div class="tab-content overflow-y-auto h-100">
               <template v-if="searchStore.loading">
                 <KanjiSummarySkeleton v-for="i in 5" :key="i" />
               </template>
@@ -318,7 +321,7 @@
                 </div>
               </template>
               <template v-else>
-                <v-card class="pa-12 text-center" variant="outlined">
+                <v-card class="pa-12 text-center h-100 justify-center align-center d-flex flex-column" variant="outlined">
                   <v-icon color="grey-lighten-1" size="96">mdi-ideogram-cjk</v-icon>
                   <div class="text-h5 mt-4 text-grey">No kanji found</div>
                 </v-card>
@@ -328,7 +331,7 @@
 
           <!-- Proper Nouns Tab -->
           <v-tabs-window-item value="properNouns">
-            <div class="tab-content overflow-y-auto" :style="{ maxHeight: tabContentHeight }">
+            <div class="tab-content overflow-y-auto h-100">
               <template v-if="searchStore.loading">
                 <ProperNounSummarySkeleton v-for="i in 5" :key="i" />
               </template>
@@ -350,7 +353,7 @@
                 </div>
               </template>
               <template v-else>
-                <v-card class="pa-12 text-center" variant="outlined">
+                <v-card class="pa-12 text-center h-100 justify-center align-center d-flex flex-column" variant="outlined">
                   <v-icon color="grey-lighten-1" size="96">mdi-account</v-icon>
                   <div class="text-h5 mt-4 text-grey">No proper nouns found</div>
                 </v-card>
@@ -358,6 +361,7 @@
             </div>
           </v-tabs-window-item>
         </v-tabs-window>
+        </div>
       </v-col>
     </v-row>
   </v-container>
@@ -373,28 +377,15 @@
   import VocabularySummary from '@/components/search/VocabularySummary.vue'
   import VocabularySummarySkeleton from '@/components/search/VocabularySummarySkeleton.vue'
   import { useSearchStore } from '@/stores/search'
+  import { useHead } from '@unhead/vue'
 
   const route = useRoute()
   const router = useRouter()
   const searchStore = useSearchStore()
 
   const pageSize = 50
-  const searchColumn = ref<any | null>(null)
   const searchQuery = ref<string>(route.query.query as string || '')
   const currentTab = ref<ActiveTab>('vocabulary')
-
-  // Heights for different sections
-  const resultColumnHeight = computed(() => {
-    return searchColumn.value ? `${window.innerHeight - searchColumn.value.$el.getBoundingClientRect().bottom - 100}px` : '500px'
-  })
-
-  const sideColumnHeight = computed(() => {
-    return searchColumn.value ? `${(window.innerHeight - searchColumn.value.$el.getBoundingClientRect().bottom - 100) / 2 - 60}px` : '250px'
-  })
-
-  const tabContentHeight = computed(() => {
-    return searchColumn.value ? `${window.innerHeight - searchColumn.value.$el.getBoundingClientRect().bottom - 150}px` : '600px'
-  })
 
   // Result counts
   const vocabularyCount = computed(() => searchStore.vocabularyList?.pagination.totalCount || 0)
@@ -518,11 +509,35 @@
 
     debouncedSearch()
   }, { immediate: true })
+
+  useHead({
+    title: computed(() => searchQuery.value ? `Search: ${searchQuery.value} - JP Reference` : 'Search - JLPT Reference'),
+    meta: [
+      {
+        name: 'description',
+        content: computed(() => searchQuery.value ? `Search results for "${searchQuery.value}" in Japanese dictionary.` : 'Search for Japanese vocabulary, kanji, and proper nouns.')
+      }
+    ]
+  })
 </script>
 <style lang="scss" scoped>
 .content {
-  height: calc(100vh - var(--v-layout-top) - var(--v-layout-bottom) - 2rem);
+  height: auto;
   padding: 1rem;
+}
+
+@media (min-width: 960px) {
+  .content, .main-container-layout {
+    height: calc(100vh - var(--v-layout-top) - var(--v-layout-bottom));
+  }
+  
+  .section-kanji {
+    flex: 6 0 0;
+  }
+
+  .section-proper {
+    flex: 4 0 0;
+  }
 }
 
 .section-title {
@@ -533,6 +548,7 @@
 
 .results-container {
   width: 100%;
+  min-height: 0;
 }
 
 .tab-content {

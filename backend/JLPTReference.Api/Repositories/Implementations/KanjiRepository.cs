@@ -145,7 +145,8 @@ public class KanjiRepository : IKanjiRepository {
             VocabularyReferences = new KanjiVocabularyDto{
                 TotalCount = vocabularyReferences.Count,
                 Vocabulary = vocab.Data
-            }
+            },
+            UpdatedAt = kanji.UpdatedAt
         };
 
         if (dto == null) {
