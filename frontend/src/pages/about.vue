@@ -248,4 +248,8 @@ useHead({
 .min-height-dense {
   min-height: 32px !important;
 }
+
+h2 {
+  text-align: center;
+}
 </style>

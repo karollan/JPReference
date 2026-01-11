@@ -4,7 +4,7 @@
       v-ripple
       v-bind="hoverProps"
       class="pa-3 mb-3 interactive-card text-left"
-      :elevation="isHovering ? 8 : 2"
+      :elevation="isHovering ? 4 : 2"
       outlined
       @click="handleCardClick"
     >
@@ -13,7 +13,12 @@
           <!-- Primary entry: Kanji with main reading, or Kana-only -->
             <div class="primary-entry">
               <template v-if="hasTags">
-                <v-tooltip location="top">
+                <v-tooltip
+                  location="top"
+                  :open-on-click="isMobile"
+                  :open-on-hover="!isMobile"
+                  :persistent="false"
+                >
                   <template #activator="{ props: tooltipProps }">
                     <span v-bind="tooltipProps" class="word-with-tags">
                       <FuriganaText
@@ -69,7 +74,12 @@
                 class="form-item mr-2"
               >
                 <template v-if="entry.kanji.tags?.length > 0">
-                  <v-tooltip location="top">
+                  <v-tooltip
+                    location="top"
+                    :open-on-click="isMobile"
+                    :open-on-hover="!isMobile"
+                    :persistent="false"
+                  >
                     <template #activator="{ props: tooltipProps }">
                       <span v-bind="tooltipProps" class="kanji-with-tags">{{ entry.kanji.text }}</span>
                     </template>
@@ -84,7 +94,12 @@
                 <span v-if="entry.readings.length > 0" class="reading-text">
                   (<template v-for="(reading, ridx) in entry.readings" :key="`reading-${ridx}`">
                     <template v-if="reading.tags && reading.tags.length > 0">
-                      <v-tooltip location="top">
+                      <v-tooltip
+                        location="top"
+                        :open-on-click="isMobile"
+                        :open-on-hover="!isMobile"
+                        :persistent="false"
+                      >
                         <template #activator="{ props: tooltipProps }">
                           <span v-bind="tooltipProps" class="kana-with-tags">{{ reading.text }}</span>
                         </template>
@@ -113,7 +128,12 @@
                 class="form-item mr-2"
               >
                 <template v-if="kana.tags && kana.tags.length > 0">
-                  <v-tooltip location="top">
+                  <v-tooltip
+                    location="top"
+                    :open-on-click="isMobile"
+                    :open-on-hover="!isMobile"
+                    :persistent="false"
+                  >
                     <template #activator="{ props: tooltipProps }">
                       <span v-bind="tooltipProps" class="kana-with-tags">{{ kana.text }}</span>
                     </template>
@@ -177,6 +197,7 @@
   import { DEFAULT_LANGUAGE, languageMatches } from '@/utils/language'
   import { collectAllKanaForms, getStandaloneKanaForms, getUsedKanaTexts, groupKanjiWithReadings } from '@/utils/kanjiKanaForms'
   import LanguageSelector from './LanguageSelector.vue'
+  import { useResponsiveTooltip } from '@/composables/useResponsiveTooltip'
 
   const props = defineProps<{
     properNoun: ProperNounSummary
@@ -184,6 +205,8 @@
 
   const router = useRouter()
   const selectedLanguage = ref<string>(DEFAULT_LANGUAGE)
+
+  const { isMobile } = useResponsiveTooltip()
 
   // Extract available languages from all translations
   const availableLanguages = computed(() => {

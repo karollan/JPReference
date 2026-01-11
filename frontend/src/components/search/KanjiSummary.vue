@@ -4,7 +4,7 @@
       v-ripple
       v-bind="hoverProps"
       class="pa-3 mb-3 interactive-card text-left"
-      :elevation="isHovering ? 8 : 2"
+      :elevation="isHovering ? 4 : 2"
       outlined
       @click="handleCardClick"
     >

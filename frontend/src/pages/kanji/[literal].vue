@@ -201,7 +201,7 @@
               <!-- Associated Vocabulary (Infinite Scroll) -->
               <section class="vocabulary-section mb-8">
                 <h2 class="text-h5 font-weight-bold mb-4 d-flex align-center justify-space-between">
-                  <div>
+                  <div class="text-xs-body-2">
                     <v-icon class="mr-2" color="success" icon="mdi-book-open-page-variant-outline" start />
                     Top words containing this kanji
                   </div>
@@ -268,6 +268,7 @@
                       view="series"
                       :width="90"
                       :height="90"
+                      :stroke="seriesStroke"
                       :seriesStyle="seriesStyle"
                       :seriesFrameStyle="frameStyle"
                     />
@@ -407,11 +408,13 @@
   import LanguageSelector from '@/components/search/LanguageSelector.vue'
   import { useKanjiStore } from '@/stores/kanji'
   import { VueDmak } from 'vue-dmak'
+  import { useTheme } from 'vuetify'
   import { playPronunciation } from '@/utils/audio'
 
   const route = useRoute()
   const router = useRouter()
   const kanjiStore = useKanjiStore()
+  const theme = useTheme()
 
   // State
   const loading = ref(true)
@@ -430,6 +433,18 @@
   })
 
   // Computed
+  const seriesStroke = computed(() => {
+    return theme.global.current.value.dark ? {
+      attr: {
+        stroke: "white"
+      }
+    } : {
+      attr: {
+        stroke: "black"
+      }
+    }
+  })
+  
   const kanjiLiteral = computed(() => (route.params as any).literal as string)
 
   const codepointNames: Record<string, string> = {

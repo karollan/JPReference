@@ -226,6 +226,9 @@
                         :key="`kf-${idx}`"
                         :disabled="!form.tags?.length && !form.isCommon"
                         location="top"
+                        :open-on-click="isMobile"
+                        :open-on-hover="!isMobile"
+                        :persistent="false"
                       >
                         <template #activator="{ props: tooltipProps }">
                           <v-chip
@@ -277,6 +280,9 @@
                         :key="`kn-${idx}`"
                         :disabled="!form.tags?.length && !form.isCommon"
                         location="top"
+                        :open-on-click="isMobile"
+                        :open-on-hover="!isMobile"
+                        :persistent="false"
                       >
                         <template #activator="{ props: tooltipProps }">
                           <v-chip
@@ -395,11 +401,13 @@
   import { useVocabularyStore } from '@/stores/vocabulary'
   import { DEFAULT_LANGUAGE, languageMatches } from '@/utils/language'
   import { playPronunciation } from '@/utils/audio'
+  import { useResponsiveTooltip } from '@/composables/useResponsiveTooltip'
 
   const route = useRoute()
   const router = useRouter()
   const store = useVocabularyStore()
   const selectedLanguage = ref<string>(DEFAULT_LANGUAGE)
+  const { isMobile } = useResponsiveTooltip()
 
   // Selection state - for kanji words we select kanji, for kana-only we select kana
   const selectedFormText = ref<string | null>(null)

@@ -142,4 +142,10 @@ export const useRadicalSearchStore = defineStore('radical-search', () => {
         radicalsOrdered,
         kanjiResultsOrdered
     }
-}, { persist: true })
+}, {
+    persist: {
+        omit: ['compatibleRadicalIds', 'loading', 'error']
+        // Exclude compatibleRadicalIds - it's a Set that can't be serialized
+        // It will be regenerated when searchKanji() is called
+    }
+})

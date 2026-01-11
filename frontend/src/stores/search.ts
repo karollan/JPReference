@@ -5,6 +5,7 @@ import type { ProperNounResponse } from '@/types/ProperNoun'
 import type { VocabularyResponse } from '@/types/Vocabulary'
 import { defineStore } from 'pinia'
 import { SearchService } from '@/services/search.service'
+import axios from 'axios'
 
 export type ViewMode = 'unified' | 'tabbed'
 export type ActiveTab = 'vocabulary' | 'kanji' | 'properNouns'
@@ -99,8 +100,12 @@ export const useSearchStore = defineStore('search', () => {
       properNounList.value = response.properNounResults
       searchedTerms.value = response.searchedTerms
     } catch (error_: any) {
-      if (error_.name === 'AbortError') {
-        // Ignore abort errors
+      // Ignore all cancellation-related errors
+      if (error_.name === 'AbortError' ||
+        axios.isCancel(error_) ||
+        error_.message?.includes('message port closed') ||
+        error_.message?.includes('canceled')) {
+        // Request was canceled, this is expected behavior
         return
       }
       error.value = `Search error: ${error_.message}`
