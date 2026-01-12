@@ -63,22 +63,39 @@ def clean_database():
     try:
         cursor = conn.cursor()
         
-        # Truncate tables with CASCADE to remove all data
-        # We also reset identity columns
-        tables = [
-            "jlpt.kanji", 
-            "jlpt.vocabulary", 
-            "jlpt.proper_noun", 
-            "jlpt.radical", 
-            "jlpt.tag",
-            "jlpt.status"
+        # Check which tables actually exist before truncating
+        # This handles cases where we are migrating or starting fresh and some tables might not exist
+        cursor.execute("""
+            SELECT table_name 
+            FROM information_schema.tables 
+            WHERE table_schema = 'jlpt'
+        """)
+        existing_tables_result = cursor.fetchall()
+        existing_table_names = {row[0] for row in existing_tables_result}
+        
+        # List of tables we want to truncate if they exist
+        target_tables = [
+            "kanji", 
+            "vocabulary", 
+            "proper_noun", 
+            "radical", 
+            "tag",
+            "status"
         ]
         
-        print(f"Truncating tables: {', '.join(tables)}", flush=True)
-        cursor.execute(f"TRUNCATE TABLE {', '.join(tables)} RESTART IDENTITY CASCADE;")
+        tables_to_truncate = []
+        for table in target_tables:
+            if table in existing_table_names:
+                tables_to_truncate.append(f"jlpt.{table}")
+        
+        if tables_to_truncate:
+            print(f"Truncating tables: {', '.join(tables_to_truncate)}", flush=True)
+            cursor.execute(f"TRUNCATE TABLE {', '.join(tables_to_truncate)} RESTART IDENTITY CASCADE;")
+        else:
+            print("No tables found to truncate - proceeding with potentially empty database", flush=True)
         
         conn.commit()
-        print("Database fully cleaned successfully.", flush=True)
+        print("Database cleaned successfully.", flush=True)
         
     except Exception as e:
         print(f"Error cleaning database: {e}", flush=True)
