@@ -23,7 +23,7 @@
         <SearchAutocomplete
           v-model:search-query="searchQuery"
           placeholder="Search for vocabulary or kanji"
-          :show-radical-search="true"
+          :show-radical-search="false"
           @clear="searchQuery = ''"
           @search="handleSearch"
         />

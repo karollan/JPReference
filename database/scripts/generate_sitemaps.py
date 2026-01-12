@@ -61,7 +61,7 @@ def stream_sitemap(conn, query, url_prefix, output_dir, base_url, sitemap_prefix
             
             # Write URL
             term = row[0]
-            encoded_term = urllib.parse.quote(term, safe='')
+            encoded_term = urllib.parse.quote(term, safe='()')
             full_url = f"{base_url.rstrip('/')}{url_prefix}{encoded_term}"
             write_url(current_file, full_url)
             url_count += 1
@@ -111,7 +111,7 @@ def stream_sitemap_cursor(conn, query, url_prefix, output_dir, base_url, sitemap
         
         # Write URL
         term = row[0]
-        encoded_term = urllib.parse.quote(term, safe='')
+        encoded_term = urllib.parse.quote(term, safe='()')
         full_url = f"{base_url.rstrip('/')}{url_prefix}{encoded_term}"
         write_url(current_file, full_url)
         url_count += 1
@@ -198,16 +198,18 @@ def generate_sitemaps():
     all_sitemap_files.extend(radical_files)
     print(f"  Created {len(radical_files)} file(s)")
     
-    # proper noun query
+    # proper noun query - generates unique URLs in format: term(reading)
+    # This handles cases where same kanji has different readings (e.g., 日向平 can be ひがたびら, ひなたひら, etc.)
     print("Generating proper noun sitemap...")
     proper_noun_query = """
-        SELECT pk.text
+        SELECT pk.text || '(' || pka.text || ')' AS slug
         FROM jlpt.proper_noun_kanji pk
+        JOIN jlpt.proper_noun_kana pka ON pk.proper_noun_id = pka.proper_noun_id AND pka.is_primary = true
         WHERE pk.is_primary = true
         UNION ALL
-        SELECT pka.text
+        SELECT pka.text AS slug
         FROM jlpt.proper_noun_kana pka
-        LEFT JOIN jlpt.proper_noun_kanji pk ON pk.proper_noun_id = pka.proper_noun_id
+        LEFT JOIN jlpt.proper_noun_kanji pk ON pk.proper_noun_id = pka.proper_noun_id AND pk.is_primary = true
         WHERE pka.is_primary = true AND pk.proper_noun_id IS NULL
     """
     proper_noun_files = stream_sitemap_cursor(
@@ -219,16 +221,18 @@ def generate_sitemaps():
     all_sitemap_files.extend(proper_noun_files)
     print(f"  Created {len(proper_noun_files)} file(s)")
     
-    # vocabulary query
+    # vocabulary query - generates unique URLs in format: term(reading)
+    # This handles cases where same kanji has different readings
     print("Generating vocabulary sitemap...")
     vocab_query = """
-        SELECT vk.text
+        SELECT vk.text || '(' || vka.text || ')' AS slug
         FROM jlpt.vocabulary_kanji vk
+        JOIN jlpt.vocabulary_kana vka ON vk.vocabulary_id = vka.vocabulary_id AND vka.is_primary = true
         WHERE vk.is_primary = true
         UNION ALL
-        SELECT vka.text
+        SELECT vka.text AS slug
         FROM jlpt.vocabulary_kana vka
-        LEFT JOIN jlpt.vocabulary_kanji vk ON vk.vocabulary_id = vka.vocabulary_id
+        LEFT JOIN jlpt.vocabulary_kanji vk ON vk.vocabulary_id = vka.vocabulary_id AND vk.is_primary = true
         WHERE vka.is_primary = true AND vk.vocabulary_id IS NULL
     """
     vocab_files = stream_sitemap_cursor(
