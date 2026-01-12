@@ -252,6 +252,9 @@
                 </v-card>
               </section>
 
+
+              <AdSenseWidget />
+
               <!-- Study Tools -->
               <section class="tools-section mb-6">
                 <v-card class="pa-4 rounded-lg border-thin" variant="outlined">
@@ -412,6 +415,7 @@
   import { useRoute, useRouter } from 'vue-router'
   import { useHead } from '@unhead/vue'
   import LanguageSelector from '@/components/search/LanguageSelector.vue'
+  import AdSenseWidget from '@/components/common/AdSenseWidget.vue'
   import { useKanjiStore } from '@/stores/kanji'
   import { VueDmak } from 'vue-dmak'
   import { useTheme } from 'vuetify'

@@ -160,6 +160,8 @@
                 </v-card>
               </section>
 
+              <AdSenseWidget />
+
               <!-- Study Tools -->
               <section class="tools-section mb-6">
                 <v-card class="pa-4 rounded-lg border-thin" variant="outlined">
@@ -260,6 +262,7 @@
   import { VueDmak } from 'vue-dmak'
   import { playPronunciation } from '@/utils/audio'
   import KanjiSummary from '@/components/search/KanjiSummary.vue'
+  import AdSenseWidget from '@/components/common/AdSenseWidget.vue'
   import StrokePlayer from '@/components/misc/StrokePlayer.vue'
 
   const route = useRoute()

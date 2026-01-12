@@ -17,6 +17,17 @@
       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
       theme.change(prefersDark ? 'jlptThemeDark' : 'jlptTheme')
     }
+
+    // Load AdSense
+    const adsenseClientId = import.meta.env.VITE_ADSENSE_CLIENT_ID
+    if (adsenseClientId && !document.getElementById('adsense-script')) {
+      const script = document.createElement('script')
+      script.id = 'adsense-script'
+      script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseClientId}`
+      script.async = true
+      script.crossOrigin = 'anonymous'
+      document.head.appendChild(script)
+    }
   })
 
   watch(() => theme.global.name.value, (newTheme) => {

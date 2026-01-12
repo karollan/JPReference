@@ -8,6 +8,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    AdSenseWidget: typeof import('./components/common/AdSenseWidget.vue')['default']
     ApiViewer: typeof import('./components/api/ApiViewer.vue')['default']
     AppFooter: typeof import('./components/AppFooter.vue')['default']
     AppHeader: typeof import('./components/AppHeader.vue')['default']

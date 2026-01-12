@@ -241,6 +241,8 @@
                 </v-card>
               </section>
 
+              <AdSenseWidget />
+
               <!-- Contained Kanji -->
               <section
                 v-if="properNoun.containedKanji && properNoun.containedKanji.length > 0"
@@ -318,6 +320,7 @@
   import { DEFAULT_LANGUAGE, languageMatches } from '@/utils/language'
   import { playPronunciation } from '@/utils/audio'
   import { useResponsiveTooltip } from '@/composables/useResponsiveTooltip'
+  import AdSenseWidget from '@/components/common/AdSenseWidget.vue'
 
   const route = useRoute()
   const router = useRouter()

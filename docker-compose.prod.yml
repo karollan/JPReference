@@ -46,6 +46,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    volumes:
+      - sitemaps_data:/app/wwwroot/sitemap
 
   # Vue.js Frontend (Production with Nginx)
   frontend:
@@ -105,6 +107,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      FRONTEND_URL: ${FRONTEND_URL}
       PYTHONUNBUFFERED: 1
       NUM_WORKERS: 8
       KANJIVG_TARGET_DIR: /app/public/kanjivg
@@ -113,6 +116,7 @@ services:
       - ./database/scripts:/app/scripts
       - ./database/source:/app/source
       - kanjivg_data:/app/public/kanjivg
+      - sitemaps_data:/app/sitemap
       - processor_state:/app/state
     working_dir: /app/scripts
     command: >
@@ -120,7 +124,8 @@ services:
         python -u sync_kanjivg.py &&
         pip install -r requirements.txt &&
         python -u run_processor.py &&
-        touch /app/state/.data_seeded
+        touch /app/state/.data_seeded &&
+        python -u generate_sitemaps.py
       "
     networks:
       - jlpt-network
@@ -134,6 +139,7 @@ volumes:
   processor_state:
   jmdict_cache:
   kanjivg_data:
+  sitemaps_data:
 
 
 networks:
