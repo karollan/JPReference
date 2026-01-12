@@ -85,6 +85,8 @@ services:
     restart: unless-stopped
     environment:
       - VITE_API_URL=${API_URL}
+      - VITE_ADSENSE_CLIENT_ID=${VITE_ADSENSE_CLIENT_ID}
+      - VITE_ADSENSE_SLOT_ID=${VITE_ADSENSE_SLOT_ID}
       - CHOKIDAR_USEPOLLING=true
       - WATCHPACK_POLLING=true
     ports:

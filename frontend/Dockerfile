@@ -13,7 +13,11 @@ CMD ["yarn", "dev", "--host", "0.0.0.0", "--port", "3000"]
 # Build stage
 FROM base AS build
 ARG VITE_API_URL
+ARG VITE_ADSENSE_CLIENT_ID
+ARG VITE_ADSENSE_SLOT_ID
 ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_ADSENSE_CLIENT_ID=$VITE_ADSENSE_CLIENT_ID
+ENV VITE_ADSENSE_SLOT_ID=$VITE_ADSENSE_SLOT_ID
 COPY . .
 # Disable type-check if it causes issues in CI, or keep it for safety
 RUN yarn build

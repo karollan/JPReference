@@ -57,10 +57,14 @@ services:
       target: final
       args:
         - VITE_API_URL=${API_URL}
+        - VITE_ADSENSE_CLIENT_ID=${VITE_ADSENSE_CLIENT_ID}
+        - VITE_ADSENSE_SLOT_ID=${VITE_ADSENSE_SLOT_ID}
     container_name: jlpt-reference-frontend-prod
     restart: unless-stopped
     environment:
       - VITE_API_URL=${API_URL}
+      - VITE_ADSENSE_CLIENT_ID=${VITE_ADSENSE_CLIENT_ID}
+      - VITE_ADSENSE_SLOT_ID=${VITE_ADSENSE_SLOT_ID}
       - CHOKIDAR_USEPOLLING=false
       - WATCHPACK_POLLING=false
     ports:
