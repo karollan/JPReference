@@ -253,6 +253,52 @@ services:
           memory: 2G
           cpus: '2'
 
+  # Manual Sitemap Generator (run with: docker compose --profile manual run generate-sitemaps)
+  generate-sitemaps:
+    image: python:3.11-slim
+    container_name: jlpt-reference-generate-sitemaps
+    restart: "no"
+    profiles:
+      - manual
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      FRONTEND_URL: ${FRONTEND_URL}
+      PYTHONUNBUFFERED: 1
+      PYTHONIOENCODING: utf-8
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
+    volumes:
+      - ./database/scripts:/app/scripts
+      - ./backend/JLPTReference.Api/wwwroot/sitemap:/app/sitemap
+    working_dir: /app/scripts
+    command: >
+      sh -c "
+        echo '============================================'
+        echo 'Manual Sitemap Generator'
+        echo '============================================'
+        
+        pip install psycopg2-binary
+        
+        echo 'Generating static sitemaps...'
+        python -u generate_sitemaps.py
+        
+        if [ $? -eq 0 ]; then
+          echo 'Sitemap generation completed successfully!'
+        else
+          echo 'Sitemap generation FAILED!'
+          exit 1
+        fi
+      "
+    networks:
+      - jlpt-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   postgres_data:
     driver: local
