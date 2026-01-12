@@ -65,8 +65,10 @@ services:
       - WATCHPACK_POLLING=false
     ports:
       - "${FRONTEND_PORT_PROD:-80}:80"
+      - "443:443"
     volumes:
       - kanjivg_data:/usr/share/nginx/html/kanjivg
+      - /opt/certs:/opt/certs:ro
     networks:
       - jlpt-network
     depends_on:
