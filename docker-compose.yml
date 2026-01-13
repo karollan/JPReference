@@ -66,6 +66,7 @@ services:
       - "${BACKEND_PORT}:5000"
     volumes:
       - ./backend/JLPTReference.Api:/app
+      - ./frontend/public/kanjivg:/app/wwwroot/kanjivg:ro
       - /app/bin
       - /app/obj
     networks:
@@ -91,6 +92,30 @@ services:
       - ./frontend:/app
       - /app/node_modules
       - /app/dist
+    networks:
+      - jlpt-network
+    depends_on:
+      - backend
+
+  # Nuxt.js Frontend (SSR) - runs alongside Vue frontend for comparison
+  frontend-nuxt:
+    build:
+      context: ./frontend-nuxt
+      dockerfile: Dockerfile
+      target: development
+    container_name: jlpt-reference-frontend-nuxt
+    restart: unless-stopped
+    environment:
+      - NUXT_PUBLIC_API_URL=${API_URL}
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+    ports:
+      - "${FRONTEND_NUXT_PORT}:3000"
+    volumes:
+      - ./frontend-nuxt:/app
+      - /app/node_modules
+      - /app/.nuxt
+      - /app/.output
     networks:
       - jlpt-network
     depends_on:

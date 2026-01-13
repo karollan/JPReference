@@ -58,7 +58,7 @@ builder.Services.AddScoped<ApplicationDBContext>(sp =>
 // Add CORS
 builder.Services.AddCors(options => {
     options.AddPolicy("AllowVueApp", policy => {
-        var frontendUrl = builder.Configuration["FrontendUrl"] ?? "http://localhost:3000";
+        var frontendUrl = builder.Configuration["FrontendUrl"] ?? "http://localhost:3001";
         policy.WithOrigins(frontendUrl)
             .AllowAnyHeader()
             .AllowAnyMethod()
