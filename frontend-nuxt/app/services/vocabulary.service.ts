@@ -1,9 +1,11 @@
 import type { VocabularyDetails } from '@/types/Vocabulary'
-import { getApiUrl } from './api'
 
-export const VocabularyService = {
-  async getVocabularyDetails(term: string): Promise<VocabularyDetails> {
-    const data = await $fetch<VocabularyDetails>(`${getApiUrl()}/Vocabulary/${term}`)
-    return data
-  },
+export const useVocabularyService = () => {
+  const config = useRuntimeConfig()
+
+  const baseUrl = import.meta.server ? config.apiUrl : config.public.apiUrl
+
+  return {
+    getVocabularyDetails: (term: string) => $fetch<VocabularyDetails>(`${baseUrl}/vocabulary/${encodeURIComponent(term)}`)
+  }
 }

@@ -1,9 +1,11 @@
 import type { Status } from '@/types/Status'
-import { getApiUrl } from './api'
 
-export const StatusService = {
-    async getDatabaseStatus(): Promise<Status> {
-        const data = await $fetch<Status>(`${getApiUrl()}/Status`)
-        return data
-    },
+export const useStatusService = () => {
+    const config = useRuntimeConfig()
+
+    const baseUrl = import.meta.server ? config.apiUrl : config.public.apiUrl
+
+    return {
+        getDatabaseStatus: () => $fetch<Status>(`${baseUrl}/Status`)
+    }
 }

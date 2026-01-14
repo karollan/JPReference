@@ -16,7 +16,7 @@ public class KanjiService : IKanjiService {
         _kanjiSearchService = kanjiSearchService;
     }
 
-    public Task<KanjiDetailDto> GetByIdAsync(Guid id)
+    public async Task<KanjiDetailDto> GetByIdAsync(Guid id)
     {
         throw new NotImplementedException();
     }

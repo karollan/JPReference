@@ -80,7 +80,7 @@
                 class="radicals-stream d-flex flex-wrap justify-center align-center ga-1 mb-4 overflow-y-auto"
               >
               <template
-                v-for="item in radicalSearchStore.radicalsOrdered" :key="item.strokeCount"
+                v-for="item in radicalsOrdered" :key="item.strokeCount"
               >
                 <!-- Stroke number -->
                 <span class="stroke-number text-body-1 font-weight-bold">
@@ -94,7 +94,7 @@
                   class="radical"
                   :class="{ 
                     'radical--selected': radicalSearchStore.selectedRadicalIds.includes(radical.id),
-                    'radical--disabled': !radicalSearchStore.isRadicalCompatible(radical.id)
+                    'radical--disabled': !radicalSearchStore.isRadicalCompatible(radical.id, compatibleRadicalIds)
                   }"
                   @click="onRadicalClick(radical)"
                 >
@@ -103,7 +103,7 @@
               </template>
             </div>
 
-            <div v-if="radicalSearchStore.kanjiResults.length > 0">
+            <div v-if="kanjiResults.length > 0">
               <v-divider  class="mb-3"></v-divider>
               <div class="text-body-2 mb-3">Possible Kanji</div>
 
@@ -111,7 +111,7 @@
                   class="radicals-stream kanji-results-container d-flex flex-wrap justify-center align-start ga-1"
                 >
                 <template
-                  v-for="item in radicalSearchStore.kanjiResultsOrdered" :key="item.strokeCount"
+                  v-for="item in kanjiResultsOrdered" :key="item.strokeCount"
                 >
                   <!-- Stroke number -->
                   <span class="stroke-number text-body-1 font-weight-bold">
@@ -166,12 +166,13 @@
 <script setup lang="ts">
   import type { FilterParseState } from '@/utils/filterParser'
   import type { Suggestion } from '@/utils/filterSuggestions'
-  import type { RadicalSummary, KanjiSimple } from '@/types/Radical'
+  import type { RadicalSummary, KanjiSimple, RadicalSearchResult } from '@/types/Radical'
   import { parseFilterState } from '@/utils/filterParser'
   import { getFilterDefinition } from '@/utils/filters'
   import { generateSuggestions } from '@/utils/filterSuggestions'
   import { getFilterValidationError } from '@/utils/filterValidation'
   import { useRadicalSearchStore } from '@/stores/radical-search'
+  import { useRadicalService } from '~/services'
   import SearchGuide from './SearchGuide.vue'
   import { useDisplay } from 'vuetify'
 
@@ -183,6 +184,7 @@
   }
 
   const radicalSearchStore = useRadicalSearchStore()
+  const service = useRadicalService()
 
   defineProps<Props>()
 
@@ -214,15 +216,51 @@
     zIndex: 9999,
   }))
 
+  // Fetch radicals list using useAsyncData for SSR
+  const { data: radicalsList } = await useAsyncData<RadicalSummary[]>(
+    'radicals-list',
+    () => service.getRadicalsList(),
+    { 
+      server: true,
+      lazy: true,
+      default: () => []
+    }
+  )
+
+  // Fetch kanji by radicals using useAsyncData with dynamic key
+  const { data: kanjiSearchResult } = await useAsyncData<RadicalSearchResult | null>(
+    `radical-kanji-${radicalSearchStore.selectedIdsKey}`,
+    async () => {
+      if (!radicalSearchStore.selectedRadicalIds.length) return null
+      return await service.searchKanjiByRadicals([...radicalSearchStore.selectedRadicalIds])
+    },
+    { 
+      watch: [() => radicalSearchStore.selectedIdsKey],
+      default: () => null
+    }
+  )
+
+  // Computed values for template
+  const radicalsOrdered = computed(() => 
+    radicalSearchStore.getRadicalsOrdered(radicalsList.value || [])
+  )
+
+  const kanjiResults = computed(() => kanjiSearchResult.value?.results || [])
+  
+  const kanjiResultsOrdered = computed(() => 
+    radicalSearchStore.getKanjiResultsOrdered(kanjiResults.value)
+  )
+
+  const compatibleRadicalIds = computed(() => 
+    new Set(kanjiSearchResult.value?.compatibleRadicalIds || [])
+  )
+
   const openRadicalPopup = () => {
     radicalPopup.value = !radicalPopup.value
-    if (radicalSearchStore.radicalsList.length === 0) {
-      radicalSearchStore.getRadicalsList()
-    }
   }
 
   const onRadicalClick = (radical: RadicalSummary) => {
-    if (!radicalSearchStore.isRadicalCompatible(radical.id)) return
+    if (!radicalSearchStore.isRadicalCompatible(radical.id, compatibleRadicalIds.value)) return
     radicalSearchStore.toggleRadical(radical.id)
   }
 
@@ -730,6 +768,9 @@
       setCursorOffset(cursorOffset)
       editableRef.value?.focus()
     })
+    
+    // Trigger search after filter is committed (outside nextTick to avoid DOM issues)
+    emit('search')
   }
 
   function resolveFilterState () {

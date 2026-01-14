@@ -28,10 +28,12 @@ public class KanjiController : ControllerBase {
     /// <response code="404">If the Kanji is not found.</response>
     [HttpGet("{literal}")]
     [ProducesResponseType(typeof(KanjiDetailDto), 200)]
-    [ProducesResponseType(404)]
+    [ProducesResponseType(typeof(object), 404)]
     public async Task<IActionResult> GetByLiteral(string literal) {
         var result = await _kanjiService.GetByLiteralAsync(literal);
-        if (result == null) return NotFound();
+        if (result == null) return NotFound(new {
+            message = $"Kanji '{literal}' not found"
+        });
         return Ok(result);
     }
 

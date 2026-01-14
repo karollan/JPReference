@@ -100,7 +100,7 @@ public class VocabularyRepository : IVocabularyRepository {
         }
 
         if (vocabularyId == Guid.Empty)
-            throw new Exception($"Vocabulary '{term}' not found");
+            return null;
 
         // Load the vocabulary entity
         var vocabulary = await _context.Vocabulary
@@ -108,7 +108,7 @@ public class VocabularyRepository : IVocabularyRepository {
             .FirstOrDefaultAsync(v => v.Id == vocabularyId);
 
         if (vocabulary == null)
-            throw new Exception($"Vocabulary '{term}' not found");
+            return null;
 
         // Load all tags for lookups
         var allTags = await _context.Tags

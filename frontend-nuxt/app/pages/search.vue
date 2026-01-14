@@ -38,15 +38,15 @@
           </v-tooltip>
         </div>
         <div
-          v-if="searchStore.searchedTerms.length > 0"
+          v-if="searchedTerms.length > 0"
           class="d-flex justify-left mt-1"
         >
           <span class="text-body-2 text-grey">
-            Searched for: {{ searchStore.searchedTerms.join(', ') }}
-            <span v-if="searchStore.searchedTerms.length > 1">. You can also search for</span>
-            <span v-if="searchStore.searchedTerms.length > 1">
+            Searched for: {{ searchedTerms.join(', ') }}
+            <span v-if="searchedTerms.length > 1">. You can also search for</span>
+            <span v-if="searchedTerms.length > 1">
               <v-hover
-                v-for="(term, index) in searchStore.searchedTerms"
+                v-for="(term, index) in searchedTerms"
                 :key="term"
               >
                 <template #default="{ isHovering, props }">
@@ -66,7 +66,7 @@
         </div>
 
         <v-col
-          v-if="searchStore.error"
+          v-if="error"
           class="pa-0 mt-4"
           cols="12"
         >
@@ -75,7 +75,7 @@
             closable
             type="error"
           >
-            {{ searchStore.error }}
+            {{ error?.message || 'Search error occurred' }}
           </v-alert>
         </v-col>
         </div>
@@ -98,7 +98,7 @@
                 <span>Vocabulary</span>
               </div>
               <v-btn
-                v-if="!searchStore.loading && vocabularyCount > 5"
+                v-if="!pending && vocabularyCount > 5"
                 color="primary"
                 size="small"
                 variant="text"
@@ -109,7 +109,7 @@
             </div>
             <v-divider class="mb-4 mt-2 flex-shrink-0" />
             <div class="vocabulary-iterator overflow-y-auto flex-grow-1 pa-2" style="min-height: auto; max-height: 100%;">
-              <template v-if="searchStore.loading">
+              <template v-if="pending">
                 <VocabularySummarySkeleton v-for="i in 3" :key="i" />
               </template>
               <template v-else-if="limitedVocabulary.length > 0">
@@ -142,7 +142,7 @@
                   <span>Kanji</span>
                 </div>
                 <v-btn
-                  v-if="!searchStore.loading && kanjiCount > 5"
+                  v-if="!pending && kanjiCount > 5"
                   color="primary"
                   size="small"
                   variant="text"
@@ -153,7 +153,7 @@
               </div>
               <v-divider class="mb-4 mt-2 flex-shrink-0" />
               <div class="kanji-iterator overflow-y-auto mb-md-6 mb-4 flex-grow-1 pa-2">
-                <template v-if="searchStore.loading">
+                <template v-if="pending">
                   <KanjiSummarySkeleton v-for="i in 2" :key="i" />
                 </template>
                 <template v-else-if="limitedKanji.length > 0">
@@ -179,7 +179,7 @@
                   <span>Proper Nouns</span>
                 </div>
                 <v-btn
-                  v-if="!searchStore.loading && properNounCount > 5"
+                  v-if="!pending && properNounCount > 5"
                   color="primary"
                   size="small"
                   variant="text"
@@ -190,7 +190,7 @@
               </div>
               <v-divider class="mb-4 mt-2 flex-shrink-0" />
               <div class="proper-noun-iterator overflow-y-auto flex-grow-1 pa-2">
-                <template v-if="searchStore.loading">
+                <template v-if="pending">
                   <ProperNounSummarySkeleton v-for="i in 2" :key="i" />
                 </template>
                 <template v-else-if="limitedProperNouns.length > 0">
@@ -264,23 +264,23 @@
           </v-tabs>
         </div>
 
-        <v-tabs-window v-model="currentTab" class="flex-grow-1 overflow-y-auto d-flex flex-column">
+        <v-tabs-window ref="tabsWindowRef" v-model="currentTab" class="flex-grow-1 overflow-y-auto d-flex flex-column">
           <!-- Vocabulary Tab -->
           <v-tabs-window-item value="vocabulary">
-            <div class="tab-content overflow-y-auto h-100">
-              <template v-if="searchStore.loading">
+            <div class="tab-content h-100">
+              <template v-if="pending">
                 <VocabularySummarySkeleton v-for="i in 5" :key="i" />
               </template>
-              <template v-else-if="searchStore.vocabularyList?.data && searchStore.vocabularyList.data.length > 0">
+              <template v-else-if="vocabularyList?.data && vocabularyList.data.length > 0">
                 <VocabularySummary
-                  v-for="vocabulary in searchStore.vocabularyList.data"
+                  v-for="vocabulary in vocabularyList.data"
                   :key="vocabulary.id"
                   :vocabulary="vocabulary"
                 />
-                <div v-if="searchStore.vocabularyList.pagination.hasNext" class="text-center mt-4">
+                <div v-if="vocabularyList.pagination.hasNext" class="text-center mt-4">
                   <v-btn
                     color="primary"
-                    :loading="searchStore.loadingMore"
+                    :loading="loadingMore"
                     variant="outlined"
                     @click="loadMore('vocabulary')"
                   >
@@ -299,20 +299,20 @@
 
           <!-- Kanji Tab -->
           <v-tabs-window-item value="kanji">
-            <div class="tab-content overflow-y-auto h-100">
-              <template v-if="searchStore.loading">
+            <div class="tab-content h-100">
+              <template v-if="pending">
                 <KanjiSummarySkeleton v-for="i in 5" :key="i" />
               </template>
-              <template v-else-if="searchStore.kanjiList?.data && searchStore.kanjiList.data.length > 0">
+              <template v-else-if="kanjiList?.data && kanjiList.data.length > 0">
                 <KanjiSummary
-                  v-for="kanji in searchStore.kanjiList.data"
+                  v-for="kanji in kanjiList.data"
                   :key="kanji.id"
                   :kanji="kanji"
                 />
-                <div v-if="searchStore.kanjiList.pagination.hasNext" class="text-center mt-4">
+                <div v-if="kanjiList.pagination.hasNext" class="text-center mt-4">
                   <v-btn
                     color="primary"
-                    :loading="searchStore.loadingMore"
+                    :loading="loadingMore"
                     variant="outlined"
                     @click="loadMore('kanji')"
                   >
@@ -331,20 +331,20 @@
 
           <!-- Proper Nouns Tab -->
           <v-tabs-window-item value="properNouns">
-            <div class="tab-content overflow-y-auto h-100">
-              <template v-if="searchStore.loading">
+            <div class="tab-content h-100">
+              <template v-if="pending">
                 <ProperNounSummarySkeleton v-for="i in 5" :key="i" />
               </template>
-              <template v-else-if="searchStore.properNounList?.data && searchStore.properNounList.data.length > 0">
+              <template v-else-if="properNounList?.data && properNounList.data.length > 0">
                 <ProperNounSummary
-                  v-for="properNoun in searchStore.properNounList.data"
+                  v-for="properNoun in properNounList.data"
                   :key="properNoun.id"
                   :proper-noun="properNoun"
                 />
-                <div v-if="searchStore.properNounList.pagination.hasNext" class="text-center mt-4">
+                <div v-if="properNounList.pagination.hasNext" class="text-center mt-4">
                   <v-btn
                     color="primary"
-                    :loading="searchStore.loadingMore"
+                    :loading="loadingMore"
                     variant="outlined"
                     @click="loadMore('properNouns')"
                   >
@@ -369,7 +369,8 @@
 
 <script lang="ts" setup>
   import type { ActiveTab } from '@/stores/search'
-  import { computed, onMounted, ref, watch } from 'vue'
+  import type { GlobalSearchResponse } from '@/types/GlobalSearch'
+  import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
   import KanjiSummary from '@/components/search/KanjiSummary.vue'
   import KanjiSummarySkeleton from '@/components/search/KanjiSummarySkeleton.vue'
   import ProperNounSummary from '@/components/search/ProperNounSummary.vue'
@@ -377,27 +378,91 @@
   import VocabularySummary from '@/components/search/VocabularySummary.vue'
   import VocabularySummarySkeleton from '@/components/search/VocabularySummarySkeleton.vue'
   import { useSearchStore } from '@/stores/search'
+  import { useSearchService, fetchWithError } from '~/services'
 
   const route = useRoute()
   const router = useRouter()
   const searchStore = useSearchStore()
+  const service = useSearchService()
 
   const pageSize = 50
   const searchQuery = ref<string>(route.query.query as string || '')
   const currentTab = ref<ActiveTab>('vocabulary')
+  const loadingMore = ref(false)
+
+  // Template ref for tabs window scroll container
+  const tabsWindowRef = ref<HTMLElement | null>(null)
+
+  // Accumulated results for load more functionality
+  // Initialize from cached results if same query (for back navigation)
+  const accumulatedResults = ref<GlobalSearchResponse | null>(
+    searchStore.cachedQuery === searchQuery.value.trim().toLowerCase() 
+      ? searchStore.cachedResults 
+      : null
+  )
+
+  // Unique key for useAsyncData based on search query
+  const searchKey = computed(() => `search-${searchQuery.value.trim().toLowerCase()}`)
+
+  const { data: searchResults, pending, error, refresh } = await useAsyncData<GlobalSearchResponse | null>(
+    searchKey.value,
+    async () => {
+      const query = searchQuery.value.trim()
+      if (!query) return null
+      
+      // Check for uncommitted filters (e.g. "#jlpt" without trailing space)
+      // A filter is uncommitted if it ends with # followed by non-whitespace
+      const hasUncommittedFilter = /(^|\s)#[^\s]+$/.test(query)
+      if (hasUncommittedFilter) return null
+      
+      return await fetchWithError(() => service.fetchGlobalSearch(query, 1, pageSize))
+    },
+    {
+      server: true
+    }
+  )
+
+  // Track if we initialized from cache (to skip overwriting with fresh data)
+  const initializedFromCache = Boolean(
+    searchStore.cachedQuery === searchQuery.value.trim().toLowerCase() && 
+    searchStore.cachedResults
+  )
+  let skipNextSearchResultsSync = initializedFromCache
+
+  // Sync accumulated results with fresh search results
+  watch(searchResults, (newResults) => {
+    // Skip syncing if we have cached data from navigation back
+    if (skipNextSearchResultsSync) {
+      skipNextSearchResultsSync = false
+      return
+    }
+    
+    if (newResults) {
+      accumulatedResults.value = newResults
+      searchStore.resetPage()
+      // Update cache
+      searchStore.setCachedResults(newResults, searchQuery.value.trim().toLowerCase())
+    }
+  }, { immediate: true })
+
+  // Computed values from accumulated results
+  const vocabularyList = computed(() => accumulatedResults.value?.vocabularyResults)
+  const kanjiList = computed(() => accumulatedResults.value?.kanjiResults)
+  const properNounList = computed(() => accumulatedResults.value?.properNounResults)
+  const searchedTerms = computed(() => accumulatedResults.value?.searchedTerms || [])
 
   // Result counts
-  const vocabularyCount = computed(() => searchStore.vocabularyList?.pagination.totalCount || 0)
-  const kanjiCount = computed(() => searchStore.kanjiList?.pagination.totalCount || 0)
-  const properNounCount = computed(() => searchStore.properNounList?.pagination.totalCount || 0)
+  const vocabularyCount = computed(() => vocabularyList.value?.pagination.totalCount || 0)
+  const kanjiCount = computed(() => kanjiList.value?.pagination.totalCount || 0)
+  const properNounCount = computed(() => properNounList.value?.pagination.totalCount || 0)
 
   // Limited results for unified view (5 items each)
-  const limitedVocabulary = computed(() => searchStore.vocabularyList?.data?.slice(0, 5) || [])
-  const limitedKanji = computed(() => searchStore.kanjiList?.data?.slice(0, 5) || [])
-  const limitedProperNouns = computed(() => searchStore.properNounList?.data?.slice(0, 5) || [])
+  const limitedVocabulary = computed(() => vocabularyList.value?.data?.slice(0, 5) || [])
+  const limitedKanji = computed(() => kanjiList.value?.data?.slice(0, 5) || [])
+  const limitedProperNouns = computed(() => properNounList.value?.data?.slice(0, 5) || [])
 
   function isLastTerm (index: number) : boolean {
-    return index < searchStore.searchedTerms.length - 1
+    return index < searchedTerms.value.length - 1
   }
 
   // Simple debounce function
@@ -409,24 +474,123 @@
     }
   }
 
-  async function loadInitialData () {
-    if (!searchQuery.value.trim()) {
-      searchStore.clearResults()
+  // Debounced refresh for typing
+  const debouncedRefresh = debounce(async () => {
+    const query = searchQuery.value.trim()
+    if (!query) {
+      accumulatedResults.value = null
       return
     }
-
-    await searchStore.performSearch(searchQuery.value, pageSize)
-  }
-
-  // Debounced search function
-  const debouncedSearch = debounce(async () => {
-    await loadInitialData()
+    
+    // Check for uncommitted filters (e.g. "#jlpt" without trailing space)
+    // A filter is uncommitted if it ends with # followed by non-whitespace
+    const hasUncommittedFilter = /(^|\s)#[^\s]+$/.test(query)
+    if (hasUncommittedFilter) return
+    
+    await refresh()
   }, 500)
 
   async function handleEnterSearch () {
-    // Cancel any pending debounced search
-    // calling loadInitialData directly will abort previous store request
-    await loadInitialData()
+    // Immediate search on Enter, no debounce
+    const query = searchQuery.value.trim()
+    if (!query) {
+      accumulatedResults.value = null
+      return
+    }
+    await refresh()
+  }
+
+  async function loadMore (category: ActiveTab) {
+    if (loadingMore.value || !searchQuery.value.trim()) return
+    
+    loadingMore.value = true
+    
+    try {
+      const nextPage = searchStore.currentPage + 1
+      const response = await service.fetchGlobalSearch(searchQuery.value, nextPage, pageSize)
+      
+      if (!response || !accumulatedResults.value) {
+        return
+      }
+      
+      // Append results based on category
+      if (category === 'vocabulary' && accumulatedResults.value.vocabularyResults) {
+        accumulatedResults.value = {
+          ...accumulatedResults.value,
+          vocabularyResults: {
+            data: [...accumulatedResults.value.vocabularyResults.data, ...response.vocabularyResults.data],
+            pagination: response.vocabularyResults.pagination,
+          }
+        }
+      } else if (category === 'kanji' && accumulatedResults.value.kanjiResults) {
+        accumulatedResults.value = {
+          ...accumulatedResults.value,
+          kanjiResults: {
+            data: [...accumulatedResults.value.kanjiResults.data, ...response.kanjiResults.data],
+            pagination: response.kanjiResults.pagination,
+          }
+        }
+      } else if (category === 'properNouns' && accumulatedResults.value.properNounResults) {
+        accumulatedResults.value = {
+          ...accumulatedResults.value,
+          properNounResults: {
+            data: [...accumulatedResults.value.properNounResults.data, ...response.properNounResults.data],
+            pagination: response.properNounResults.pagination,
+          }
+        }
+      }
+      
+      searchStore.incrementPage()
+      // Update cache with new accumulated results
+      if (accumulatedResults.value) {
+        searchStore.setCachedResults(accumulatedResults.value, searchQuery.value.trim().toLowerCase())
+      }
+    } catch (err) {
+      console.error('Load more error:', err)
+    } finally {
+      loadingMore.value = false
+    }
+  }
+
+  // Scroll position tracking for tabs window
+  function onTabScroll(event: Event) {
+    const target = event.target as HTMLElement
+    if (target) {
+      searchStore.setTabScrollPosition(currentTab.value, target.scrollTop)
+    }
+  }
+
+  // Setup scroll listener on the actual DOM element
+  function setupScrollListener() {
+    const tabsWindow = tabsWindowRef.value
+    const scrollContainer = (tabsWindow as any)?.$el || tabsWindow
+    if (scrollContainer && scrollContainer.addEventListener) {
+      scrollContainer.addEventListener('scroll', onTabScroll)
+    }
+  }
+
+  // Restore scroll position when tab content is ready
+  function restoreScrollPosition() {
+    const position = searchStore.tabScrollPositions[currentTab.value]
+    if (position <= 0) return
+
+    nextTick(() => {
+      const tabsWindow = tabsWindowRef.value
+      // v-tabs-window exposes the element via $el
+      const scrollContainer = (tabsWindow as any)?.$el || tabsWindow
+      if (scrollContainer) {
+        scrollContainer.scrollTop = position
+      }
+    })
+  }
+
+  // Save current scroll position (call before navigation)
+  function saveScrollPosition() {
+    const tabsWindow = tabsWindowRef.value
+    const scrollContainer = (tabsWindow as any)?.$el || tabsWindow
+    if (scrollContainer) {
+      searchStore.setTabScrollPosition(currentTab.value, scrollContainer.scrollTop)
+    }
   }
 
   function updateUrl () {
@@ -447,16 +611,20 @@
   function showAllResults (tab: ActiveTab) {
     searchStore.setViewMode('tabbed', tab)
     currentTab.value = tab
+    // Setup scroll listener after switching to tabbed view
+    nextTick(() => {
+      setupScrollListener()
+    })
     updateUrl()
-  }
-
-  function loadMore (category: ActiveTab) {
-    searchStore.loadMoreResults(category)
   }
 
   function toggleViewMode () {
     if (searchStore.viewMode === 'unified') {
       searchStore.setViewMode('tabbed', currentTab.value)
+      // Setup scroll listener after switching to tabbed view
+      nextTick(() => {
+        setupScrollListener()
+      })
     } else {
       searchStore.setViewMode('unified')
     }
@@ -467,19 +635,30 @@
     searchQuery.value = `"${term}"`
   }
 
-  // Initialize view mode from URL
-  onMounted(() => {
-    if (route.query.view === 'tabbed') {
-      searchStore.setViewMode('tabbed')
-      if (route.query.tab) {
-        const tab = route.query.tab as ActiveTab
-        searchStore.setActiveTab(tab)
-        currentTab.value = tab
+  // Initialize view mode from URL (runs on both server and client)
+  if (route.query.view === 'tabbed') {
+    searchStore.setViewMode('tabbed')
+    if (route.query.tab) {
+      const tab = route.query.tab as ActiveTab
+      searchStore.setActiveTab(tab)
+      currentTab.value = tab
+    }
+  }
+
+  // Watch for URL query changes (navigation)
+  watch(() => route.query.query, async (newQuery) => {
+    const queryStr = (newQuery as string) || ''
+    if (queryStr !== searchQuery.value) {
+      searchQuery.value = queryStr
+      if (queryStr) {
+        await refresh()
+      } else {
+        accumulatedResults.value = null
       }
     }
   })
 
-  // Watch for changes and update URL
+  // Watch for changes and update URL + trigger search
   watch(() => searchStore.viewMode, () => {
     updateUrl()
   })
@@ -492,25 +671,49 @@
   watch(searchQuery, newQuery => {
     searchStore.reset()
     searchStore.setViewMode('unified')
+    // Clear cache when query changes
+    searchStore.clearCache()
     updateUrl()
 
     if (!newQuery.trim()) {
-      searchStore.clearResults()
+      accumulatedResults.value = null
       return
     }
 
-    // Check for uncommitted filters (e.g. "#jlpt:1" without trailing space)
-    const hasUncommittedFilter = /(^|\s)#[^\s]*$/.test(newQuery)
-    
-    if (hasUncommittedFilter) {
-      return
-    }
+    debouncedRefresh()
+  })
 
-    debouncedSearch()
-  }, { immediate: true })
+  // Restore scroll position on mount for tabbed view
+  onMounted(() => {
+    if (searchStore.viewMode === 'tabbed') {
+      // Setup scroll listener
+      setupScrollListener()
+      
+      // Restore scroll position if we have cached results
+      if (accumulatedResults.value) {
+        setTimeout(() => {
+          restoreScrollPosition()
+        }, 100)
+      }
+    }
+  })
+
+  // Save scroll position before unmounting
+  onBeforeUnmount(() => {
+    if (searchStore.viewMode === 'tabbed') {
+      saveScrollPosition()
+    }
+  })
+
+  // Restore scroll position when switching tabs
+  watch(currentTab, () => {
+    if (searchStore.viewMode === 'tabbed') {
+      restoreScrollPosition()
+    }
+  })
 
   useHead({
-    title: computed(() => searchQuery.value ? `Search: ${searchQuery.value} - JP Reference` : 'Search - JLPT Reference'),
+    title: computed(() => searchQuery.value ? `Search: ${searchQuery.value} - JP Reference` : 'Search - JP Reference'),
     meta: [
       {
         name: 'description',

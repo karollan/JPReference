@@ -3,7 +3,7 @@
     <v-row class="w-100" justify="center">
       <v-col cols="12" lg="10" xl="8">
         <!-- Loading State -->
-        <div v-if="loading" class="d-flex justify-center align-center py-12">
+        <div v-if="pending" class="d-flex justify-center align-center py-12">
           <v-progress-circular color="primary" indeterminate size="64" />
         </div>
 
@@ -14,7 +14,7 @@
           type="error"
           variant="tonal"
         >
-          {{ error || 'Radical not found' }}
+          {{ error?.message || 'Radical not found' }}
           <template #append>
             <v-btn variant="text" @click="goBack">Go Back</v-btn>
           </template>
@@ -256,10 +256,9 @@
 </template>
 
 <script setup lang="ts">
-  import type { RadicalDetails } from '@/types/Radical'
-  import { computed, onMounted, ref, watch, reactive, defineAsyncComponent } from 'vue'
+  import { computed, watch, reactive, defineAsyncComponent } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
-  import { useRadicalStore } from '@/stores/radical'
+  import { useRadicalService, fetchWithError } from '~/services'
   import { playPronunciation } from '@/utils/audio'
   import KanjiSummary from '@/components/search/KanjiSummary.vue'
   import StrokePlayer from '@/components/misc/StrokePlayer.vue'
@@ -270,14 +269,9 @@
 
   const route = useRoute()
   const router = useRouter()
-  const radicalStore = useRadicalStore()
+  const service = useRadicalService()
 
   // State
-  const loading = ref(true)
-  const error = ref<string | null>(null)
-  const radical = ref<RadicalDetails | null>(null)
-  const selectedLiteral = ref<string | null>(null)
-
   const seriesStyle = reactive({
     display: "flex",
     wrap: "no-wrap",
@@ -287,6 +281,26 @@
     flexShrink: 0,
   })
 
+  const literal = computed(() => (route.params as any).literal as string)
+
+  const { data: radical, pending, error } = await useAsyncData(
+    `radical-${literal.value}`,
+    () => fetchWithError(() => service.fetchRadicalByLiteral(literal.value)),
+    {
+      server: true
+    }
+  )
+
+  const selectedLiteral = ref<string>(literal.value)
+
+  watch(literal, (newLiteral) => {
+    if (!radical.value?.variants?.some(v => v.literal === newLiteral)) {
+      selectedLiteral.value = newLiteral
+    } else {
+      selectedLiteral.value = newLiteral
+    }
+  })
+
   // Computed
   const updatedAtFormatted = computed(() => {
     return new Date(radical.value?.updatedAt as Date).toLocaleString(undefined, {
@@ -294,8 +308,6 @@
       timeStyle: 'short'
     })
   })
-
-  const literal = computed(() => (route.params as any).literal as string)
 
   const variantKanji = computed(() => {
     if (!radical.value || !selectedLiteral.value) return []
@@ -308,50 +320,20 @@
   const { goBack } = useSmartNavigation()
 
   function selectVariant (newLiteral: string) {
+    // If the new literal is a variant of the current radical, just switch locally
     if (radical.value?.variants?.some(v => v.literal === newLiteral)) {
       selectedLiteral.value = newLiteral
-      // Update the URL without reloading page content if possible
       router.replace({ params: { literal: newLiteral } })
     } else {
       router.push(`/radical/${newLiteral}`)
     }
   }
 
-  // Load Data
-  async function loadRadical () {
-    try {
-      loading.value = true
-      error.value = null
-
-      const foundRadical = await radicalStore.getRadicalByLiteral(literal.value)
-      if (foundRadical) {
-        radical.value = foundRadical
-        // If selectedLiteral is not set or not in the new group, set it to the route literal
-        if (!selectedLiteral.value || !radical.value.variants?.some(v => v.literal === selectedLiteral.value)) {
-          selectedLiteral.value = literal.value
-        }
-      } else {
-        error.value = 'Radical not found'
-      }
-    } catch (error_) {
-      console.error('Error loading radical:', error_)
-      error.value = 'Failed to load radical details'
-    } finally {
-      loading.value = false
-    }
-  }
-
-  onMounted(() => {
-    loadRadical()
-  })
-
-  watch(() => literal.value, (newVal) => {
-    // Check if the current radical group already contains this literal
-    if (radical.value?.variants?.some(v => v.literal === newVal)) {
-      selectedLiteral.value = newVal
-      // No need to reload data!
-    } else {
-      loadRadical()
+  watch(() => route.params.literal, async (newVal) => {
+    // Check if the new literal is NOT a variant of the current radical
+    const isVariantOfCurrent = radical.value?.variants?.some(v => v.literal === newVal)
+    if (!isVariantOfCurrent) {
+      await refreshNuxtData(`radical-${newVal}`)
     }
   })
 

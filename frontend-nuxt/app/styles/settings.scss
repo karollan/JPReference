@@ -6,6 +6,10 @@ body {
   font-family: 'Noto Sans JP', sans-serif !important;
 }
 
+.v-alert__prepend {
+  align-self: center !important;
+}
+
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;

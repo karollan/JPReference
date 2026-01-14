@@ -22,7 +22,7 @@ public class KanjiRepository : IKanjiRepository {
             .FirstOrDefaultAsync(k => k.Literal == literal);
 
         if (kanji == null)
-            throw new Exception($"Kanji '{literal}' not found");
+            return null;
 
         // Load related collections separately
         var meanings = await _context.KanjiMeanings
@@ -150,7 +150,7 @@ public class KanjiRepository : IKanjiRepository {
         };
 
         if (dto == null) {
-            throw new Exception("Kanji not found");
+            return null;
         }
 
         return dto;

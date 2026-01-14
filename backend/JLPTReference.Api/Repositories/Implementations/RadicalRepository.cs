@@ -36,7 +36,7 @@ public class RadicalRepository : IRadicalRepository {
             .FirstOrDefaultAsync(m => m.Literal == literal);
             
         if (member == null)
-            throw new Exception($"Radical '{literal}' not found");
+            return null;
 
         var group = member.Group;
 

@@ -23,10 +23,12 @@ public class VocabularyController : ControllerBase {
     /// <returns>Detailed vocabulary information.</returns>
     [HttpGet("{term}")]
     [ProducesResponseType(typeof(VocabularyDetailDto), 200)]
-    [ProducesResponseType(404)]
+    [ProducesResponseType(typeof(object), 404)]
     public async Task<ActionResult<VocabularyDetailDto>> GetVocabularyDetailByTermAsync(string term) {
         var result = await _vocabularyService.GetVocabularyDetailByTermAsync(term);
-        if (result == null) return NotFound();
+        if (result == null) return NotFound(new {
+            message = $"Vocabulary '{term}' not found"
+        });
         return result;
     }
 }

@@ -1,79 +1,19 @@
 <template>
-  <v-hover v-slot="{ isHovering, props: hoverProps }">
-    <v-card
-      v-ripple
-      v-bind="hoverProps"
-      class="pa-3 mb-3 interactive-card text-left"
-      :elevation="isHovering ? 4 : 2"
-      outlined
-      @click="handleCardClick"
-    >
-      <div class="d-flex justify-space-between align-start mb-2">
-        <div class="proper-noun-primary flex-grow-1">
-          <!-- Primary entry: Kanji with main reading, or Kana-only -->
-            <div class="primary-entry">
-              <template v-if="hasTags">
-                <v-tooltip
-                  location="top"
-                  :open-on-click="isMobile"
-                  :open-on-hover="!isMobile"
-                  :persistent="false"
-                >
-                  <template #activator="{ props: tooltipProps }">
-                    <span v-bind="tooltipProps" class="word-with-tags">
-                      <FuriganaText
-                        :text="primaryText"
-                        :reading="primaryReading"
-                        :furigana="properNoun.furigana"
-                      />
-                    </span>
-                  </template>
-                  <div class="tag-tooltip-content">
-                    <div v-if="primaryKanjiTags.length > 0">
-                      <div class="text-caption font-weight-bold mb-1">Kanji Tags:</div>
-                      <div v-for="(tag, idx) in primaryKanjiTags" :key="`kj-${idx}`">
-                        • {{ tag.description }}
-                      </div>
-                    </div>
-                    <div v-if="primaryKanaTags.length > 0" :class="{ 'mt-2': primaryKanjiTags.length > 0 }">
-                      <div class="text-caption font-weight-bold mb-1">Kana Tags:</div>
-                      <div v-for="(tag, idx) in primaryKanaTags" :key="`kn-${idx}`">
-                        • {{ tag.description }}
-                      </div>
-                    </div>
-                  </div>
-                </v-tooltip>
-              </template>
-              <template v-else>
-                <FuriganaText
-                  :text="primaryText"
-                  :reading="primaryReading"
-                  :furigana="properNoun.furigana"
-                />
-              </template>
-            </div>
-        </div>
-        <LanguageSelector
-          v-if="availableLanguages.length > 0"
-          :available-languages="availableLanguages"
-          :default-language="selectedLanguage"
-          @language-changed="onLanguageChanged"
-        />
-      </div>
-
-      <div class="content-grid">
-        <!-- Metadata Column -->
-        <div v-if="hasOtherForms" class="metadata-col">
-          <!-- Other Kanji Forms with Readings -->
-          <div v-if="otherKanjiWithReadings.length > 0" class="other-forms">
-            <div class="section-label">Also:</div>
-            <div class="forms-list">
-              <span
-                v-for="(entry, idx) in otherKanjiWithReadings"
-                :key="`kanji-form-${idx}`"
-                class="form-item mr-2"
-              >
-                <template v-if="entry.kanji.tags?.length > 0">
+  <div>
+    <v-hover v-slot="{ isHovering, props: hoverProps }">
+      <v-card
+        v-ripple
+        v-bind="hoverProps"
+        class="pa-3 mb-3 interactive-card text-left"
+        :elevation="isHovering ? 4 : 2"
+        outlined
+        @click="handleCardClick"
+      >
+        <div class="d-flex justify-space-between align-start mb-2">
+          <div class="proper-noun-primary flex-grow-1">
+            <!-- Primary entry: Kanji with main reading, or Kana-only -->
+              <div class="primary-entry">
+                <template v-if="hasTags">
                   <v-tooltip
                     location="top"
                     :open-on-click="isMobile"
@@ -81,113 +21,175 @@
                     :persistent="false"
                   >
                     <template #activator="{ props: tooltipProps }">
-                      <span v-bind="tooltipProps" class="kanji-with-tags">{{ entry.kanji.text }}</span>
+                      <span v-bind="tooltipProps" class="word-with-tags">
+                        <FuriganaText
+                          :text="primaryText"
+                          :reading="primaryReading"
+                          :furigana="properNoun.furigana"
+                        />
+                      </span>
                     </template>
                     <div class="tag-tooltip-content">
-                      <div v-for="(tag, tidx) in entry.kanji.tags" :key="tidx">
-                        • {{ tag.description }}
-                      </div>
-                    </div>
-                  </v-tooltip>
-                </template>
-                <template v-else>{{ entry.kanji.text }}</template>
-                <span v-if="entry.readings.length > 0" class="reading-text">
-                  (<template v-for="(reading, ridx) in entry.readings" :key="`reading-${ridx}`">
-                    <template v-if="reading.tags && reading.tags.length > 0">
-                      <v-tooltip
-                        location="top"
-                        :open-on-click="isMobile"
-                        :open-on-hover="!isMobile"
-                        :persistent="false"
-                      >
-                        <template #activator="{ props: tooltipProps }">
-                          <span v-bind="tooltipProps" class="kana-with-tags">{{ reading.text }}</span>
-                        </template>
-                        <div class="tag-tooltip-content">
-                          <div v-for="(tag, tidx) in reading.tags" :key="tidx">
-                            • {{ tag.description }}
-                          </div>
+                      <div v-if="primaryKanjiTags.length > 0">
+                        <div class="text-caption font-weight-bold mb-1">Kanji Tags:</div>
+                        <div v-for="(tag, idx) in primaryKanjiTags" :key="`kj-${idx}`">
+                          • {{ tag.description }}
                         </div>
-                      </v-tooltip>
-                    </template>
-                    <template v-else>{{ reading.text }}</template>
-                    <template v-if="ridx < entry.readings.length - 1">、</template>
-                  </template>)
-                </span>
-              </span>
-            </div>
-          </div>
-
-          <!-- Standalone Kana Forms (no kanji match) -->
-          <div v-if="standaloneKanaForms.length > 0" class="other-forms mt-1">
-            <div class="section-label">Readings:</div>
-            <div class="forms-list">
-              <span
-                v-for="(kana, idx) in standaloneKanaForms"
-                :key="`kana-form-${idx}`"
-                class="form-item mr-2"
-              >
-                <template v-if="kana.tags && kana.tags.length > 0">
-                  <v-tooltip
-                    location="top"
-                    :open-on-click="isMobile"
-                    :open-on-hover="!isMobile"
-                    :persistent="false"
-                  >
-                    <template #activator="{ props: tooltipProps }">
-                      <span v-bind="tooltipProps" class="kana-with-tags">{{ kana.text }}</span>
-                    </template>
-                    <div class="tag-tooltip-content">
-                      <div v-for="(tag, tidx) in kana.tags" :key="tidx">
-                        • {{ tag.description }}
+                      </div>
+                      <div v-if="primaryKanaTags.length > 0" :class="{ 'mt-2': primaryKanjiTags.length > 0 }">
+                        <div class="text-caption font-weight-bold mb-1">Kana Tags:</div>
+                        <div v-for="(tag, idx) in primaryKanaTags" :key="`kn-${idx}`">
+                          • {{ tag.description }}
+                        </div>
                       </div>
                     </div>
                   </v-tooltip>
                 </template>
-                <template v-else>{{ kana.text }}</template>
-              </span>
-            </div>
+                <template v-else>
+                  <FuriganaText
+                    :text="primaryText"
+                    :reading="primaryReading"
+                    :furigana="properNoun.furigana"
+                  />
+                </template>
+              </div>
           </div>
+          <LanguageSelector
+            v-if="availableLanguages.length > 0"
+            :available-languages="availableLanguages"
+            :default-language="selectedLanguage"
+            @language-changed="onLanguageChanged"
+          />
         </div>
 
-        <!-- Translations Column -->
-        <div class="translations-col">
-          <div class="translations-section">
-            <div
-              v-for="(translation, index) in filteredTranslations"
-              :key="index"
-              class="translation-item"
-            >
-              <div class="translation-header">
-                <span class="translation-number">{{ index + 1 }}.</span>
-                <div class="translation-content">
-                  <div class="translation-text">
-                    {{ translation.text }}
-                  </div>
-                  <div v-if="translation.types && translation.types.length > 0" class="translation-types mt-1">
-                    <v-chip
-                      v-for="(type, idx) in translation.types"
-                      :key="idx"
-                      class="mr-1"
-                      color="secondary"
-                      size="x-small"
-                      variant="tonal"
+        <div class="content-grid">
+          <!-- Metadata Column -->
+          <div v-if="hasOtherForms" class="metadata-col">
+            <!-- Other Kanji Forms with Readings -->
+            <div v-if="otherKanjiWithReadings.length > 0" class="other-forms">
+              <div class="section-label">Also:</div>
+              <div class="forms-list">
+                <span
+                  v-for="(entry, idx) in otherKanjiWithReadings"
+                  :key="`kanji-form-${idx}`"
+                  class="form-item mr-2"
+                >
+                  <template v-if="entry.kanji.tags?.length > 0">
+                    <v-tooltip
+                      location="top"
+                      :open-on-click="isMobile"
+                      :open-on-hover="!isMobile"
+                      :persistent="false"
                     >
-                      {{ type.description }}
-                    </v-chip>
+                      <template #activator="{ props: tooltipProps }">
+                        <span v-bind="tooltipProps" class="kanji-with-tags">{{ entry.kanji.text }}</span>
+                      </template>
+                      <div class="tag-tooltip-content">
+                        <div v-for="(tag, tidx) in entry.kanji.tags" :key="tidx">
+                          • {{ tag.description }}
+                        </div>
+                      </div>
+                    </v-tooltip>
+                  </template>
+                  <template v-else>{{ entry.kanji.text }}</template>
+                  <span v-if="entry.readings.length > 0" class="reading-text">
+                    (<template v-for="(reading, ridx) in entry.readings" :key="`reading-${ridx}`">
+                      <template v-if="reading.tags && reading.tags.length > 0">
+                        <v-tooltip
+                          location="top"
+                          :open-on-click="isMobile"
+                          :open-on-hover="!isMobile"
+                          :persistent="false"
+                        >
+                          <template #activator="{ props: tooltipProps }">
+                            <span v-bind="tooltipProps" class="kana-with-tags">{{ reading.text }}</span>
+                          </template>
+                          <div class="tag-tooltip-content">
+                            <div v-for="(tag, tidx) in reading.tags" :key="tidx">
+                              • {{ tag.description }}
+                            </div>
+                          </div>
+                        </v-tooltip>
+                      </template>
+                      <template v-else>{{ reading.text }}</template>
+                      <template v-if="ridx < entry.readings.length - 1">、</template>
+                    </template>)
+                  </span>
+                </span>
+              </div>
+            </div>
+
+            <!-- Standalone Kana Forms (no kanji match) -->
+            <div v-if="standaloneKanaForms.length > 0" class="other-forms mt-1">
+              <div class="section-label">Readings:</div>
+              <div class="forms-list">
+                <span
+                  v-for="(kana, idx) in standaloneKanaForms"
+                  :key="`kana-form-${idx}`"
+                  class="form-item mr-2"
+                >
+                  <template v-if="kana.tags && kana.tags.length > 0">
+                    <v-tooltip
+                      location="top"
+                      :open-on-click="isMobile"
+                      :open-on-hover="!isMobile"
+                      :persistent="false"
+                    >
+                      <template #activator="{ props: tooltipProps }">
+                        <span v-bind="tooltipProps" class="kana-with-tags">{{ kana.text }}</span>
+                      </template>
+                      <div class="tag-tooltip-content">
+                        <div v-for="(tag, tidx) in kana.tags" :key="tidx">
+                          • {{ tag.description }}
+                        </div>
+                      </div>
+                    </v-tooltip>
+                  </template>
+                  <template v-else>{{ kana.text }}</template>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Translations Column -->
+          <div class="translations-col">
+            <div class="translations-section">
+              <div
+                v-for="(translation, index) in filteredTranslations"
+                :key="index"
+                class="translation-item"
+              >
+                <div class="translation-header">
+                  <span class="translation-number">{{ index + 1 }}.</span>
+                  <div class="translation-content">
+                    <div class="translation-text">
+                      {{ translation.text }}
+                    </div>
+                    <div v-if="translation.types && translation.types.length > 0" class="translation-types mt-1">
+                      <v-chip
+                        v-for="(type, idx) in translation.types"
+                        :key="idx"
+                        class="mr-1"
+                        color="secondary"
+                        size="x-small"
+                        variant="tonal"
+                      >
+                        {{ type.description }}
+                      </v-chip>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-            <div v-if="filteredTranslations.length === 0" class="no-translations">
-              <v-icon class="mr-1" size="small">mdi-translate-off</v-icon>
-              No translations available in selected language
+              <div v-if="filteredTranslations.length === 0" class="no-translations">
+                <v-icon class="mr-1" size="small">mdi-translate-off</v-icon>
+                No translations available in selected language
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </v-card>
-  </v-hover>
+      </v-card>
+    </v-hover>
+  </div>
 </template>
 
 <script lang="ts" setup>
@@ -202,6 +204,10 @@
   const props = defineProps<{
     properNoun: ProperNounSummary
   }>()
+
+  defineOptions({
+    inheritAttrs: false
+  })
 
   const router = useRouter()
   const selectedLanguage = ref<string>(DEFAULT_LANGUAGE)

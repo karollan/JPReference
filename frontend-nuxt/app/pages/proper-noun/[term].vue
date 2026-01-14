@@ -14,7 +14,7 @@
       >
         <!-- Loading State -->
         <div
-          v-if="store.loading"
+          v-if="pending"
           class="d-flex justify-center align-center py-12"
         >
           <v-progress-circular
@@ -26,19 +26,14 @@
 
         <!-- Error State -->
         <v-alert
-          v-else-if="store.error || !properNoun"
+          v-else-if="error || !properNoun"
           class="mb-4"
           type="error"
           variant="tonal"
         >
-          {{ store.error || 'Proper noun not found' }}
+          {{ error?.message || 'Proper noun not found' }}
           <template #append>
-            <v-btn
-              variant="text"
-              @click="loadData"
-            >
-              Retry
-            </v-btn>
+            <v-btn variant="text" @click="goBack">Go Back</v-btn>
           </template>
         </v-alert>
 
@@ -312,18 +307,17 @@
 
 <script setup lang="ts">
   import type { KanaForm, KanjiForm, TranslationDetails } from '@/types/ProperNoun'
-  import { computed, onMounted, ref, watch } from 'vue'
-  import { useRoute, useRouter } from 'vue-router'
+  import { computed, ref, watch } from 'vue'
+  import { useRoute } from 'vue-router'
   import LanguageSelector from '@/components/search/LanguageSelector.vue'
-  import { useProperNounStore } from '@/stores/proper-noun'
+  import { useProperNounService, fetchWithError } from '~/services'
   import { DEFAULT_LANGUAGE, languageMatches } from '@/utils/language'
   import { playPronunciation } from '@/utils/audio'
   import { useResponsiveTooltip } from '@/composables/useResponsiveTooltip'
   import { useSmartNavigation } from '@/composables/useSmartNavigation'
 
   const route = useRoute()
-  const router = useRouter()
-  const store = useProperNounStore()
+  const properNounService = useProperNounService()
   const selectedLanguage = ref<string>(DEFAULT_LANGUAGE)
   const { isMobile } = useResponsiveTooltip()
 
@@ -332,23 +326,17 @@
 
   const term = computed(() => (route.params as any).term as string)
 
-  // Fetch data
-  async function loadData () {
-    if (term.value) {
-      await store.getProperNounDetails(term.value)
+  const { data: properNoun, pending, error } = await useAsyncData(
+    `proper-noun-${term.value}`,
+    () => fetchWithError(() => properNounService.getProperNounDetails(term.value)),
+    {
+      server: true
     }
-  }
-
-  onMounted(() => {
-    loadData()
+  )
+  
+  watch(() => route.params.term, async (newVal) => {
+    await refreshNuxtData(`proper-noun-${newVal}`)
   })
-
-  watch(() => term.value, () => {
-    selectedFormText.value = null
-    loadData()
-  })
-
-  const properNoun = computed(() => store.properNounDetails)
 
   // Determine if this is a kanji-based word or kana-only word
   const hasKanjiForms = computed(() => {

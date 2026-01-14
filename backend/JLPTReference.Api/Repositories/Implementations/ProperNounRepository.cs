@@ -94,7 +94,7 @@ public class ProperNounRepository : IProperNounRepository {
         }
 
         if (properNounId == Guid.Empty) {
-            throw new Exception($"Proper noun '{term}' not found");
+            return null;
         }
 
         var properNoun = await _context.ProperNoun
@@ -102,7 +102,7 @@ public class ProperNounRepository : IProperNounRepository {
             .FirstOrDefaultAsync(p => p.Id == properNounId);
 
         if (properNoun == null) {
-            throw new Exception($"Proper noun '{term}' not found");
+            return null;
         }
 
         var allTags = await _context.Tags

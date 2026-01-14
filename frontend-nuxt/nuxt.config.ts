@@ -30,8 +30,9 @@ export default defineNuxtConfig({
 
   // Runtime config for API URL
   runtimeConfig: {
+    apiUrl: process.env.API_URL || 'http://backend:5000/api',
     public: {
-      apiUrl: import.meta.env.NUXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+      apiUrl: process.env.NUXT_PUBLIC_API_URL || 'http://localhost:5000/api'
     }
   },
 

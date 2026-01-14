@@ -14,7 +14,7 @@
       >
         <!-- Loading State -->
         <div
-          v-if="store.loading"
+          v-if="pending"
           class="d-flex justify-center align-center py-12"
         >
           <v-progress-circular
@@ -26,19 +26,14 @@
 
         <!-- Error State -->
         <v-alert
-          v-else-if="store.error || !vocabulary"
+          v-else-if="error || !vocabulary"
           class="mb-4"
           type="error"
           variant="tonal"
         >
-          {{ store.error || 'Vocabulary not found' }}
+          {{ error?.message || 'Vocabulary not found' }}
           <template #append>
-            <v-btn
-              variant="text"
-              @click="loadData"
-            >
-              Retry
-            </v-btn>
+            <v-btn variant="text" @click="goBack">Go Back</v-btn>
           </template>
         </v-alert>
 
@@ -397,18 +392,17 @@
 
 <script setup lang="ts">
   import type { KanaForm, KanjiForm, SenseDetails, SenseExample, SenseGloss } from '@/types/Vocabulary'
-  import { computed, onMounted, ref, watch } from 'vue'
-  import { useRoute, useRouter } from 'vue-router'
+  import { computed, ref, watch } from 'vue'
+  import { useRoute } from 'vue-router'
   import LanguageSelector from '@/components/search/LanguageSelector.vue'
-  import { useVocabularyStore } from '@/stores/vocabulary'
+  import { useVocabularyService, fetchWithError } from '~/services'
   import { DEFAULT_LANGUAGE, languageMatches } from '@/utils/language'
   import { playPronunciation } from '@/utils/audio'
   import { useResponsiveTooltip } from '@/composables/useResponsiveTooltip'
   import { useSmartNavigation } from '@/composables/useSmartNavigation'
 
   const route = useRoute()
-  const router = useRouter()
-  const store = useVocabularyStore()
+  const vocabularyService = useVocabularyService()
   const selectedLanguage = ref<string>(DEFAULT_LANGUAGE)
   const { isMobile } = useResponsiveTooltip()
 
@@ -416,23 +410,18 @@
   const selectedFormText = ref<string | null>(null)
 
   const term = computed(() => (route.params as any).term as string)
-  // Fetch data
-  async function loadData () {
-    if (term.value) {
-      await store.getVocabularyDetails(term.value)
+
+  const { data: vocabulary, pending, error } = await useAsyncData(
+    `vocabulary-${term.value}`,
+    () => fetchWithError(() => vocabularyService.getVocabularyDetails(term.value)),
+    {
+      server: true
     }
-  }
+  )
 
-  onMounted(() => {
-    loadData()
+  watch(() => route.params.term, async (newVal) => {
+    await refreshNuxtData(`vocabulary-${newVal}`)
   })
-
-  watch(() => term.value, () => {
-    selectedFormText.value = null
-    loadData()
-  })
-
-  const vocabulary = computed(() => store.vocabularyDetails)
 
   const updatedAtFormatted = computed(() => {
     return new Date(vocabulary.value?.updatedAt as Date).toLocaleString(undefined, {
@@ -453,13 +442,7 @@
     // Check if current selection is valid for this newly loaded vocabulary
     let isValidSelection = false
     if (selectedFormText.value) {
-      const inKanji = v.kanjiForms?.some(k => k.text === selectedFormText.value)
-      // Only check kana forms if we are in kana-only mode or if we support mixed selection (though currently we separate them)
-      // But purely for validity, if it exists in either, it might be valid.
-      // However, our logic separates them.
-      // If hasKanjiForms is true, we expect selection to be a kanji form.
-      // If hasKanjiForms is false, we expect selection to be a kana form.
-      
+            
       if (v.kanjiForms?.length > 0) {
           isValidSelection = v.kanjiForms.some(k => k.text === selectedFormText.value)
       } else {

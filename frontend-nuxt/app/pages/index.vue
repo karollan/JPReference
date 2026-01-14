@@ -54,7 +54,6 @@
   const router = useRouter()
   const searchQuery = ref('')
 
-
   const disabled = computed(() => searchQuery.value.trim().length === 0)
   function handleSearch () {
     if (disabled.value) return

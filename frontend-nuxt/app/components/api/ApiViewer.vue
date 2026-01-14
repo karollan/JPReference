@@ -1,7 +1,7 @@
 <template>
   <div class="api-viewer">
     <!-- Loading State -->
-    <div v-if="loading" class="d-flex justify-center align-center py-12">
+    <div v-if="pending" class="d-flex justify-center align-center py-12">
       <v-progress-circular indeterminate color="primary" size="64"></v-progress-circular>
     </div>
 
@@ -12,7 +12,7 @@
       <p class="text-body-1 text-medium-emphasis mb-6" style="max-width: 500px">
         Unable to load API documentation. The backend service might be down or unreachable.
       </p>
-      <v-btn color="primary" variant="flat" prepend-icon="mdi-refresh" @click="fetchSpec">
+      <v-btn color="primary" variant="flat" prepend-icon="mdi-refresh" @click="fetchAgain">
         Retry Connection
       </v-btn>
     </div>
@@ -61,13 +61,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed } from 'vue';
 import EndpointGroup from './EndpointGroup.vue';
 import SchemasList from './SchemasList.vue';
+import { useApiService } from '~/services';
 
-const spec = ref<any>(null);
-const loading = ref(true);
-const error = ref(false);
 const search = ref('');
 
 // Computed to group endpoints by tags
@@ -115,32 +113,15 @@ const filteredGroups = computed(() => {
   })).filter(group => group.endpoints.length > 0);
 });
 
-const fetchSpec = async () => {
-  loading.value = true;
-  error.value = false;
-  
-  try {
-    // Determine API URL - use environment variable or relative path
-    // Assuming backend is at same host or configured
-    let apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-    
-    // If VITE_API_URL includes /api suffix, remove it to access swagger at root level
-    apiUrl = apiUrl.replace(/\/api\/?$/, '');
-    
-    const response = await fetch(`${apiUrl}/swagger/v1/swagger.json`);
-    
-    if (!response.ok) throw new Error('Failed to fetch swagger.json');
-    
-    spec.value = await response.json();
-  } catch (e) {
-    console.error(e);
-    error.value = true;
-  } finally {
-    loading.value = false;
+const { data: spec, pending, error } = await useAsyncData(
+  'spec',
+  () => useApiService().getApiSpec(),
+  {
+    server: true
   }
-};
+)
 
-onMounted(() => {
-  fetchSpec();
-});
+const fetchAgain = () => {
+  refreshNuxtData('spec')
+}
 </script>

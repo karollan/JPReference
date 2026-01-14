@@ -8,7 +8,7 @@
         :grid="gridOptions"
         :step="stepValue"
         :stroke="strokeOptions"
-        :text="text"
+        :text="text ?? ''"
         :uri="uri"
         :height="90"
         :canvas-style="canvasStyle"
@@ -134,7 +134,7 @@ import { ref, computed, defineAsyncComponent } from 'vue'
 const VueDmak = defineAsyncComponent(() => import('vue-dmak').then(m => m.VueDmak))
 
 const props = defineProps<{
-  text: string
+  text: string | undefined
   uri: string
 }>()
 
@@ -211,7 +211,6 @@ function togglePlay() {
 }
 
 function reset() {
-  // Use the new exposed reset method which handles restart gracefully
   dmakRef.value?.reset()
   isPlaying.value = true
 }

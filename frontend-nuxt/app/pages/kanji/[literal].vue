@@ -3,7 +3,7 @@
     <v-row class="w-100" justify="center">
       <v-col cols="12" lg="10" xl="8">
         <!-- Loading State -->
-        <div v-if="loading" class="d-flex justify-center align-center py-12">
+        <div v-if="pending" class="d-flex justify-center align-center py-12">
           <v-progress-circular color="primary" indeterminate size="64" />
         </div>
 
@@ -14,7 +14,7 @@
           type="error"
           variant="tonal"
         >
-          {{ error || 'Kanji not found' }}
+          {{ error?.message || 'Kanji not found' }}
           <template #append>
             <v-btn variant="text" @click="goBack">Go Back</v-btn>
           </template>
@@ -412,10 +412,10 @@
 
 <script setup lang="ts">
   import type { KanjiDetails } from '@/types/Kanji'
-  import { computed, onMounted, ref, watch, reactive, defineAsyncComponent } from 'vue'
+  import { computed, ref, watch, reactive, defineAsyncComponent } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
   import LanguageSelector from '@/components/search/LanguageSelector.vue'
-  import { useKanjiStore } from '@/stores/kanji'
+  import { useKanjiService, fetchWithError } from '~/services'
   import { useTheme } from 'vuetify'
   import { playPronunciation } from '@/utils/audio'
   import { useSmartNavigation } from '@/composables/useSmartNavigation'
@@ -425,16 +425,12 @@
 
   const route = useRoute()
   const router = useRouter()
-  const kanjiStore = useKanjiStore()
+  const kanjiService = useKanjiService()
   const theme = useTheme()
 
   // State
-  const loading = ref(true)
-  const error = ref<string | null>(null)
-  const kanji = ref<KanjiDetails | null>(null)
   const readingsTab = ref<string>('')
   const selectedLanguage = ref<string>('en')
-  const visibleVocabularyLimit = ref(20)
   const seriesStyle = reactive({
     display: "flex",
     wrap: "no-wrap",
@@ -445,6 +441,16 @@
   })
 
   // Computed
+  const kanjiLiteral = computed(() => (route.params as any).literal as string)
+
+  const { data: kanji, pending, error } = await useAsyncData(
+    `kanji-${kanjiLiteral.value}`,
+    () => fetchWithError(() => kanjiService.fetchKanjiByLiteral(kanjiLiteral.value)),
+    {
+      server: true
+    }
+  )
+
   const seriesStroke = computed(() => {
     return theme.global.current.value.dark ? {
       attr: {
@@ -456,8 +462,6 @@
       }
     }
   })
-  
-  const kanjiLiteral = computed(() => (route.params as any).literal as string)
 
   const codepointNames: Record<string, string> = {
     ucs: 'Unicode 4.0',
@@ -628,34 +632,8 @@
     router.push(`/search?query=*${kanji.value?.literal}*&view=tabbed&tab=vocabulary`)
   }
 
-  // Load Data
-  async function loadKanji () {
-    try {
-      loading.value = true
-      error.value = null
-      visibleVocabularyLimit.value = 20 // Reset limit
-
-      const foundKanji = kanjiStore.kanjiDetailsCache[kanjiLiteral.value]
-      if (foundKanji) {
-        kanji.value = foundKanji
-      } else {
-        kanji.value = await kanjiStore.getKanjiByLiteral(kanjiLiteral.value) ?? null
-        if (!kanji.value) error.value = 'Kanji not found'
-      }
-    } catch (error_) {
-      console.error('Error loading kanji:', error_)
-      error.value = 'Failed to load kanji details'
-    } finally {
-      loading.value = false
-    }
-  }
-  onMounted(() => {
-    loadKanji()
-
-  })
-
-  watch(() => kanjiLiteral.value, () => {
-    loadKanji()
+  watch(() => route.params.literal, async (newVal) => {
+    await refreshNuxtData(`kanji-${newVal}`)
   })
 
   // SEO

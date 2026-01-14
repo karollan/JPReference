@@ -142,7 +142,7 @@
 </template>
 
 <script setup lang="ts">
-import { StatusService } from '@/services/status.service'
+import { useStatusService } from '~/services'
 
 const features = [
   {
@@ -246,19 +246,20 @@ useHead({
     }
   ]
 })
-const lastUpdate = ref<string | null>(null)
+
+const { data: status } = await useAsyncData(
+  'status',
+  () => useStatusService().getDatabaseStatus(),
+  {
+    server: true
+  }
+)
+
+const lastUpdate = computed(() => status.value?.lastUpdate)
 
 const formattedLastUpdate = computed(() => {
   if (!lastUpdate.value) return 'Unknown'
   return new Date(lastUpdate.value).toLocaleString()
-})
-
-onMounted(async () => {
-  try {
-    lastUpdate.value = (await StatusService.getDatabaseStatus()).lastUpdate
-  } catch (error) {
-    console.error('Failed to fetch database status', error)
-  }
 })
 </script>
 

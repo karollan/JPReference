@@ -1,109 +1,111 @@
 <template>
-  <v-hover v-slot="{ isHovering, props: hoverProps }">
-    <v-card
-      v-ripple
-      v-bind="hoverProps"
-      class="pa-3 mb-3 interactive-card text-left"
-      :elevation="isHovering ? 4 : 2"
-      outlined
-      @click="handleCardClick"
-    >
-      <div class="d-flex justify-space-between align-start mb-2">
-        <div class="kanji-literal-container">
-          <div class="kanji-literal">{{ kanji.literal }}</div>
-          <div class="stroke-count">{{ kanji.strokeCount }} strokes</div>
+  <div>
+    <v-hover v-slot="{ isHovering, props: hoverProps }">
+      <v-card
+        v-ripple
+        v-bind="hoverProps"
+        class="pa-3 mb-3 interactive-card text-left"
+        :elevation="isHovering ? 4 : 2"
+        outlined
+        @click="handleCardClick"
+      >
+        <div class="d-flex justify-space-between align-start mb-2">
+          <div class="kanji-literal-container">
+            <div class="kanji-literal">{{ kanji.literal }}</div>
+            <div class="stroke-count">{{ kanji.strokeCount }} strokes</div>
+          </div>
+          <LanguageSelector
+            v-if="availableLanguages.length > 0"
+            :available-languages="availableLanguages"
+            :default-language="selectedLanguage"
+            @language-changed="onLanguageChanged"
+          />
         </div>
-        <LanguageSelector
-          v-if="availableLanguages.length > 0"
-          :available-languages="availableLanguages"
-          :default-language="selectedLanguage"
-          @language-changed="onLanguageChanged"
-        />
-      </div>
 
-      <!-- Metadata Chips -->
-      <div class="metadata-chips mb-3">
-        <v-chip
-          v-if="kanji.jlptLevel"
-          class="mr-1 mb-1"
-          color="primary"
-          size="x-small"
-          variant="flat"
-        >
-          N{{ kanji.jlptLevel }}
-        </v-chip>
-        <v-chip
-          v-if="kanji.grade"
-          class="mr-1 mb-1"
-          color="secondary"
-          size="x-small"
-          variant="flat"
-        >
-          Grade {{ kanji.grade }}
-        </v-chip>
-        <v-chip
-          v-if="kanji.frequency"
-          class="mr-1 mb-1"
-          color="info"
-          size="x-small"
-          variant="tonal"
-        >
-          Freq: {{ kanji.frequency }}
-        </v-chip>
-      </div>
+        <!-- Metadata Chips -->
+        <div class="metadata-chips mb-3">
+          <v-chip
+            v-if="kanji.jlptLevel"
+            class="mr-1 mb-1"
+            color="primary"
+            size="x-small"
+            variant="flat"
+          >
+            N{{ kanji.jlptLevel }}
+          </v-chip>
+          <v-chip
+            v-if="kanji.grade"
+            class="mr-1 mb-1"
+            color="secondary"
+            size="x-small"
+            variant="flat"
+          >
+            Grade {{ kanji.grade }}
+          </v-chip>
+          <v-chip
+            v-if="kanji.frequency"
+            class="mr-1 mb-1"
+            color="info"
+            size="x-small"
+            variant="tonal"
+          >
+            Freq: {{ kanji.frequency }}
+          </v-chip>
+        </div>
 
-      <!-- Info Grid -->
-      <div class="info-grid">
-        <template v-if="kanji.kunyomiReadings && kanji.kunyomiReadings.length > 0">
-          <div class="info-label">Kun</div>
-          <div class="info-content">
-            <span
-              v-for="(reading, idx) in kanji.kunyomiReadings"
-              :key="idx"
-              class="reading-item"
-            >
-              {{ reading.value }}{{ idx < kanji.kunyomiReadings!.length - 1 ? '、' : '' }}
-            </span>
-          </div>
-        </template>
+        <!-- Info Grid -->
+        <div class="info-grid">
+          <template v-if="kanji.kunyomiReadings && kanji.kunyomiReadings.length > 0">
+            <div class="info-label">Kun</div>
+            <div class="info-content">
+              <span
+                v-for="(reading, idx) in kanji.kunyomiReadings"
+                :key="idx"
+                class="reading-item"
+              >
+                {{ reading.value }}{{ idx < kanji.kunyomiReadings!.length - 1 ? '、' : '' }}
+              </span>
+            </div>
+          </template>
 
-        <template v-if="kanji.onyomiReadings && kanji.onyomiReadings.length > 0">
-          <div class="info-label">On</div>
-          <div class="info-content">
-            <span
-              v-for="(reading, idx) in kanji.onyomiReadings"
-              :key="idx"
-              class="reading-item"
-            >
-              {{ reading.value }}{{ idx < kanji.onyomiReadings!.length - 1 ? '、' : '' }}
-            </span>
-          </div>
-        </template>
+          <template v-if="kanji.onyomiReadings && kanji.onyomiReadings.length > 0">
+            <div class="info-label">On</div>
+            <div class="info-content">
+              <span
+                v-for="(reading, idx) in kanji.onyomiReadings"
+                :key="idx"
+                class="reading-item"
+              >
+                {{ reading.value }}{{ idx < kanji.onyomiReadings!.length - 1 ? '、' : '' }}
+              </span>
+            </div>
+          </template>
 
-        <template v-if="filteredMeanings.length > 0">
-          <div class="info-label">Meaning</div>
-          <div class="info-content meanings-text">
-            {{ filteredMeanings.join(', ') }}
-          </div>
-        </template>
+          <template v-if="filteredMeanings.length > 0">
+            <div class="info-label">Meaning</div>
+            <div class="info-content meanings-text">
+              {{ filteredMeanings.join(', ') }}
+            </div>
+          </template>
 
-        <template v-if="kanji.radicals && kanji.radicals.length > 0">
-          <div class="info-label">Radical</div>
-          <div class="info-content radicals-content">
-            <v-chip
-              v-for="radical in kanji.radicals"
-              :key="radical.id"
-              class="mr-1 mb-1"
-              size="x-small"
-              variant="outlined"
-            >
-              {{ radical.literal }}
-            </v-chip>
-          </div>
-        </template>
-      </div>
-    </v-card>
-  </v-hover>
+          <template v-if="kanji.radicals && kanji.radicals.length > 0">
+            <div class="info-label">Radical</div>
+            <div class="info-content radicals-content">
+              <v-chip
+                v-for="radical in kanji.radicals"
+                :key="radical.id"
+                class="mr-1 mb-1"
+                size="x-small"
+                variant="outlined"
+              >
+                {{ radical.literal }}
+              </v-chip>
+            </div>
+          </template>
+        </div>
+      </v-card>
+    </v-hover>
+  </div>
 </template>
 
 <script lang="ts" setup>
