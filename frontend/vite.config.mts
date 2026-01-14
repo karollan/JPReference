@@ -88,5 +88,12 @@ export default defineConfig({
     watch: {
       ignored: ['**/public/kanjivg/**'],
     },
+    proxy: {
+      // Proxy kanjivg requests to backend - SVGs are served from backend
+      '/kanjivg': {
+        target: 'http://backend:5000',
+        changeOrigin: true,
+      },
+    },
   },
 })

@@ -683,6 +683,7 @@
 <style lang="scss" scoped>
 .font-jp {
   font-family: 'Noto Sans JP', sans-serif;
+  font-weight: 500;
 }
 
 .kanji-detail-page {

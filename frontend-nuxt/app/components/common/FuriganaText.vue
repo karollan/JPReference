@@ -88,3 +88,9 @@ const displaySegments = computed<FuriganaPart[]>(() => {
   return segments
 })
 </script>
+<style scoped>
+.furigana-text {
+  font-family: 'Noto Sans JP', sans-serif !important;
+  font-weight: 500;
+}
+</style>

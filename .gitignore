@@ -101,4 +101,5 @@ backend/JLPTReference.Api/wwwroot/sitemap/*.txt
 vue-dmak
 vue-dmak-test
 frontend/public/kanjivg
+backend/JLPTReference.Api/wwwroot/kanjivg
 /frontend/src/components.d.ts
