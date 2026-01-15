@@ -145,6 +145,17 @@
                         </v-chip>
                       </div>
                     </div>
+                    <div v-else class="mb-3">
+                      <div class="text-caption font-weight-bold text-disabled mb-1">ON'YOMI</div>
+                      <div class="d-flex flex-wrap gap-2">
+                        <v-label
+                          color="grey-darken-2"
+                          variant="outlined"
+                        >
+                          No readings available
+                        </v-label>
+                      </div>
+                    </div>
                     <div v-if="readingsMap.ja_kun && readingsMap.ja_kun.length > 0">
                       <div class="text-caption font-weight-bold text-disabled mb-1">KUN'YOMI</div>
                       <div class="d-flex flex-wrap gap-2">
@@ -157,6 +168,17 @@
                         >
                           {{ reading.value }}
                         </v-chip>
+                      </div>
+                    </div>
+                    <div v-else>
+                      <div class="text-caption font-weight-bold text-disabled mb-1">KUN'YOMI</div>
+                      <div class="d-flex flex-wrap gap-2">
+                        <v-label
+                          color="grey-darken-2"
+                          variant="outlined"
+                        >
+                          No readings available
+                        </v-label>
                       </div>
                     </div>
                   </div>
@@ -212,7 +234,7 @@
                   </v-chip>
                 </h2>
 
-                <div class="vocabulary-iterator overflow-y-auto">
+                <div class="vocabulary-iterator overflow-y-auto pl-2 pr-2 pt-2">
                   <template v-if="hasVocabulary">
                     <VocabularySummary
                       v-for="vocabulary in vocabularyReferences"
@@ -241,9 +263,10 @@
                       v-for="(radical, index) in kanji.radicals"
                       :key="radical.id || `rad-${index}`"
                       class="font-jp text-h6 px-3"
-                      color="purple"
+                      :style="radical.hasDetails ? 'cursor: pointer' : 'cursor: default'"
+                      :color="radical.hasDetails ? 'purple' : 'gray'"
                       height="48"
-                      :to="`/radical/${radical.literal}`"
+                      :to="radical.hasDetails ? `/radical/${radical.literal}` : undefined"
                       variant="tonal"
                     >
                       {{ radical.literal }}

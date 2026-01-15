@@ -726,7 +726,7 @@ class JLPTDataProcessor:
         return char_to_leader, leader_to_ref_data
 
     def process_radical_data(self, conn, cursor):
-        """Process radical data using the new three-table model."""
+        """Process radical data from radfile and kradfile."""
         print("Processing radical data...")
         
         # === Phase 1: Populate radical_group from reference.txt ===
@@ -835,8 +835,13 @@ class JLPTDataProcessor:
                 norm_char = self._normalize_radical_char(char)
                 group_id = member_to_group.get(norm_char) or member_to_group.get(char)
                 
+                # Use normalized literal if available (reference.txt encoding is correct)
+                # This ensures radicals with look-alike chars (e.g., Katakana ノ vs CJK 丿)
+                # use the CJK Ideograph version from reference.txt
+                literal_to_use = norm_char if norm_char != char else char
+                
                 radical_batch.append((
-                    char,
+                    literal_to_use,
                     data.get('strokeCount', 0),
                     data.get('code'),
                     group_id
@@ -869,6 +874,7 @@ class JLPTDataProcessor:
                     
                     for component in components:
                         if component in self.radical_cache:
+                            component = self._normalize_radical_char(component)
                             radical_id = self.radical_cache[component]
                             relationship_batch.append((kanji_id, radical_id))
                     

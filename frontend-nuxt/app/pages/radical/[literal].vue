@@ -206,6 +206,22 @@
                   <h3 class="text-overline font-weight-bold mb-2 text-medium-emphasis">Other Info</h3>
                   <div class="reference-grid sidebar-grid">
                     <v-card
+                      v-if="radical.notes && radical.notes.length > 0"
+                      class="ref-card transition-swing"
+                      elevation="0"
+                      rounded="lg"
+                      variant="outlined"
+                    >
+                      <v-card-text class="py-3">
+                        <div class="text-caption text-medium-emphasis font-weight-bold line-height-1 mb-1">
+                          Notes
+                        </div>
+                        <div v-for="note in radical.notes" class="font-weight-regular entry-value">
+                          {{ note }}
+                        </div>
+                      </v-card-text>
+                    </v-card>
+                    <v-card
                       v-if="radical.kangXiNumber"
                       class="ref-card transition-swing"
                       elevation="0"
@@ -323,7 +339,6 @@
     // If the new literal is a variant of the current radical, just switch locally
     if (radical.value?.variants?.some(v => v.literal === newLiteral)) {
       selectedLiteral.value = newLiteral
-      router.replace({ params: { literal: newLiteral } })
     } else {
       router.push(`/radical/${newLiteral}`)
     }

@@ -11,6 +11,26 @@ public class RadicalRepository : IRadicalRepository {
     private readonly ApplicationDBContext _context;
     private readonly string _connectionString;
 
+    private static readonly Dictionary<char, char> NormMap = new()
+    {
+        { '｜', '丨' },
+        { '|',  '丨' },
+        { 'ノ', '丿' },
+        { 'ハ', '八' },
+        { 'ト', '卜' },
+        { 'ヨ', '彐' },
+        { 'ユ', '彐' },
+        { 'マ', '龴' },
+        { 'ム', '厶' }
+    };
+
+    private char NormalizeRadicalChar(char literal)
+    {
+        return NormMap.TryGetValue(literal, out var normalized)
+            ? normalized
+            : literal;
+    }
+
     public RadicalRepository(ApplicationDBContext context, IConfiguration configuration) {
         _context = context;
         _connectionString = configuration.GetConnectionString("DefaultConnection")!;
@@ -29,6 +49,8 @@ public class RadicalRepository : IRadicalRepository {
     }
 
     public async Task<RadicalDetailDto> GetRadicalByLiteralAsync(string literal) {
+        literal = new string(literal.Select(c => NormalizeRadicalChar(c)).ToArray());
+
         // 1. Find the member (variant) matching the input literal
         var member = await _context.RadicalGroupMembers
             .Include(m => m.Group)

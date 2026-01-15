@@ -404,16 +404,24 @@
   // Unique key for useAsyncData based on search query
   const searchKey = computed(() => `search-${searchQuery.value.trim().toLowerCase()}`)
 
+  function shouldSkipSearch(originalQuery: string): boolean {
+    // Check if query ends with a potential filter being typed
+    // Pattern: ends with # alone, or ends with #word (no trailing space)
+    // This means user is in the middle of typing a filter
+    const endsWithUncommittedFilter = /(^|\s)#[^\s]*$/.test(originalQuery)
+    return endsWithUncommittedFilter
+  }
+
   const { data: searchResults, pending, error, refresh } = await useAsyncData<GlobalSearchResponse | null>(
     searchKey.value,
     async () => {
-      const query = searchQuery.value.trim()
+      const originalQuery = searchQuery.value
+      const query = originalQuery.trim()
       if (!query) return null
       
-      // Check for uncommitted filters (e.g. "#jlpt" without trailing space)
-      // A filter is uncommitted if it ends with # followed by non-whitespace
-      const hasUncommittedFilter = /(^|\s)#[^\s]+$/.test(query)
-      if (hasUncommittedFilter) return null
+      // Check for uncommitted filters using original query (before trim)
+      // This allows trailing space to signal filter commitment
+      if (shouldSkipSearch(originalQuery)) return null
       
       return await fetchWithError(() => service.fetchGlobalSearch(query, 1, pageSize))
     },
@@ -474,19 +482,27 @@
     }
   }
 
+  // Track last searched query to avoid redundant searches for whitespace-only changes
+  let lastSearchedQuery = ''
+
   // Debounced refresh for typing
   const debouncedRefresh = debounce(async () => {
-    const query = searchQuery.value.trim()
+    const originalQuery = searchQuery.value
+    const query = originalQuery.trim()
+    
     if (!query) {
       accumulatedResults.value = null
+      lastSearchedQuery = ''
       return
     }
     
-    // Check for uncommitted filters (e.g. "#jlpt" without trailing space)
-    // A filter is uncommitted if it ends with # followed by non-whitespace
-    const hasUncommittedFilter = /(^|\s)#[^\s]+$/.test(query)
-    if (hasUncommittedFilter) return
+    // Skip if only whitespace changed (trimmed query is same as last search)
+    if (query === lastSearchedQuery) return
     
+    // Check for uncommitted filters using original query
+    if (shouldSkipSearch(originalQuery)) return
+    
+    lastSearchedQuery = query
     await refresh()
   }, 500)
 

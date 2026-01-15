@@ -95,7 +95,9 @@ public class KanjiRepository : IKanjiRepository {
             .Select(r => new RadicalSummaryDto
             {
                 Id = r.Radical.Id,
-                Literal = r.Radical.Literal
+                Literal = r.Radical.Literal,
+                HasDetails = _context.RadicalGroupMembers.Any(g => g.Literal == r.Radical.Literal)
+
             })
             .ToListAsync();
 

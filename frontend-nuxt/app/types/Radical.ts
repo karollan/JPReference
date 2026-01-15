@@ -4,6 +4,7 @@ export interface RadicalSummary {
   id: string
   literal: string
   strokeCount: number
+  hasDetails: boolean
 }
 
 export interface RadicalDetails {

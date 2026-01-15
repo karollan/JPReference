@@ -904,6 +904,7 @@ class ParallelJLPTDataProcessor:
                     continue
                 
                 for component in components:
+                    component = self._normalize_radical_char(component)
                     radical_id = self.radical_cache.get(component)
                     if radical_id:
                         relationship_batch.append((kanji_id, radical_id))
@@ -1128,8 +1129,13 @@ class ParallelJLPTDataProcessor:
                 norm_char = self._normalize_radical_char(char)
                 group_id = member_to_group.get(norm_char) or member_to_group.get(char)
                 
+                # Use normalized literal if available (reference.txt encoding is correct)
+                # This ensures radicals with look-alike chars (e.g., Katakana ノ vs CJK 丿)
+                # use the CJK Ideograph version from reference.txt
+                literal_to_use = norm_char if norm_char != char else char
+                
                 current_batch.append((
-                    char,
+                    literal_to_use,
                     data.get('strokeCount', 0),
                     data.get('code'),
                     group_id
