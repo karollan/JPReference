@@ -78,6 +78,7 @@ builder.Services.AddScoped<IProperNounService, ProperNounService>();
 builder.Services.AddScoped<IProperNounRepository, ProperNounRepository>();
 builder.Services.AddScoped<IRadicalService, RadicalService>();
 builder.Services.AddScoped<IRadicalRepository, RadicalRepository>();
+builder.Services.AddScoped<ITagRepository, TagRepository>();
 
 builder.Services.AddScoped<IQueryParser, QueryParser>();
 builder.Services.AddScoped<IVariantGenerator, VariantGenerator>();

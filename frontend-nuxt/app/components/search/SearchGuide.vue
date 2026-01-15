@@ -186,13 +186,13 @@
                   <strong>JLPT Level:</strong> <code>#jlpt:1-5</code>
                 </div>
                 <div class="mb-2">
-                  <strong>Stroke Count:</strong> <code>#stroke:1-84</code>
+                  <strong>Stroke Count:</strong> <code>#stroke:1-24</code>
                 </div>
                 <div class="mb-2">
-                  <strong>Grade Level:</strong> <code>#grade:1-12</code>
+                  <strong>Grade Level:</strong> <code>#grade:1-10</code>
                 </div>
                 <div class="mb-2">
-                  <strong>Frequency:</strong> <code>#freq:0-10000</code>
+                  <strong>Frequency:</strong> <code>#freq:1-2501</code>
                 </div>
                 <div class="mb-2">
                   <strong>Part of Speech:</strong> <code>#v1</code> (ichidan verb), <code>#adj-i</code> (i-adjective), <code>#n</code> (noun), and 300+ more
@@ -258,6 +258,135 @@
               </div>
             </v-expansion-panel-text>
           </v-expansion-panel>
+
+          <!-- Available Filters -->
+          <v-expansion-panel>
+            <v-expansion-panel-title>
+              <div class="d-flex align-center">
+                <v-icon class="mr-3" color="primary">mdi-filter-variant</v-icon>
+                <span class="font-weight-medium">All Available Filters</span>
+              </div>
+            </v-expansion-panel-title>
+            <v-expansion-panel-text>
+              <p class="mb-3">
+                Below is a complete list of all available filters, organized by the type of content they apply to.
+                Use the <code>#filterName</code> syntax in your search.
+              </p>
+
+              <template v-if="status === 'pending'">
+                <v-progress-circular indeterminate size="24" class="mr-2" />
+                <span>Loading filters...</span>
+              </template>
+
+              <template v-else-if="filters">
+                <!-- Language Filters -->
+                <h3 class="text-subtitle-1 font-weight-bold mb-2">
+                  <v-icon size="small" class="mr-1">mdi-translate</v-icon>
+                  Language Filters
+                </h3>
+                <div class="filter-list mb-3">
+                  <v-chip
+                    v-for="(name, code) in languagePairs"
+                    :key="code"
+                    size="small"
+                    class="ma-1"
+                    variant="tonal"
+                  >
+                    <v-tooltip activator="parent" location="top">Filter by {{ name }}</v-tooltip>
+                    #lang:{{ code }}
+                  </v-chip>
+                </div>
+
+                <!-- Kanji Filters -->
+                <h3 class="text-subtitle-1 font-weight-bold mb-2">
+                  <v-icon size="small" class="mr-1">mdi-ideogram-cjk</v-icon>
+                  Kanji Filters
+                  <span class="text-caption text-medium-emphasis ml-2">({{ filtersByDataType.kanji.length }})</span>
+                </h3>
+                <div class="filter-list mb-2">
+                  <v-chip
+                    v-for="filter in displayedKanjiFilters"
+                    :key="filter.key"
+                    size="small"
+                    class="ma-1"
+                    variant="tonal"
+                  >
+                    <v-tooltip activator="parent" location="top">{{ filter.description }}</v-tooltip>
+                    #{{ filter.key }}
+                  </v-chip>
+                </div>
+                <v-btn
+                  v-if="filtersByDataType.kanji.length > 20"
+                  variant="text"
+                  size="small"
+                  class="mb-3"
+                  @click="showAllKanji = !showAllKanji"
+                >
+                  {{ showAllKanji ? 'Show less' : `Show all ${filtersByDataType.kanji.length} filters` }}
+                </v-btn>
+
+                <!-- Vocabulary Filters -->
+                <h3 class="text-subtitle-1 font-weight-bold mb-2">
+                  <v-icon size="small" class="mr-1">mdi-book-open-page-variant</v-icon>
+                  Vocabulary Filters
+                  <span class="text-caption text-medium-emphasis ml-2">({{ filtersByDataType.vocabulary.length }})</span>
+                </h3>
+                <div class="filter-list mb-2">
+                  <v-chip
+                    v-for="filter in displayedVocabFilters"
+                    :key="filter.key"
+                    size="small"
+                    class="ma-1"
+                    variant="tonal"
+                  >
+                    <v-tooltip activator="parent" location="top">{{ filter.description }}</v-tooltip>
+                    #{{ filter.key }}
+                  </v-chip>
+                </div>
+                <v-btn
+                  v-if="filtersByDataType.vocabulary.length > 20"
+                  variant="text"
+                  size="small"
+                  class="mb-3"
+                  @click="showAllVocab = !showAllVocab"
+                >
+                  {{ showAllVocab ? 'Show less' : `Show all ${filtersByDataType.vocabulary.length} filters` }}
+                </v-btn>
+
+                <!-- Proper Noun Filters -->
+                <h3 class="text-subtitle-1 font-weight-bold mb-2">
+                  <v-icon size="small" class="mr-1">mdi-account-details</v-icon>
+                  Proper Noun Filters
+                  <span class="text-caption text-medium-emphasis ml-2">({{ filtersByDataType.properNoun.length }})</span>
+                </h3>
+                <div class="filter-list mb-2">
+                  <v-chip
+                    v-for="filter in displayedProperNounFilters"
+                    :key="filter.key"
+                    size="small"
+                    class="ma-1"
+                    variant="tonal"
+                  >
+                    <v-tooltip activator="parent" location="top">{{ filter.description }}</v-tooltip>
+                    #{{ filter.key }}
+                  </v-chip>
+                </div>
+                <v-btn
+                  v-if="filtersByDataType.properNoun.length > 20"
+                  variant="text"
+                  size="small"
+                  class="mb-1"
+                  @click="showAllProperNoun = !showAllProperNoun"
+                >
+                  {{ showAllProperNoun ? 'Show less' : `Show all ${filtersByDataType.properNoun.length} filters` }}
+                </v-btn>
+              </template>
+
+              <v-alert v-else-if="error" type="warning" variant="tonal" class="mt-2">
+                Could not load filter list. Try refreshing the page.
+              </v-alert>
+            </v-expansion-panel-text>
+          </v-expansion-panel>
         </v-expansion-panels>
       </v-card-text>
     </v-card>
@@ -267,10 +396,34 @@
 <script setup lang="ts">
   import { ref } from 'vue'
   import { useDisplay } from 'vuetify'
+  import { useFilters } from '@/composables/useFilters'
+  import { LANGUAGE_PAIRS } from '@/utils/language'
 
   const { xs, sm } = useDisplay()
   const dialog = ref(false)
   const isMobile = computed(() => xs.value || sm.value)
+  
+  // Load filter definitions from backend
+  const { filters, filtersByDataType, status, error } = useFilters()
+  
+  // Language pairs for display
+  const languagePairs = LANGUAGE_PAIRS
+  
+  // Show all toggles for each category
+  const showAllKanji = ref(false)
+  const showAllVocab = ref(false)
+  const showAllProperNoun = ref(false)
+  
+  // Computed properties for displayed filters (limited or full list)
+  const displayedKanjiFilters = computed(() => 
+    showAllKanji.value ? filtersByDataType.value.kanji : filtersByDataType.value.kanji.slice(0, 20)
+  )
+  const displayedVocabFilters = computed(() => 
+    showAllVocab.value ? filtersByDataType.value.vocabulary : filtersByDataType.value.vocabulary.slice(0, 20)
+  )
+  const displayedProperNounFilters = computed(() => 
+    showAllProperNoun.value ? filtersByDataType.value.properNoun : filtersByDataType.value.properNoun.slice(0, 20)
+  )
 </script>
 
 <style scoped lang="scss">

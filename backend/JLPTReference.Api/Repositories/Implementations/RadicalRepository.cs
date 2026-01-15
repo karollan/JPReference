@@ -11,13 +11,6 @@ public class RadicalRepository : IRadicalRepository {
     private readonly ApplicationDBContext _context;
     private readonly string _connectionString;
 
-    private char NormalizeRadicalChar(char literal)
-    {
-        return NormMap.TryGetValue(literal, out var normalized)
-            ? normalized
-            : literal;
-    }
-
     public RadicalRepository(ApplicationDBContext context, IConfiguration configuration) {
         _context = context;
         _connectionString = configuration.GetConnectionString("DefaultConnection")!;

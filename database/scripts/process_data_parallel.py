@@ -729,8 +729,16 @@ class ParallelJLPTDataProcessor:
         # 1. Load descriptions first
         if not hasattr(self, '_tag_descriptions'):
             self._load_tag_descriptions()
-            
-        all_tags = set() # Set of (tag_code, category)
+        
+        # Use dict to track categories and sources per tag
+        # {tag_code: {'categories': set(), 'sources': set()}}
+        all_tags = {}
+        
+        def add_tag(tag, category, source):
+            if tag not in all_tags:
+                all_tags[tag] = {'categories': set(), 'sources': set()}
+            all_tags[tag]['categories'].add(category)
+            all_tags[tag]['sources'].add(source)
         
         # 2. Scan vocabulary file
         vocab_source_path = self.source_dir / "vocabulary" / "source.json"
@@ -741,19 +749,19 @@ class ParallelJLPTDataProcessor:
                 for word_data in words:
                     for kanji in word_data.get('kanji', []):
                         for tag in kanji.get('tags', []):
-                            all_tags.add((tag, 'kanji'))
+                            add_tag(tag, 'kanji', 'vocabulary')
                     for kana in word_data.get('kana', []):
                         for tag in kana.get('tags', []):
-                            all_tags.add((tag, 'kana'))
+                            add_tag(tag, 'kana', 'vocabulary')
                     for sense in word_data.get('sense', []):
                         for tag in sense.get('partOfSpeech', []):
-                            all_tags.add((tag, 'part_of_speech'))
+                            add_tag(tag, 'part_of_speech', 'vocabulary')
                         for tag in sense.get('field', []):
-                            all_tags.add((tag, 'field'))
+                            add_tag(tag, 'field', 'vocabulary')
                         for tag in sense.get('dialect', []):
-                            all_tags.add((tag, 'dialect'))
+                            add_tag(tag, 'dialect', 'vocabulary')
                         for tag in sense.get('misc', []):
-                            all_tags.add((tag, 'misc'))
+                            add_tag(tag, 'misc', 'vocabulary')
         
         # 3. Scan names file (for proper_noun tags)
         names_source_path = self.source_dir / "names" / "source.json"
@@ -764,26 +772,27 @@ class ParallelJLPTDataProcessor:
                 for name_data in words:
                     for kanji in name_data.get('kanji', []):
                         for tag in kanji.get('tags', []):
-                            all_tags.add((tag, 'proper_noun'))
+                            add_tag(tag, 'proper_noun', 'proper-noun')
                     for kana in name_data.get('kana', []):
                         for tag in kana.get('tags', []):
-                            all_tags.add((tag, 'proper_noun'))
+                            add_tag(tag, 'proper_noun', 'proper-noun')
                     for trans in name_data.get('translation', []):
                         for tag in trans.get('type', []):
-                            all_tags.add((tag, 'translation_type'))
+                            add_tag(tag, 'translation_type', 'proper-noun')
                             
         print(f"Found {len(all_tags)} unique tags.", flush=True)
 
-        # 4. Insert all tags into the database
+        # 4. Insert all tags into the database with source array
         conn = None
         try:
             conn = self.get_db_connection()
             cursor = conn.cursor()
             
             tag_batch = []
-            for tag_code, category in all_tags:
-                description = self._tag_descriptions.get(tag_code, f'{category} tag')
-                tag_batch.append((tag_code, description, category))
+            for tag_code, data in all_tags.items():
+                description = self._tag_descriptions.get(tag_code, f'{list(data["categories"])[0]} tag')
+                sources = list(data['sources'])
+                tag_batch.append((tag_code, description, list(data['categories'])[0], sources))
                 
                 # Also populate the cache so workers don't need to check DB
                 self.tag_cache[tag_code] = True
@@ -791,9 +800,9 @@ class ParallelJLPTDataProcessor:
             if tag_batch:
                 print(f"Inserting {len(tag_batch)} tags into jlpt.tag...", flush=True)
                 cursor.executemany("""
-                    INSERT INTO jlpt.tag (code, description, category)
-                    VALUES (%s, %s, %s)
-                    ON CONFLICT (code) DO NOTHING
+                    INSERT INTO jlpt.tag (code, description, category, source)
+                    VALUES (%s, %s, %s, %s)
+                    ON CONFLICT (code) DO UPDATE SET source = EXCLUDED.source
                 """, tag_batch)
             
             conn.commit()

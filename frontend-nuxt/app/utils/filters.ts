@@ -4,6 +4,8 @@ export type FilterOperator = '=' | '>' | '<' | 'range'
 
 export type FilterType = 'boolean' | 'enum' | 'equality' | 'range' | 'multi-op'
 
+export type DataType = 'kanji' | 'vocabulary' | 'properNoun'
+
 export interface FilterDefinition {
   key: string
   type: FilterType
@@ -13,6 +15,7 @@ export interface FilterDefinition {
   max?: number
   enumValues?: number[] | string[]
   description?: string
+  appliesTo?: DataType[] // What data types this filter applies to
 }
 
 // Filter registry
@@ -36,8 +39,8 @@ const FILTER_REGISTRY: Map<string, FilterDefinition> = new Map([
     type: 'range',
     valueType: 'int',
     min: 1,
-    max: 84,
-    description: 'Stroke count range (1-84)',
+    max: 24,
+    description: 'Stroke count range (1-24)',
   }],
 
   // Equality filters (single int value)
@@ -46,8 +49,8 @@ const FILTER_REGISTRY: Map<string, FilterDefinition> = new Map([
     type: 'range',
     valueType: 'int',
     min: 1,
-    max: 12,
-    description: 'Grade level range (1-12)',
+    max: 10,
+    description: 'Grade level range (1-10)',
   }],
 
   // Multi-op filters (future - commented out for now)
@@ -56,9 +59,9 @@ const FILTER_REGISTRY: Map<string, FilterDefinition> = new Map([
     type: 'range', // multi-op is not supported yet
     operators: ['=', '>', '<', 'range'],
     valueType: 'int',
-    min: 0,
-    max: 10_000,
-    description: 'Frequency range (0-10000)',
+    min: 1,
+    max: 2501,
+    description: 'Frequency range (1-2501)',
   }],
 
   [
@@ -318,15 +321,15 @@ const FILTER_REGISTRY: Map<string, FilterDefinition> = new Map([
 ])
 
 // Helper functions
-export function getFilterDefinition (key: string): FilterDefinition | undefined {
+export function getFilterDefinition(key: string): FilterDefinition | undefined {
   return FILTER_REGISTRY.get(key.toLowerCase())
 }
 
-export function getAllFilterKeys (): string[] {
+export function getAllFilterKeys(): string[] {
   return Array.from(FILTER_REGISTRY.keys())
 }
 
-export function isValidFilterValue (def: FilterDefinition, value: string): boolean {
+export function isValidFilterValue(def: FilterDefinition, value: string): boolean {
   if (def.type === 'boolean') {
     return true // Boolean filters don't have values
   }
@@ -359,7 +362,7 @@ export function isValidFilterValue (def: FilterDefinition, value: string): boole
   return true
 }
 
-export function parseFilterValue (def: FilterDefinition, value: string): any {
+export function parseFilterValue(def: FilterDefinition, value: string): any {
   if (def.type === 'boolean') {
     return true
   }

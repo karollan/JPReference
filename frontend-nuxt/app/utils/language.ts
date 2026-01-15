@@ -7,10 +7,7 @@ export const LANGUAGE_PAIRS: Record<string, string> = {
   spa: 'Spanish',
   fre: 'French',
   swe: 'Swedish',
-  slv: 'Slovenian',
-  por: 'Portuguese',
-  ita: 'Italian',
-  jpn: 'Japanese',
+  slv: 'Slovenian'
 }
 
 const LANGUAGE_FLAGS: Record<string, string> = {
@@ -22,20 +19,17 @@ const LANGUAGE_FLAGS: Record<string, string> = {
   spa: '🇪🇸',
   fre: '🇫🇷',
   swe: '🇸🇪',
-  slv: '🇸🇮',
-  por: '🇵🇹',
-  ita: '🇮🇹',
-  jpn: '🇯🇵',
+  slv: '🇸🇮'
 }
 
 export const DEFAULT_LANGUAGE = 'eng'
 const FALLBACK_FLAG = '🏳️'
 
-export function normalizeLanguageCode (code?: string | null): string {
+export function normalizeLanguageCode(code?: string | null): string {
   return code?.toLowerCase() ?? ''
 }
 
-function collectVariants (code?: string | null): string[] {
+function collectVariants(code?: string | null): string[] {
   const normalized = normalizeLanguageCode(code)
   if (!normalized) {
     return []
@@ -51,7 +45,7 @@ function collectVariants (code?: string | null): string[] {
   return Array.from(variants)
 }
 
-export function languageMatches (codeA?: string | null, codeB?: string | null): boolean {
+export function languageMatches(codeA?: string | null, codeB?: string | null): boolean {
   if (!codeA || !codeB) {
     return false
   }
@@ -62,12 +56,12 @@ export function languageMatches (codeA?: string | null, codeB?: string | null): 
   return variantsA.some(variant => variantsB.includes(variant))
 }
 
-export function getLanguageFlag (code?: string | null): string {
+export function getLanguageFlag(code?: string | null): string {
   const normalized = normalizeLanguageCode(code)
   return LANGUAGE_FLAGS[normalized] || FALLBACK_FLAG
 }
 
-export function getLanguageName (code?: string | null): string {
+export function getLanguageName(code?: string | null): string {
   const normalized = normalizeLanguageCode(code)
   if (!normalized) {
     return ''

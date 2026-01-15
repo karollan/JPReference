@@ -231,7 +231,15 @@ class AsyncJLPTDataProcessor:
         safe_print("Pre-populating tag table...")
         
         self._load_tag_descriptions()
-        all_tags = set()
+        # Use dict to track categories and sources per tag
+        # {tag_code: {'categories': set(), 'sources': set()}}
+        all_tags: Dict[str, Dict[str, set]] = {}
+        
+        def add_tag(tag: str, category: str, source: str) -> None:
+            if tag not in all_tags:
+                all_tags[tag] = {'categories': set(), 'sources': set()}
+            all_tags[tag]['categories'].add(category)
+            all_tags[tag]['sources'].add(source)
         
         # Scan vocabulary file
         vocab_path = self.source_dir / "vocabulary" / "source.json"
@@ -240,19 +248,19 @@ class AsyncJLPTDataProcessor:
                 for word in ijson.items(f, 'words.item'):
                     for kanji in word.get('kanji', []):
                         for tag in kanji.get('tags', []):
-                            all_tags.add((tag, 'kanji'))
+                            add_tag(tag, 'kanji', 'vocabulary')
                     for kana in word.get('kana', []):
                         for tag in kana.get('tags', []):
-                            all_tags.add((tag, 'kana'))
+                            add_tag(tag, 'kana', 'vocabulary')
                     for sense in word.get('sense', []):
                         for tag in sense.get('partOfSpeech', []):
-                            all_tags.add((tag, 'part_of_speech'))
+                            add_tag(tag, 'part_of_speech', 'vocabulary')
                         for tag in sense.get('field', []):
-                            all_tags.add((tag, 'field'))
+                            add_tag(tag, 'field', 'vocabulary')
                         for tag in sense.get('dialect', []):
-                            all_tags.add((tag, 'dialect'))
+                            add_tag(tag, 'dialect', 'vocabulary')
                         for tag in sense.get('misc', []):
-                            all_tags.add((tag, 'misc'))
+                            add_tag(tag, 'misc', 'vocabulary')
         
         # Scan names file
         names_path = self.source_dir / "names" / "source.json"
@@ -261,29 +269,30 @@ class AsyncJLPTDataProcessor:
                 for name in ijson.items(f, 'words.item'):
                     for kanji in name.get('kanji', []):
                         for tag in kanji.get('tags', []):
-                            all_tags.add((tag, 'proper_noun'))
+                            add_tag(tag, 'proper_noun', 'proper-noun')
                     for kana in name.get('kana', []):
                         for tag in kana.get('tags', []):
-                            all_tags.add((tag, 'proper_noun'))
+                            add_tag(tag, 'proper_noun', 'proper-noun')
                     for trans in name.get('translation', []):
                         for tag in trans.get('type', []):
-                            all_tags.add((tag, 'translation_type'))
+                            add_tag(tag, 'translation_type', 'proper-noun')
         
         safe_print(f"Found {len(all_tags)} unique tags")
         
-        # Insert all tags
+        # Insert all tags with source array
         async with self.pool.acquire() as conn:
             records = [
-                (code, self._tag_descriptions.get(code, f'{cat} tag'), cat)
-                for code, cat in all_tags
+                (code, self._tag_descriptions.get(code, f'{list(data["categories"])[0]} tag'), 
+                 list(data['categories'])[0], list(data['sources']))
+                for code, data in all_tags.items()
             ]
             await conn.executemany('''
-                INSERT INTO jlpt.tag (code, description, category)
-                VALUES ($1, $2, $3)
-                ON CONFLICT (code) DO NOTHING
+                INSERT INTO jlpt.tag (code, description, category, source)
+                VALUES ($1, $2, $3, $4)
+                ON CONFLICT (code) DO UPDATE SET source = EXCLUDED.source
             ''', records)
             
-            self.tag_cache = {code for code, _ in all_tags}
+            self.tag_cache = set(all_tags.keys())
         
         safe_print("Tag pre-population complete")
 
