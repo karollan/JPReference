@@ -14,6 +14,9 @@ public class FiltersController : ControllerBase
 {
     private readonly ITagRepository _tagRepository;
 
+    // Supported languages (must match frontend LANGUAGE_PAIRS)
+    private static readonly string[] SupportedLanguages = { "eng", "ger", "rus", "hun", "dut", "spa", "fre", "swe", "slv" };
+
     public FiltersController(ITagRepository tagRepository)
     {
         _tagRepository = tagRepository;
@@ -52,10 +55,40 @@ public class FiltersController : ControllerBase
             TagFilters = tagFilters
         });
     }
+
+    /// <summary>
+    /// Returns the complete filter registry in the same format as frontend FILTER_REGISTRY.
+    /// This is the source of truth for filter definitions.
+    /// </summary>
+    [HttpGet("registry")]
+    [ProducesResponseType(typeof(List<FilterRegistryEntryDto>), 200)]
+    public async Task<IActionResult> GetFilterRegistry()
+    {
+        var registry = new List<FilterRegistryEntryDto>
+        {
+            // Static filters matching frontend FilterDefinition format
+            new("common", "boolean") { Description = "Common words only", AppliesTo = new[] { "kanji", "vocabulary" } },
+            new("jlpt", "range") { ValueType = "int", Min = 1, Max = 5, Description = "JLPT level range (1-5)", AppliesTo = new[] { "kanji", "vocabulary" } },
+            new("stroke", "range") { ValueType = "int", Min = 1, Max = 24, Description = "Stroke count range (1-24)", AppliesTo = new[] { "kanji" } },
+            new("grade", "range") { ValueType = "int", Min = 1, Max = 10, Description = "Grade level range (1-10)", AppliesTo = new[] { "kanji" } },
+            new("freq", "range") { ValueType = "int", Min = 1, Max = 2501, Description = "Frequency range (1-2501)", AppliesTo = new[] { "kanji" } },
+            new("lang", "enum") { ValueType = "string", EnumValues = SupportedLanguages, Description = "Language", AppliesTo = new[] { "kanji", "vocabulary", "properNoun" } }
+        };
+
+        // Tag-based filters from database
+        var tags = await _tagRepository.GetAllTagsAsync();
+        registry.AddRange(tags.Select(t => new FilterRegistryEntryDto(t.Code, "boolean")
+        {
+            Description = t.Description,
+            AppliesTo = t.Source.Select(s => s == "proper-noun" ? "properNoun" : s).ToArray()
+        }));
+
+        return Ok(registry);
+    }
 }
 
 /// <summary>
-/// Response containing available filters.
+/// Response containing available filters (grouped).
 /// </summary>
 public class FiltersResponse
 {
@@ -64,7 +97,7 @@ public class FiltersResponse
 }
 
 /// <summary>
-/// Definition of a filter for the frontend.
+/// Definition of a filter for the frontend (simplified).
 /// </summary>
 public class FilterDefinitionDto
 {
@@ -83,5 +116,26 @@ public class FilterDefinitionDto
         AppliesTo = appliesTo;
         Min = min;
         Max = max;
+    }
+}
+
+/// <summary>
+/// Complete filter registry entry matching frontend FilterDefinition interface.
+/// </summary>
+public class FilterRegistryEntryDto
+{
+    public string Key { get; set; }
+    public string Type { get; set; }  // 'boolean' | 'enum' | 'equality' | 'range' | 'multi-op'
+    public string? ValueType { get; set; }  // 'int' | 'string'
+    public int? Min { get; set; }
+    public int? Max { get; set; }
+    public string[]? EnumValues { get; set; }
+    public string? Description { get; set; }
+    public string[]? AppliesTo { get; set; }  // 'kanji' | 'vocabulary' | 'properNoun'
+
+    public FilterRegistryEntryDto(string key, string type)
+    {
+        Key = key;
+        Type = type;
     }
 }

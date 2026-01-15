@@ -284,7 +284,6 @@
   const VueDmak = defineAsyncComponent(() => import('vue-dmak').then(m => m.VueDmak))
 
   const route = useRoute()
-  const router = useRouter()
   const service = useRadicalService()
 
   // State
@@ -310,9 +309,7 @@
   const selectedLiteral = ref<string>(literal.value)
 
   watch(literal, (newLiteral) => {
-    if (!radical.value?.variants?.some(v => v.literal === newLiteral)) {
-      selectedLiteral.value = newLiteral
-    } else {
+    if (radical.value?.variants?.some(v => v.literal == newLiteral)) {
       selectedLiteral.value = newLiteral
     }
   })
@@ -337,19 +334,11 @@
 
   function selectVariant (newLiteral: string) {
     // If the new literal is a variant of the current radical, just switch locally
-    if (radical.value?.variants?.some(v => v.literal === newLiteral)) {
-      selectedLiteral.value = newLiteral
-    } else {
-      router.push(`/radical/${newLiteral}`)
-    }
+    selectedLiteral.value = newLiteral
   }
 
   watch(() => route.params.literal, async (newVal) => {
-    // Check if the new literal is NOT a variant of the current radical
-    const isVariantOfCurrent = radical.value?.variants?.some(v => v.literal === newVal)
-    if (!isVariantOfCurrent) {
-      await refreshNuxtData(`radical-${newVal}`)
-    }
+    await refreshNuxtData(`radical-${newVal}`)
   })
 
     // SEO

@@ -1,74 +1,70 @@
 /**
- * Composable for fetching and caching filter definitions from the backend.
- * Provides both static filters and dynamic tag-based filters.
+ * Composable for accessing filter definitions.
+ * Uses the synced registry from filters.ts (populated via plugin on app load).
  */
-import type { DataType } from '@/utils/filters'
+import { getFilterRegistry, isRegistrySynced, type FilterDefinition, type DataType } from '@/utils/filters'
 
-export interface BackendFilterDefinition {
+export interface FilterInfo {
     key: string
     type: string
-    description: string
-    appliesTo: DataType[]
-    min?: number
-    max?: number
-}
-
-export interface FiltersResponse {
-    staticFilters: BackendFilterDefinition[]
-    tagFilters: BackendFilterDefinition[]
+    description?: string
+    appliesTo?: DataType[]
 }
 
 /**
- * Fetches and caches filter definitions from the backend.
- * Returns both static (built-in) filters and tag-based filters.
+ * Provides access to filter definitions from the synced registry.
+ * This uses the registry that was populated on app load by the filterRegistry plugin.
  */
 export function useFilters() {
-    const config = useRuntimeConfig()
-    const baseUrl = config.public.apiBase || 'http://localhost:5000'
+    // Get all filters from the synced registry
+    const allFilters = computed<FilterInfo[]>(() => {
+        const registry = getFilterRegistry()
+        return Array.from(registry.values()).map(f => ({
+            key: f.key,
+            type: f.type,
+            description: f.description,
+            appliesTo: f.appliesTo
+        }))
+    })
 
-    const { data: filters, status, error, refresh } = useAsyncData<FiltersResponse>(
-        'filters',
-        () => $fetch<FiltersResponse>(`${baseUrl}/api/Filters`),
-        {
-            // Cache for 1 hour - filter definitions rarely change
-            getCachedData: (key, nuxtApp) => {
-                return nuxtApp.payload.data[key] || nuxtApp.static.data[key]
-            }
-        }
+    // Filter registry synced status
+    const isSynced = computed(() => isRegistrySynced())
+
+    /**
+     * Get all filters.
+     */
+    const filters = computed(() => allFilters.value)
+
+    /**
+     * Get tag filters (boolean type only).
+     */
+    const tagFilters = computed(() =>
+        allFilters.value.filter(f => f.type === 'boolean')
     )
 
     /**
-     * Get all filters grouped by what data type they apply to.
+     * Get static filters (non-boolean).
      */
-    const filtersByDataType = computed(() => {
-        if (!filters.value) return { kanji: [], vocabulary: [], properNoun: [] }
-
-        const allFilters = [...filters.value.staticFilters, ...filters.value.tagFilters]
-
-        return {
-            kanji: allFilters.filter(f => f.appliesTo.includes('kanji')),
-            vocabulary: allFilters.filter(f => f.appliesTo.includes('vocabulary')),
-            properNoun: allFilters.filter(f => f.appliesTo.includes('properNoun'))
-        }
-    })
+    const staticFilters = computed(() =>
+        allFilters.value.filter(f => f.type !== 'boolean')
+    )
 
     /**
-     * Get all tag filters (for autocomplete suggestions).
+     * Get filters grouped by what data type they apply to.
      */
-    const tagFilters = computed(() => filters.value?.tagFilters || [])
-
-    /**
-     * Get all static filters.
-     */
-    const staticFilters = computed(() => filters.value?.staticFilters || [])
+    const filtersByDataType = computed(() => ({
+        kanji: allFilters.value.filter(f => f.appliesTo?.includes('kanji')),
+        vocabulary: allFilters.value.filter(f => f.appliesTo?.includes('vocabulary')),
+        properNoun: allFilters.value.filter(f => f.appliesTo?.includes('properNoun'))
+    }))
 
     return {
         filters,
-        filtersByDataType,
         tagFilters,
         staticFilters,
-        status,
-        error,
-        refresh
+        filtersByDataType,
+        isSynced,
+        status: computed(() => isSynced.value ? 'success' : 'pending'),
+        error: computed(() => null)
     }
 }

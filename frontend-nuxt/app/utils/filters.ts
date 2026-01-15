@@ -18,8 +18,60 @@ export interface FilterDefinition {
   appliesTo?: DataType[] // What data types this filter applies to
 }
 
-// Filter registry
-const FILTER_REGISTRY: Map<string, FilterDefinition> = new Map([
+// Backend filter registry entry type (matches FilterRegistryEntryDto)
+export interface FilterRegistryEntry {
+  key: string
+  type: string
+  valueType?: string
+  min?: number
+  max?: number
+  enumValues?: string[]
+  description?: string
+  appliesTo?: DataType[]
+}
+
+// Active registry (populated from backend on app load)
+let activeRegistry: Map<string, FilterDefinition> | null = null
+
+/**
+ * Sets the filter registry from backend data.
+ * Should be called once when the app loads.
+ */
+export function setFilterRegistry(entries: FilterRegistryEntry[]): void {
+  activeRegistry = new Map(
+    entries.map(e => [
+      e.key,
+      {
+        key: e.key,
+        type: e.type as FilterType,
+        valueType: e.valueType as 'int' | 'string' | undefined,
+        min: e.min,
+        max: e.max,
+        enumValues: e.enumValues,
+        description: e.description,
+        appliesTo: e.appliesTo
+      }
+    ])
+  )
+}
+
+/**
+ * Gets the current filter registry.
+ * Returns backend registry if available, otherwise falls back to hardcoded.
+ */
+export function getFilterRegistry(): Map<string, FilterDefinition> {
+  return activeRegistry ?? FALLBACK_FILTER_REGISTRY
+}
+
+/**
+ * Checks if the registry has been synced from backend.
+ */
+export function isRegistrySynced(): boolean {
+  return activeRegistry !== null
+}
+
+// Fallback filter registry (hardcoded, used if backend fails)
+const FALLBACK_FILTER_REGISTRY: Map<string, FilterDefinition> = new Map([
   // Boolean filters (zero-argument, commit immediately after key)
   ['common', { key: 'common', type: 'boolean' }],
 
@@ -322,11 +374,11 @@ const FILTER_REGISTRY: Map<string, FilterDefinition> = new Map([
 
 // Helper functions
 export function getFilterDefinition(key: string): FilterDefinition | undefined {
-  return FILTER_REGISTRY.get(key.toLowerCase())
+  return getFilterRegistry().get(key.toLowerCase())
 }
 
 export function getAllFilterKeys(): string[] {
-  return Array.from(FILTER_REGISTRY.keys())
+  return Array.from(getFilterRegistry().keys())
 }
 
 export function isValidFilterValue(def: FilterDefinition, value: string): boolean {
