@@ -202,7 +202,12 @@ def generate_sitemaps():
     # This handles cases where same kanji has different readings (e.g., 日向平 can be ひがたびら, ひなたひら, etc.)
     print("Generating proper noun sitemap...")
     proper_noun_query = """
-        SELECT pk.text || '(' || pka.text || ')' AS slug
+        SELECT 
+            CASE 
+                WHEN (SELECT COUNT(*) FROM jlpt.proper_noun_kanji pk2 WHERE pk2.text = pk.text AND pk2.is_primary = true) = 1 
+                    THEN pk.text
+                    ELSE pk.text || '(' || pka.text || ')'
+            END AS slug
         FROM jlpt.proper_noun_kanji pk
         JOIN jlpt.proper_noun_kana pka ON pk.proper_noun_id = pka.proper_noun_id AND pka.is_primary = true
         WHERE pk.is_primary = true
@@ -225,7 +230,12 @@ def generate_sitemaps():
     # This handles cases where same kanji has different readings
     print("Generating vocabulary sitemap...")
     vocab_query = """
-        SELECT vk.text || '(' || vka.text || ')' AS slug
+        SELECT 
+            CASE 
+                WHEN (SELECT COUNT(*) FROM jlpt.vocabulary_kanji vk2 WHERE vk2.text = vk.text AND vk2.is_primary = true) = 1 
+                    THEN vk.text
+                    ELSE vk.text || '(' || vka.text || ')'
+            END AS slug
         FROM jlpt.vocabulary_kanji vk
         JOIN jlpt.vocabulary_kana vka ON vk.vocabulary_id = vka.vocabulary_id AND vka.is_primary = true
         WHERE vk.is_primary = true
@@ -248,8 +258,7 @@ def generate_sitemaps():
     generate_sitemap_index(output_dir, base_url, all_sitemap_files)
     
     print("Generating robots.txt...")
-    robot_dir = '/app/'
-    generate_robots_txt(robot_dir, base_url)
+    generate_robots_txt(output_dir, base_url)
     
     conn.close()
     print(f"Done! Generated {len(all_sitemap_files) + 1} sitemap files and robots.txt in {output_dir}")

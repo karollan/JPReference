@@ -292,7 +292,6 @@
               <!-- Metadata/Ids -->
               <section class="meta-section">
                 <div class="text-caption text-disabled font-mono">
-                  ID: {{ properNoun.id }}<br>
                   JMnedict ID: {{ properNoun.jmnedictId }}<br>
                   Last update: {{ updatedAtFormatted }}
                 </div>

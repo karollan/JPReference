@@ -377,7 +377,6 @@
               <!-- Metadata/Ids -->
               <section class="meta-section">
                 <div class="text-caption text-disabled font-mono">
-                  ID: {{ vocabulary.id }}<br>
                   JMdict ID: {{ vocabulary.jmdictId }}<br>
                   Last update: {{ updatedAtFormatted }}
                 </div>
