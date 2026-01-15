@@ -259,7 +259,10 @@ const lastUpdate = computed(() => status.value?.lastUpdate)
 
 const formattedLastUpdate = computed(() => {
   if (!lastUpdate.value) return 'Unknown'
-  return new Date(lastUpdate.value).toLocaleString()
+  return new Date(lastUpdate.value).toLocaleString('en-GB', {
+    dateStyle: 'short',
+    timeStyle: 'short'
+  })
 })
 </script>
 

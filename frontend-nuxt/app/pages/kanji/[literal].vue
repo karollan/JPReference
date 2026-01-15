@@ -509,7 +509,7 @@
   }
 
   const updatedAtFormatted = computed(() => {
-    return new Date(kanji.value?.updatedAt as Date).toLocaleString(undefined, {
+    return new Date(kanji.value?.updatedAt as Date).toLocaleString('en-GB', {
       dateStyle: 'short',
       timeStyle: 'short'
     })

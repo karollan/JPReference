@@ -319,7 +319,7 @@
 
   // Computed
   const updatedAtFormatted = computed(() => {
-    return new Date(radical.value?.updatedAt as Date).toLocaleString(undefined, {
+    return new Date(radical.value?.updatedAt as Date).toLocaleString('en-GB', {
       dateStyle: 'short',
       timeStyle: 'short'
     })

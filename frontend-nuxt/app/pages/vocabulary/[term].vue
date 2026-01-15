@@ -423,7 +423,7 @@
   })
 
   const updatedAtFormatted = computed(() => {
-    return new Date(vocabulary.value?.updatedAt as Date).toLocaleString(undefined, {
+    return new Date(vocabulary.value?.updatedAt as Date).toLocaleString('en-GB', {
       dateStyle: 'short',
       timeStyle: 'short'
     })
