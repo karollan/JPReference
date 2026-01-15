@@ -8,11 +8,6 @@ This script runs the data processor that handles all data sources:
 - Vocabulary with examples
 - Radical and kradfile data
 - JLPT level mapping
-
-OPTIMIZATIONS:
-- Real-time logging with flush=True everywhere
-- Parallel processing for kanji and vocabulary
-- Optimized PostgreSQL connection pooling
 """
 
 import os
@@ -164,15 +159,51 @@ def main():
     print("- Proper nouns from JMnedict", flush=True)
     print("", flush=True)
     
-    # Check if parallel processing is available
+    # Try async processor first (most optimized)
+    use_async = os.getenv('USE_ASYNC', '1') == '1'
+    
+    if use_async:
+        print("Using ASYNC processor (optimized for memory and speed)", flush=True)
+        print("", flush=True)
+        
+        try:
+            import asyncio
+            from process_data_async import AsyncJLPTDataProcessor
+            
+            async def run_async():
+                processor = AsyncJLPTDataProcessor()
+                return await processor.process_all()
+            
+            start_time = time.time()
+            success = asyncio.run(run_async())
+            elapsed = time.time() - start_time
+            
+            if success:
+                print("", flush=True)
+                print("=" * 60, flush=True)
+                print(f"✅ Data processing completed successfully in {elapsed:.2f} seconds!", flush=True)
+                print("=" * 60, flush=True)
+                update_status()
+                return 0
+            else:
+                print("❌ Data processing failed!", flush=True)
+                return 1
+                
+        except ImportError as e:
+            print(f"Async processor not available ({e}), falling back to parallel", flush=True)
+            use_async = False
+        except Exception as e:
+            print(f"Async processor failed ({e}), falling back to parallel", flush=True)
+            use_async = False
+    
+    # Fall back to parallel processor
     num_workers = int(os.getenv('NUM_WORKERS', '4'))
-    use_parallel = num_workers > 1
+    use_parallel = num_workers > 1 and not use_async
     
     if use_parallel:
         print(f"Using PARALLEL processing with {num_workers} workers", flush=True)
         print("", flush=True)
         
-        # Try to import parallel processor
         try:
             from process_data_parallel import ParallelJLPTDataProcessor
             processor = ParallelJLPTDataProcessor()
@@ -196,28 +227,27 @@ def main():
             print("Parallel processor not found, falling back to sequential", flush=True)
             use_parallel = False
     
-    if not use_parallel:
-        print("Using SEQUENTIAL processing", flush=True)
-        print("Set NUM_WORKERS=4 (or higher) for faster parallel processing", flush=True)
+    # Final fallback to sequential
+    print("Using SEQUENTIAL processing", flush=True)
+    print("Set USE_ASYNC=1 or NUM_WORKERS=4 for faster processing", flush=True)
+    print("", flush=True)
+    
+    processor = JLPTDataProcessor()
+    
+    start_time = time.time()
+    success = processor.process_all_data()
+    elapsed = time.time() - start_time
+    
+    if success:
         print("", flush=True)
-        
-        # Use original sequential processor
-        processor = JLPTDataProcessor()
-        
-        start_time = time.time()
-        success = processor.process_all_data()
-        elapsed = time.time() - start_time
-        
-        if success:
-            print("", flush=True)
-            print("=" * 60, flush=True)
-            print(f"✅ Data processing completed successfully in {elapsed:.2f} seconds!", flush=True)
-            print("=" * 60, flush=True)
-            update_status()
-            return 0
-        else:
-            print("❌ Data processing failed!", flush=True)
-            return 1
+        print("=" * 60, flush=True)
+        print(f"✅ Data processing completed successfully in {elapsed:.2f} seconds!", flush=True)
+        print("=" * 60, flush=True)
+        update_status()
+        return 0
+    else:
+        print("❌ Data processing failed!", flush=True)
+        return 1
 
 if __name__ == "__main__":
     try:

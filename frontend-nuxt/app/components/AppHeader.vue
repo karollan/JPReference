@@ -14,7 +14,7 @@
             style="cursor: pointer; text-decoration:none; border-radius: 50%;"
           />
         </NuxtLink>
-        <span v-if="!isMobile" class="title-text">Japanese Dictionary</span>
+        <span v-if="!isMobile" class="title-text">JP Reference</span>
       </div>
 
     </v-app-bar-title>

@@ -212,6 +212,9 @@ services:
       LANG: C.UTF-8
       LC_ALL: C.UTF-8
       NUM_WORKERS: 8
+      USE_ASYNC: 1
+      BATCH_SIZE: 3000
+      MAX_CONCURRENT: 8
       KANJIVG_TARGET_DIR: /app/kanjivg
       KANJIVG_STATE_FILE: /app/state/.kanjivg_commit
     volumes:

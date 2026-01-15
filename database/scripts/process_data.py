@@ -241,8 +241,9 @@ class JLPTDataProcessor:
                     ))
         
         # Queue nanori
-        for nanori in character_data.get('nanori', []):
-            nanori_batch.append((character, nanori))
+        if reading_meaning and 'nanori' in reading_meaning:
+            for nanori in reading_meaning['nanori']:
+                nanori_batch.append((character, nanori))
 
     def _flush_kanji_batch(self, cursor, kanji_batch, codepoint_batch,
                           dict_ref_batch, query_code_batch, reading_batch,

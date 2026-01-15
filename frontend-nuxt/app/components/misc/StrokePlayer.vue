@@ -129,6 +129,7 @@
 
 <script setup lang="ts">
 import { ref, computed, defineAsyncComponent } from 'vue'
+import { useAppStore } from '~/stores/app'
 
 // Import VueDmak only on client side - raphael requires window
 const VueDmak = defineAsyncComponent(() => import('vue-dmak').then(m => m.VueDmak))
@@ -138,14 +139,24 @@ const props = defineProps<{
   uri: string
 }>()
 
+const appStore = useAppStore()
+
 const dmakRef = ref<any>(null)
 const isPlaying = ref(true)
 const autoplay = ref(true)
-const speed = ref(5)
-const showStrokeNumbers = ref(false)
 const showOptions = ref(false)
 const totalStrokes = ref(0)
 const hasData = ref(true)
+
+// Use store-backed computed properties for persistent settings
+const speed = computed({
+  get: () => appStore.strokePlayer.speed,
+  set: (value: number) => { appStore.strokePlayer.speed = value }
+})
+const showStrokeNumbers = computed({
+  get: () => appStore.strokePlayer.showStrokeNumbers,
+  set: (value: boolean) => { appStore.strokePlayer.showStrokeNumbers = value }
+})
 
 // Map speed (1-10) to step (0.03 to 0.003)
 const stepValue = computed(() => 0.03 / speed.value)

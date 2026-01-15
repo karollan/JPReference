@@ -117,7 +117,7 @@ public class KanjiRepository : IKanjiRepository {
                 },
                 Tokens = new List<SearchToken>{
                     new SearchToken{
-                        RawValue = literal + '%',
+                        RawValue = '%' + literal + '%',
                         Variants = new List<string>(),
                         HasWildcard = true,
                         TransliterationBlocked = true

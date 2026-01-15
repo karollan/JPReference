@@ -248,7 +248,8 @@ def generate_sitemaps():
     generate_sitemap_index(output_dir, base_url, all_sitemap_files)
     
     print("Generating robots.txt...")
-    generate_robots_txt(output_dir, base_url)
+    robot_dir = '/app/'
+    generate_robots_txt(robot_dir, base_url)
     
     conn.close()
     print(f"Done! Generated {len(all_sitemap_files) + 1} sitemap files and robots.txt in {output_dir}")

@@ -238,7 +238,7 @@ class ParallelJLPTDataProcessor:
                     """, (kanji_id, LANGUAGE_MAP.get(meaning.get('lang', '')), meaning.get('value', '')))
         
         # Nanori
-        for nanori in character_data.get('nanori', []):
+        for nanori in reading_meaning.get('nanori', []):
             cursor.execute("""
                 INSERT INTO jlpt.kanji_nanori (kanji_id, value)
                 VALUES (%s, %s)

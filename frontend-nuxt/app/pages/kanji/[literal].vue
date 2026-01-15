@@ -181,6 +181,20 @@
                         </v-label>
                       </div>
                     </div>
+                    <div v-if="kanji.nanori && kanji.nanori.length > 0" class="mt-3">
+                      <div class="text-caption font-weight-bold text-disabled mb-1">NANORI</div>
+                      <div class="d-flex flex-wrap gap-2">
+                        <v-chip
+                          v-for="(reading, index) in kanji.nanori"
+                          :key="`nanori_${index}`"
+                          class="font-jp"
+                          color="deep-orange-darken-2"
+                          variant="outlined"
+                        >
+                          {{ reading.value }}
+                        </v-chip>
+                      </div>
+                    </div>
                   </div>
 
                   <!-- Other Readings -->
@@ -228,7 +242,7 @@
                     Top words containing this kanji
                   </div>
                   <v-chip
-                    v-if="kanji.vocabularyReferences?.totalCount! > 0"
+                    v-if="kanji.vocabularyReferences?.totalCount! > 5"
                     class="ml-3" color="primary" size="small" variant="flat" @click="searchForAllReferences">
                     Or see all {{ kanji.vocabularyReferences?.totalCount! }} words
                   </v-chip>

@@ -8,7 +8,7 @@
           class="home__title"
           :class="{ 'home__title--mobile': mdAndDown }"
         >
-          Japanese Dictionary
+          JP Reference
         </h1>
       </v-col>
       <v-col cols="12">
@@ -16,7 +16,7 @@
           class="home__subtitle"
           :class="{ 'home__subtitle--mobile': mdAndDown }"
         >
-          Your essential resource for Japanese vocabulary and kanji. Start searching to accelerate your learning
+          Your essential dictionary for Japanese vocabulary and kanji. Start searching to accelerate your learning
         </h5>
       </v-col>
       <v-col cols="12">
@@ -36,6 +36,7 @@
           class="text-none"
           color="primary"
           :disabled="disabled"
+          :loading="isSearching"
           elevation="0"
           @click="handleSearch"
         >
@@ -53,10 +54,12 @@
 
   const router = useRouter()
   const searchQuery = ref('')
+  const isSearching = ref(false)
 
   const disabled = computed(() => searchQuery.value.trim().length === 0)
   function handleSearch () {
     if (disabled.value) return
+    isSearching.value = true
     router.push({
       path: '/search',
       query: {
