@@ -36,7 +36,6 @@
           class="text-none"
           color="primary"
           :disabled="disabled"
-          :loading="isSearching"
           elevation="0"
           @click="handleSearch"
         >
@@ -54,12 +53,10 @@
 
   const router = useRouter()
   const searchQuery = ref('')
-  const isSearching = ref(false)
 
   const disabled = computed(() => searchQuery.value.trim().length === 0)
   function handleSearch () {
     if (disabled.value) return
-    isSearching.value = true
     router.push({
       path: '/search',
       query: {
