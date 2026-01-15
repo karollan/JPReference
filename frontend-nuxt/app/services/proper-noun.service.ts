@@ -6,6 +6,6 @@ export const useProperNounService = () => {
   const baseUrl = import.meta.server ? config.apiUrl : config.public.apiUrl;
 
   return {
-    getProperNounDetails: (term: string) => $fetch<ProperNounDetails>(`${baseUrl}/ProperNoun/${encodeURIComponent(term)}`)
+    getProperNounDetails: (term: string) => $fetch<ProperNounDetails>(`${baseUrl}/proper-noun/${encodeURIComponent(term)}`)
   }
 }

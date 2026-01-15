@@ -1,23 +1,28 @@
 using JLPTReference.Api.DTOs.Search;
 using JLPTReference.Api.Services.Interfaces;
-using JLPTReference.Api.Repositories.Interfaces;
-using JLPTReference.Api.Services.Search.Variants;
-using JLPTReference.Api.Services.Search.Parser;
+using JLPTReference.Api.Repositories.Search.QueryBuilder;
+using JLPTReference.Api.Repositories.Search.Variants;
+using JLPTReference.Api.Repositories.Search.Parser;
 using System.Text.Json;
 
 namespace JLPTReference.Api.Services.Implementations;
 
 public class SearchService : ISearchService, ITransliterationService
 {
-    private readonly ISearchRepository _searchRepository;
     private readonly IQueryParser _queryParser;
     private readonly IVariantGenerator _variantGenerator;
 
-    public SearchService(ISearchRepository searchRepository, IQueryParser queryParser, IVariantGenerator variantGenerator)
+    private readonly IVocabularySearchRepository _vocabularySearchRepository;
+    private readonly IKanjiSearchRepository _kanjiSearchRepository;
+    private readonly IProperNounSearchRepository _properNounSearchRepository;
+
+    public SearchService(IQueryParser queryParser, IVariantGenerator variantGenerator, IVocabularySearchRepository vocabularySearchRepository, IKanjiSearchRepository kanjiSearchRepository, IProperNounSearchRepository properNounSearchRepository)
     {
-        _searchRepository = searchRepository;
         _queryParser = queryParser;
         _variantGenerator = variantGenerator;
+        _vocabularySearchRepository = vocabularySearchRepository;
+        _kanjiSearchRepository = kanjiSearchRepository;
+        _properNounSearchRepository = properNounSearchRepository;
     }
     
     public async Task<GlobalSearchResponse> SearchAllAsync(GlobalSearchRequest request)
@@ -98,13 +103,18 @@ public class SearchService : ISearchService, ITransliterationService
     {
         var spec = _queryParser.Parse(request.Query);
         _variantGenerator.PopulateVariants(spec);
-        var results = await _searchRepository.SearchKanjiAsync(spec, request.PageSize, request.Page);
-        return results;
+
+        var targets = AnalyzeFilterTargets(spec.Filters);
+
+        var results = targets.HasFlag(FilterTarget.Kanji)
+            ? _kanjiSearchRepository.SearchAsync(spec, request.PageSize, request.Page)
+            : Task.FromResult(new SearchResultKanji());
+        return await results;
     }
 
     public async Task<SearchResultKanji> SearchKanjiAsync(SearchSpec spec, int pageSize, int page)
     {
-        var results = await _searchRepository.SearchKanjiAsync(spec, pageSize, page);
+        var results = await _kanjiSearchRepository.SearchAsync(spec, pageSize, page);
         return results;
     }
 
@@ -113,12 +123,16 @@ public class SearchService : ISearchService, ITransliterationService
         var spec = _queryParser.Parse(request.Query);
         _variantGenerator.PopulateVariants(spec);
 
-        var results = await _searchRepository.SearchProperNounAsync(spec, request.PageSize, request.Page);
-        return results;
+        var targets = AnalyzeFilterTargets(spec.Filters);
+
+        var results = targets.HasFlag(FilterTarget.ProperNoun)
+            ? _properNounSearchRepository.SearchAsync(spec, request.PageSize, request.Page)
+            : Task.FromResult(new SearchResultProperNoun());
+        return await results;
     }
     public async Task<SearchResultProperNoun> SearchProperNounAsync(SearchSpec spec, int pageSize, int page)
     {
-        var results = await _searchRepository.SearchProperNounAsync(spec, pageSize, page);
+        var results = await _properNounSearchRepository.SearchAsync(spec, pageSize, page);
         return results;
     }
 
@@ -126,12 +140,17 @@ public class SearchService : ISearchService, ITransliterationService
     {
         var spec = _queryParser.Parse(request.Query);
         _variantGenerator.PopulateVariants(spec);
-        var results = await _searchRepository.SearchVocabularyAsync(spec, request.PageSize, request.Page);
-        return results;
+
+        var targets = AnalyzeFilterTargets(spec.Filters);
+
+        var results = targets.HasFlag(FilterTarget.Vocabulary)
+            ? _vocabularySearchRepository.SearchAsync(spec, request.PageSize, request.Page)
+            : Task.FromResult(new SearchResultVocabulary());
+        return await results;
     }
     public async Task<SearchResultVocabulary> SearchVocabularyAsync(SearchSpec spec, int pageSize, int page)
     {
-        var results = await _searchRepository.SearchVocabularyAsync(spec, pageSize, page);
+        var results = await _vocabularySearchRepository.SearchAsync(spec, pageSize, page);
         return results;
     }
 }

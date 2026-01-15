@@ -15,7 +15,7 @@ public class RadicalService : IRadicalService {
         return _radicalRepository.GetRadicalsListAsync();
     }
 
-    public Task<RadicalDetailDto> GetRadicalByLiteralAsync(string literal) {
+    public Task<RadicalDetailDto?> GetRadicalByLiteralAsync(string literal) {
         return _radicalRepository.GetRadicalByLiteralAsync(literal);
     }
 

@@ -6,6 +6,6 @@ export const useStatusService = () => {
     const baseUrl = import.meta.server ? config.apiUrl : config.public.apiUrl
 
     return {
-        getDatabaseStatus: () => $fetch<Status>(`${baseUrl}/Status`)
+        getDatabaseStatus: () => $fetch<Status>(`${baseUrl}/status`)
     }
 }

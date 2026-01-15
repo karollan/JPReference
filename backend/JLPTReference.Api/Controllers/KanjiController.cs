@@ -36,18 +36,4 @@ public class KanjiController : ControllerBase {
         });
         return Ok(result);
     }
-
-    /// <summary>
-    /// Searches for Kanji based on a list of radicals.
-    /// </summary>
-    /// <param name="radicals">List of radical literals to search by.</param>
-    /// <param name="page">Page number (default 1).</param>
-    /// <param name="pageSize">Results per page (default 20).</param>
-    /// <returns>A paginated list of Kanji matching the radicals.</returns>
-    [HttpGet("search/by-radicals")]
-    [ProducesResponseType(typeof(SearchResultKanji), 200)]
-    public async Task<IActionResult> SearchByRadicals([FromQuery] List<string> radicals, [FromQuery] int page = 1, [FromQuery] int pageSize = 20) {
-        var result = await _kanjiService.SearchByRadicalsAsync(radicals, page, pageSize);
-        return Ok(result);
-    }
 }

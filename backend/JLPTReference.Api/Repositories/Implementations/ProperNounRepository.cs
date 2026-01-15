@@ -30,7 +30,7 @@ public class ProperNounRepository : IProperNounRepository {
         return (input, null);
     }
 
-    public async Task<ProperNounDetailDto> GetProperNounDetailByTermAsync(string term) {
+    public async Task<ProperNounDetailDto?> GetProperNounDetailByTermAsync(string term) {
         if (string.IsNullOrEmpty(term)) {
             throw new ArgumentException("Proper noun term is required");
         }

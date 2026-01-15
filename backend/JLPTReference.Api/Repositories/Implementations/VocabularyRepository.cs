@@ -32,7 +32,7 @@ public class VocabularyRepository : IVocabularyRepository {
         return (input, null);
     }
 
-    public async Task<VocabularyDetailDto> GetVocabularyDetailByTermAsync(string term) {
+    public async Task<VocabularyDetailDto?> GetVocabularyDetailByTermAsync(string term) {
         if (string.IsNullOrEmpty(term))
             throw new ArgumentException("Vocabulary term is required");
 

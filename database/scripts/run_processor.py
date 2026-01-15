@@ -24,9 +24,6 @@ sys.stderr.reconfigure(line_buffering=True)
 script_dir = Path(__file__).parent
 sys.path.insert(0, str(script_dir))
 
-# Import both processors
-from process_data import JLPTDataProcessor
-
 def clean_database():
     """Clean the database before processing."""
     print("Cleaning database...", flush=True)
@@ -198,7 +195,7 @@ def main():
     
     # Fall back to parallel processor
     num_workers = int(os.getenv('NUM_WORKERS', '4'))
-    use_parallel = num_workers > 1 and not use_async
+    use_parallel = not use_async
     
     if use_parallel:
         print(f"Using PARALLEL processing with {num_workers} workers", flush=True)
@@ -226,28 +223,6 @@ def main():
         except ImportError:
             print("Parallel processor not found, falling back to sequential", flush=True)
             use_parallel = False
-    
-    # Final fallback to sequential
-    print("Using SEQUENTIAL processing", flush=True)
-    print("Set USE_ASYNC=1 or NUM_WORKERS=4 for faster processing", flush=True)
-    print("", flush=True)
-    
-    processor = JLPTDataProcessor()
-    
-    start_time = time.time()
-    success = processor.process_all_data()
-    elapsed = time.time() - start_time
-    
-    if success:
-        print("", flush=True)
-        print("=" * 60, flush=True)
-        print(f"✅ Data processing completed successfully in {elapsed:.2f} seconds!", flush=True)
-        print("=" * 60, flush=True)
-        update_status()
-        return 0
-    else:
-        print("❌ Data processing failed!", flush=True)
-        return 1
 
 if __name__ == "__main__":
     try:

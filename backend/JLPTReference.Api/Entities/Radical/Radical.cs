@@ -10,7 +10,7 @@ public class Radical
     public DateTime CreatedAt {get; set;}
     public DateTime UpdatedAt {get; set;}
 
-    public RadicalGroup Group {get; set;}
+    public RadicalGroup Group {get; set;} = null!;
 }
 
 public class RadicalGroup
@@ -18,9 +18,9 @@ public class RadicalGroup
     public Guid Id {get; set;}
     public required string CanonicalLiteral {get; set;}
     public int? KangXiNumber {get; set;}
-    public List<string> Meanings {get; set;}
-    public List<string> Readings {get; set;}
-    public List<string> Notes {get; set;}
+    public List<string> Meanings {get; set;} = new();
+    public List<string> Readings {get; set;} = new();
+    public List<string> Notes {get; set;} = new();
     public DateTime CreatedAt {get; set;}
     public DateTime UpdatedAt {get; set;}
 }
@@ -34,5 +34,5 @@ public class RadicalGroupMember
     public DateTime CreatedAt {get; set;}
     public DateTime UpdatedAt {get; set;}
 
-    public RadicalGroup Group {get; set;}
+    public RadicalGroup Group {get; set;} = null!;
 }

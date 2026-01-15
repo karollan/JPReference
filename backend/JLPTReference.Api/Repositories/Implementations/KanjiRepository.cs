@@ -2,21 +2,21 @@ using JLPTReference.Api.Data;
 using JLPTReference.Api.DTOs.Kanji;
 using JLPTReference.Api.DTOs.Radical;
 using JLPTReference.Api.DTOs.Search;
-using JLPTReference.Api.Services.Search.QueryBuilder;
+using JLPTReference.Api.Repositories.Search.QueryBuilder;
 using Microsoft.EntityFrameworkCore;
 using JLPTReference.Api.Repositories.Interfaces;
 namespace JLPTReference.Api.Repositories.Implementations;
 public class KanjiRepository : IKanjiRepository {
 
     private readonly ApplicationDBContext _context;
-    private readonly IVocabularySearchService _vocabularySearchService;
+    private readonly IVocabularySearchRepository _vocabularySearchRepository;
 
-    public KanjiRepository(ApplicationDBContext context, IVocabularySearchService vocabularySearchService) {
+    public KanjiRepository(ApplicationDBContext context, IVocabularySearchRepository vocabularySearchRepository) {
         _context = context;
-        _vocabularySearchService = vocabularySearchService;
+        _vocabularySearchRepository = vocabularySearchRepository;
     }
 
-    public async Task<KanjiDetailDto> GetKanjiDetailByLiteralAsync(string literal) {
+    public async Task<KanjiDetailDto?> GetKanjiDetailByLiteralAsync(string literal) {
         var kanji = await _context.Kanji
             .AsNoTracking()
             .FirstOrDefaultAsync(k => k.Literal == literal);
@@ -110,7 +110,7 @@ public class KanjiRepository : IKanjiRepository {
             .AsNoTracking()
             .ToListAsync();
         
-        var vocab = await _vocabularySearchService.SearchAsync(
+        var vocab = await _vocabularySearchRepository.SearchAsync(
             new SearchSpec{
                 Filters = new SearchFilters{
                     Languages = new List<string>{ "eng" },
@@ -150,10 +150,6 @@ public class KanjiRepository : IKanjiRepository {
             },
             UpdatedAt = kanji.UpdatedAt
         };
-
-        if (dto == null) {
-            return null;
-        }
 
         return dto;
     }

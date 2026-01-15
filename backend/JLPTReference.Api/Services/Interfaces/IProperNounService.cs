@@ -4,5 +4,5 @@ namespace JLPTReference.Api.Services.Interfaces;
 
 public interface IProperNounService
 {
-    Task<ProperNounDetailDto> GetProperNounDetailByTermAsync(string term);
+    Task<ProperNounDetailDto?> GetProperNounDetailByTermAsync(string term);
 }

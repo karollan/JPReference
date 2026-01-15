@@ -6,7 +6,7 @@ export const useSearchService = () => {
   const baseUrl = import.meta.server ? config.apiUrl : config.public.apiUrl
 
   return {
-    fetchGlobalSearch: (query: string, page = 1, pageSize = 50, signal?: AbortSignal) => $fetch<GlobalSearchResponse>(`${baseUrl}/Search`, {
+    fetchGlobalSearch: (query: string, page = 1, pageSize = 50, signal?: AbortSignal) => $fetch<GlobalSearchResponse>(`${baseUrl}/search`, {
       params: {
         query,
         page,

@@ -28,7 +28,7 @@ public class RadicalRepository : IRadicalRepository {
             .ToListAsync();
     }
 
-    public async Task<RadicalDetailDto> GetRadicalByLiteralAsync(string literal) {
+    public async Task<RadicalDetailDto?> GetRadicalByLiteralAsync(string literal) {
 
         // 1. Find the member (variant) matching the input literal
         var member = await _context.RadicalGroupMembers
