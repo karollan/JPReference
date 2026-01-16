@@ -15,7 +15,7 @@ public class FiltersController : ControllerBase
     private readonly ITagRepository _tagRepository;
 
     // Supported languages (must match frontend LANGUAGE_PAIRS)
-    private static readonly string[] SupportedLanguages = { "eng", "ger", "rus", "hun", "dut", "spa", "fre", "swe", "slv" };
+    private static readonly string[] SupportedLanguages = { "eng", "ger", "rus", "hun", "dut", "spa", "fre", "swe", "slv", "por" };
 
     public FiltersController(ITagRepository tagRepository)
     {

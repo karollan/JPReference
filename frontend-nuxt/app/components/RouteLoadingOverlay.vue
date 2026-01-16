@@ -2,13 +2,15 @@
   <Transition name="route-loading-fade">
     <div v-if="isLoading" class="route-loading-overlay">
       <div class="loader-container">
-        <v-progress-circular
-          indeterminate
+        <v-progress-linear
           color="primary"
-          size="64"
-          width="5"
-        />
-        <div class="loading-text">Loading...</div>
+          indeterminate
+          chunk-count="12"
+          chunk-gap="4"
+          height="12"
+          reverse
+        ></v-progress-linear>
+        <div class="loading-text">{{ loadingPhrase }}</div>
       </div>
     </div>
   </Transition>
@@ -16,6 +18,37 @@
 
 <script setup lang="ts">
 const { isLoading } = useLoadingIndicator()
+
+const phrases = [
+  'Sharpening Katana...',
+  'Consulting the Sensei...',
+  'Brewing Green Tea...',
+  'Polishing Shuriken...',
+  'Summoning Kami...',
+  'Practicing Kanji...',
+  'Measuring Noodles...',
+  'Folding Origami...',
+  'Finding Zen...',
+  'Warming Sake...',
+  'Counting Rice Grains...',
+  'Chasing Tanuki...',
+  'Crossing the Torii...',
+  'Waiting for the Shinkansen...',
+  'Visiting the Onsen...',
+  'Preparing Bentō...',
+  'Tying Hachimaki...',
+  'Looking for Mount Fuji...',
+  'Studying Radicals...',
+  'Memorizing Stroke Order...',
+]
+
+const loadingPhrase = ref(phrases[0])
+
+watch(isLoading, (newValue) => {
+  if (newValue) {
+    loadingPhrase.value = phrases[Math.floor(Math.random() * phrases.length)]
+  }
+})
 </script>
 
 <style scoped>
@@ -35,6 +68,7 @@ const { isLoading } = useLoadingIndicator()
   display: flex;
   flex-direction: column;
   align-items: center;
+  width: 200px;
   gap: 16px;
 }
 

@@ -2,7 +2,7 @@
   <v-container
     class="text-center home"
   >
-    <v-row dense justify="center">
+    <v-row class="home__content" dense justify="center">
       <v-col cols="12">
         <h1
           class="home__title"
@@ -80,8 +80,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100%;
-  max-width: 42rem;
+  width: 100%;
+  max-width: unset;
+
+  &__content {
+    max-width: 42rem;
+  }
 
   &__title {
     font-size:3.5rem;

@@ -267,7 +267,7 @@
         <v-tabs-window ref="tabsWindowRef" v-model="currentTab" class="flex-grow-1 overflow-y-auto d-flex flex-column">
           <!-- Vocabulary Tab -->
           <v-tabs-window-item value="vocabulary">
-            <div class="tab-content h-100">
+            <div class="tab-content h-100 pa-2">
               <template v-if="pending">
                 <VocabularySummarySkeleton v-for="i in 5" :key="i" />
               </template>
@@ -299,7 +299,7 @@
 
           <!-- Kanji Tab -->
           <v-tabs-window-item value="kanji">
-            <div class="tab-content h-100">
+            <div class="tab-content h-100 pa-2">
               <template v-if="pending">
                 <KanjiSummarySkeleton v-for="i in 5" :key="i" />
               </template>
@@ -331,7 +331,7 @@
 
           <!-- Proper Nouns Tab -->
           <v-tabs-window-item value="properNouns">
-            <div class="tab-content h-100">
+            <div class="tab-content h-100 pa-2">
               <template v-if="pending">
                 <ProperNounSummarySkeleton v-for="i in 5" :key="i" />
               </template>

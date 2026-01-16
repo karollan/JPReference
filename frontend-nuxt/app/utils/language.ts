@@ -7,7 +7,8 @@ export const LANGUAGE_PAIRS: Record<string, string> = {
   spa: 'Spanish',
   fre: 'French',
   swe: 'Swedish',
-  slv: 'Slovenian'
+  slv: 'Slovenian',
+  por: 'Portuguese'
 }
 
 const LANGUAGE_FLAGS: Record<string, string> = {
@@ -19,7 +20,8 @@ const LANGUAGE_FLAGS: Record<string, string> = {
   spa: '🇪🇸',
   fre: '🇫🇷',
   swe: '🇸🇪',
-  slv: '🇸🇮'
+  slv: '🇸🇮',
+  por: '🇵🇹'
 }
 
 export const DEFAULT_LANGUAGE = 'eng'

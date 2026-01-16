@@ -291,7 +291,10 @@
 
               <!-- Metadata/Ids -->
               <section class="meta-section">
-                <div class="text-caption text-disabled font-mono">
+                <div
+                  class="text-caption text-disabled font-mono"
+                  :class="{ 'text-center': isMobileSize }"
+                >
                   JMnedict ID: {{ properNoun.jmnedictId }}<br>
                   Last update: {{ updatedAtFormatted }}
                 </div>
@@ -314,6 +317,10 @@
   import { playPronunciation } from '@/utils/audio'
   import { useResponsiveTooltip } from '@/composables/useResponsiveTooltip'
   import { useSmartNavigation } from '@/composables/useSmartNavigation'
+  import { useDisplay } from 'vuetify'
+
+  const { xs, sm } = useDisplay()
+  const isMobileSize = computed(() => xs.value || sm.value)
 
   const route = useRoute()
   const properNounService = useProperNounService()

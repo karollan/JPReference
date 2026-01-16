@@ -201,7 +201,24 @@
                   <div v-if="hasOtherReadings" class="other-readings">
                     <v-divider class="mb-4 border-opacity-10" />
                     <div class="text-overline text-medium-emphasis mb-2">Other Languages</div>
-                    <v-tabs v-model="readingsTab" class="mb-4" color="primary" density="compact">
+                    <v-select
+                      v-if="isMobileSize"
+                      v-model="readingsTab"
+                      :items="Object.keys(otherReadingsMap)"
+                      :item-title="getReadingTypeLabel"
+                      variant="outlined"
+                      density="compact"
+                      item-color="primary"
+                    >
+                      {{ getReadingTypeLabel(readingsTab) }}
+                    </v-select>
+                    <v-tabs
+                      v-else
+                      v-model="readingsTab"
+                      class="mb-4"
+                      color="primary"
+                      density="compact"
+                    >
                       <v-tab
                         v-for="(readings, type) in otherReadingsMap"
                         :key="type"
@@ -236,13 +253,17 @@
 
               <!-- Associated Vocabulary (Infinite Scroll) -->
               <section class="vocabulary-section mb-8">
-                <h2 class="text-h5 font-weight-bold mb-4 d-flex align-center justify-space-between">
-                  <div class="text-xs-body-2">
+                <h2
+                  :style="isMobileSize ? { 'font-size': '1.1rem'} : {}"
+                  :class="isMobileSize ? 'justify-center' : 'justify-space-between'"
+                  class="font-weight-bold mb-4 d-flex align-center"
+                >
+                  <div>
                     <v-icon class="mr-2" color="success" icon="mdi-book-open-page-variant-outline" start />
-                    Top words containing this kanji
+                    <span>Top words containing this kanji</span>
                   </div>
                   <v-chip
-                    v-if="kanji.vocabularyReferences?.totalCount! > 5"
+                    v-if="!isMobileSize && kanji.vocabularyReferences?.totalCount! > 5"
                     class="ml-3" color="primary" size="small" variant="flat" @click="searchForAllReferences">
                     Or see all {{ kanji.vocabularyReferences?.totalCount! }} words
                   </v-chip>
@@ -262,6 +283,17 @@
                       <div class="text-h6 mt-4 text-grey">No vocabulary found</div>
                     </v-card>
                   </template>
+                  <v-btn
+                    v-if="isMobileSize && kanji.vocabularyReferences?.totalCount! > 5"
+                    class="justify-self-center text-none w-100"
+                    height="36"
+                    color="primary"
+                    density="comfortable"
+                    variant="flat"
+                    @click="searchForAllReferences"
+                  >
+                    Or see all {{ kanji.vocabularyReferences?.totalCount! }} words
+                  </v-btn>
                 </div>
               </section>
             </v-col>
@@ -435,7 +467,10 @@
               </section>
               <!-- Metadata/Ids -->
               <section class="meta-section">
-                <div class="text-caption text-disabled font-mono">
+                <div
+                  class="text-caption text-disabled font-mono"
+                  :class="{ 'text-center': isMobileSize }"
+                >
                   Last update: {{ updatedAtFormatted }}
                 </div>
               </section>
@@ -456,6 +491,10 @@
   import { useTheme } from 'vuetify'
   import { playPronunciation } from '@/utils/audio'
   import { useSmartNavigation } from '@/composables/useSmartNavigation'
+  import { useDisplay } from 'vuetify'
+
+  const { xs, sm } = useDisplay()
+  const isMobileSize = computed(() => xs.value || sm.value)
 
   // Import VueDmak only on client side
   const VueDmak = defineAsyncComponent(() => import('vue-dmak').then(m => m.VueDmak))
