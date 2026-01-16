@@ -1871,6 +1871,97 @@ class ParallelJLPTDataProcessor:
         print(f"Proper noun relationships resolved: {total_processed - total_unresolved} resolved, {total_unresolved} unresolved", flush=True)
         self.pending_proper_noun_relations.clear()
 
+    def _compute_slugs(self):
+        """
+        Post-process: Compute slug columns for vocabulary and proper nouns.
+        
+        Slug logic:
+        - If kanji exists and is unique across all entries: use kanji text
+        - If kanji exists but not unique: use kanji(kana)
+        - If only kana exists: use kana text
+        """
+        print("\n=== Step 10: Computing slugs ===" , flush=True)
+        
+        conn = self.get_db_connection()
+        cursor = conn.cursor()
+        
+        try:
+            # Compute vocabulary slugs
+            print("Computing vocabulary slugs...", flush=True)
+            cursor.execute("""
+                UPDATE jlpt.vocabulary v
+                SET slug = (
+                    SELECT
+                        CASE
+                            WHEN pk.text IS NOT NULL THEN
+                                CASE
+                                    WHEN (SELECT COUNT(*) FROM jlpt.vocabulary_kanji vk2 
+                                          WHERE vk2.text = pk.text AND vk2.is_primary = true) = 1
+                                    THEN pk.text
+                                    ELSE pk.text || '(' || COALESCE(pka.text, '') || ')'
+                                END
+                            WHEN pka.text IS NOT NULL THEN pka.text
+                            ELSE NULL
+                        END
+                    FROM (
+                        SELECT text FROM jlpt.vocabulary_kanji
+                        WHERE vocabulary_id = v.id AND is_primary = true
+                        LIMIT 1
+                    ) pk
+                    FULL OUTER JOIN (
+                        SELECT text FROM jlpt.vocabulary_kana
+                        WHERE vocabulary_id = v.id AND is_primary = true
+                        LIMIT 1
+                    ) pka ON true
+                )
+                WHERE v.slug IS NULL
+            """)
+            vocab_updated = cursor.rowcount
+            conn.commit()
+            print(f"  Updated {vocab_updated} vocabulary slugs", flush=True)
+            
+            # Compute proper noun slugs
+            print("Computing proper noun slugs...", flush=True)
+            cursor.execute("""
+                UPDATE jlpt.proper_noun p
+                SET slug = (
+                    SELECT
+                        CASE
+                            WHEN pk.text IS NOT NULL THEN
+                                CASE
+                                    WHEN (SELECT COUNT(*) FROM jlpt.proper_noun_kanji pnk2 
+                                          WHERE pnk2.text = pk.text AND pnk2.is_primary = true) = 1
+                                    THEN pk.text
+                                    ELSE pk.text || '(' || COALESCE(pka.text, '') || ')'
+                                END
+                            WHEN pka.text IS NOT NULL THEN pka.text
+                            ELSE NULL
+                        END
+                    FROM (
+                        SELECT text FROM jlpt.proper_noun_kanji
+                        WHERE proper_noun_id = p.id AND is_primary = true
+                        LIMIT 1
+                    ) pk
+                    FULL OUTER JOIN (
+                        SELECT text FROM jlpt.proper_noun_kana
+                        WHERE proper_noun_id = p.id AND is_primary = true
+                        LIMIT 1
+                    ) pka ON true
+                )
+                WHERE p.slug IS NULL
+            """)
+            pn_updated = cursor.rowcount
+            conn.commit()
+            print(f"  Updated {pn_updated} proper noun slugs", flush=True)
+            
+        except Exception as e:
+            print(f"Error computing slugs: {e}", flush=True)
+            conn.rollback()
+            raise
+        finally:
+            cursor.close()
+            conn.close()
+
     def process_all_data_parallel(self):
         """Process all data with parallelization where beneficial."""
         print("Starting parallel data processing...", flush=True)
@@ -1918,6 +2009,9 @@ class ParallelJLPTDataProcessor:
             
             print("\n=== Step 9: Resolving proper noun relationships ===", flush=True)
             self.resolve_proper_noun_relations_parallel()
+            
+            # Post-process: Compute slugs for vocabulary and proper nouns
+            self._compute_slugs()
             
             print("\n=== All data processing completed successfully! ===", flush=True)
                         

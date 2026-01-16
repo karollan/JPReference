@@ -1109,6 +1109,84 @@ class AsyncJLPTDataProcessor:
             
             safe_print(f"Linked {len(batch)} vocabulary-kanji relationships")
 
+    # ========== Slug Computation ==========
+    
+    async def _compute_slugs(self) -> None:
+        """
+        Post-process: Compute slug columns for vocabulary and proper nouns.
+        
+        Slug logic:
+        - If kanji exists and is unique across all entries: use kanji text
+        - If kanji exists but not unique: use kanji(kana)
+        - If only kana exists: use kana text
+        """
+        safe_print("Computing slugs...")
+        
+        async with self.pool.acquire() as conn:
+            # Compute vocabulary slugs
+            safe_print("  Computing vocabulary slugs...")
+            vocab_result = await conn.execute('''
+                UPDATE jlpt.vocabulary v
+                SET slug = (
+                    SELECT
+                        CASE
+                            WHEN pk.text IS NOT NULL THEN
+                                CASE
+                                    WHEN (SELECT COUNT(*) FROM jlpt.vocabulary_kanji vk2 
+                                          WHERE vk2.text = pk.text AND vk2.is_primary = true) = 1
+                                    THEN pk.text
+                                    ELSE pk.text || '(' || COALESCE(pka.text, '') || ')'
+                                END
+                            WHEN pka.text IS NOT NULL THEN pka.text
+                            ELSE NULL
+                        END
+                    FROM (
+                        SELECT text FROM jlpt.vocabulary_kanji
+                        WHERE vocabulary_id = v.id AND is_primary = true
+                        LIMIT 1
+                    ) pk
+                    FULL OUTER JOIN (
+                        SELECT text FROM jlpt.vocabulary_kana
+                        WHERE vocabulary_id = v.id AND is_primary = true
+                        LIMIT 1
+                    ) pka ON true
+                )
+                WHERE v.slug IS NULL
+            ''')
+            safe_print(f"    Updated vocabulary slugs: {vocab_result}")
+            
+            # Compute proper noun slugs
+            safe_print("  Computing proper noun slugs...")
+            pn_result = await conn.execute('''
+                UPDATE jlpt.proper_noun p
+                SET slug = (
+                    SELECT
+                        CASE
+                            WHEN pk.text IS NOT NULL THEN
+                                CASE
+                                    WHEN (SELECT COUNT(*) FROM jlpt.proper_noun_kanji pnk2 
+                                          WHERE pnk2.text = pk.text AND pnk2.is_primary = true) = 1
+                                    THEN pk.text
+                                    ELSE pk.text || '(' || COALESCE(pka.text, '') || ')'
+                                END
+                            WHEN pka.text IS NOT NULL THEN pka.text
+                            ELSE NULL
+                        END
+                    FROM (
+                        SELECT text FROM jlpt.proper_noun_kanji
+                        WHERE proper_noun_id = p.id AND is_primary = true
+                        LIMIT 1
+                    ) pk
+                    FULL OUTER JOIN (
+                        SELECT text FROM jlpt.proper_noun_kana
+                        WHERE proper_noun_id = p.id AND is_primary = true
+                        LIMIT 1
+                    ) pka ON true
+                )
+                WHERE p.slug IS NULL
+            ''')
+            safe_print(f"    Updated proper noun slugs: {pn_result}")
+
     # ========== Main Processing ==========
     
     async def process_all(self) -> bool:
@@ -1151,6 +1229,9 @@ class AsyncJLPTDataProcessor:
             safe_print("\n=== Step 8: Resolving relations ===")
             await self.resolve_vocab_relations()
             await self.resolve_proper_noun_relations()
+            
+            safe_print("\n=== Step 9: Computing slugs ===")
+            await self._compute_slugs()
             
             # Print statistics
             async with self.pool.acquire() as conn:

@@ -23,6 +23,7 @@
     "vuetify": "^3.11.6"
   },
   "devDependencies": {
+    "@nuxt/fonts": "^0.12.1",
     "@types/node": "^22.9.0"
   }
 }

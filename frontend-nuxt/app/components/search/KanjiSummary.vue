@@ -169,7 +169,6 @@
     font-size: 3rem;
     font-weight: 500;
     line-height: 1;
-    color: rgba(var(--v-theme-on-surface), 0.87);
 }
 
 .stroke-count {

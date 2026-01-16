@@ -1,6 +1,4 @@
 // Server middleware to proxy /kanjivg/* requests to the backend
-// This avoids placing thousands of SVG files in the Nuxt public directory
-// which causes slow startup due to Nuxt scanning/watching them
 
 export default defineEventHandler(async (event) => {
     const url = getRequestURL(event)
@@ -32,6 +30,15 @@ export default defineEventHandler(async (event) => {
 
         return svgContent
     } catch (error: any) {
+        // If the backend returns 404, suppress the error and return an empty SVG
+        // App expects some SVGs to be missing, so we don't want to throw an error.
+        if (error?.statusCode === 404 || error?.status === 404) {
+            setHeader(event, 'Content-Type', 'image/svg+xml')
+            setHeader(event, 'Cache-Control', 'public, max-age=31536000, immutable')
+            // Return a valid empty SVG
+            return '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1" viewBox="0 0 1 1"></svg>'
+        }
+
         console.error('Failed to proxy kanjivg:', error?.message)
         throw createError({
             statusCode: error?.statusCode || 404,

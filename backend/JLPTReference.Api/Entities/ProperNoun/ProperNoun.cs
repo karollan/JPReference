@@ -4,6 +4,7 @@ public class ProperNoun
 {
     public Guid Id {get; set;}
     public required string JmnedictId {get; set;}
+    public string? Slug { get; set; }
     public DateTime CreatedAt {get; set;}
     public DateTime UpdatedAt {get; set;}
 

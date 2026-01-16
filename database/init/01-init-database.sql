@@ -162,6 +162,7 @@ CREATE TABLE IF NOT EXISTS vocabulary (
     id UUID PRIMARY KEY DEFAULT uuidv7(),
     jmdict_id VARCHAR(20) UNIQUE NOT NULL,
     jlpt_level_new INTEGER,
+    slug TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -305,6 +306,7 @@ CREATE TABLE IF NOT EXISTS vocabulary_furigana (
 CREATE TABLE IF NOT EXISTS proper_noun (
     id UUID PRIMARY KEY DEFAULT uuidv7(),
     jmnedict_id VARCHAR(20) UNIQUE NOT NULL,
+    slug TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -467,6 +469,7 @@ CREATE INDEX IF NOT EXISTS idx_vocabulary_kanji_tag_vocab_kanji ON vocabulary_ka
 CREATE INDEX IF NOT EXISTS idx_vocabulary_kanji_tag_code ON vocabulary_kanji_tag(tag_code);
 CREATE INDEX IF NOT EXISTS idx_vocabulary_kana_vocab ON vocabulary_kana(vocabulary_id);
 CREATE INDEX IF NOT EXISTS idx_vocabulary_kana_text ON vocabulary_kana(text);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_sense_gloss_sense_id_lang ON vocabulary_sense_gloss(sense_id, lang);
 CREATE INDEX IF NOT EXISTS idx_vocabulary_kana_tag_vocab_kana ON vocabulary_kana_tag(vocabulary_kana_id);
 CREATE INDEX IF NOT EXISTS idx_vocabulary_kana_tag_code ON vocabulary_kana_tag(tag_code);
 CREATE INDEX IF NOT EXISTS idx_vocabulary_sense_vocab ON vocabulary_sense(vocabulary_id);
@@ -490,6 +493,8 @@ CREATE INDEX IF NOT EXISTS idx_vocabulary_kanji_text_trgm_gin ON vocabulary_kanj
 CREATE INDEX IF NOT EXISTS idx_vocabulary_kana_text_trgm ON vocabulary_kana USING gist (text gist_trgm_ops);
 CREATE INDEX IF NOT EXISTS idx_vocabulary_kana_text_trgm_gin ON vocabulary_kana USING gin (text gin_trgm_ops);
 -- Common vocabulary optimization
+CREATE INDEX IF NOT EXISTS idx_vocabulary_kana_common_all ON vocabulary_kana(vocabulary_id, is_common);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_kanji_common_all ON vocabulary_kanji(vocabulary_id, is_common);
 CREATE INDEX IF NOT EXISTS idx_vocabulary_kanji_common ON vocabulary_kanji(vocabulary_id, is_common) WHERE is_common = true;
 CREATE INDEX IF NOT EXISTS idx_vocabulary_kana_common ON vocabulary_kana(vocabulary_id, is_common) WHERE is_common = true;
 -- Primary form lookup optimization
@@ -506,6 +511,9 @@ CREATE INDEX IF NOT EXISTS idx_vocabulary_sense_tag_lookup ON vocabulary_sense_t
 -- Vocabulary relationships
 CREATE INDEX IF NOT EXISTS idx_vocabulary_uses_kanji_lookup ON vocabulary_uses_kanji(vocabulary_id, kanji_id);
 CREATE INDEX IF NOT EXISTS idx_vocabulary_uses_kanji_reverse ON vocabulary_uses_kanji(kanji_id, vocabulary_id);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_kana_text_pattern_ops ON vocabulary_kana (text varchar_pattern_ops);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_kanji_text_pattern_ops ON vocabulary_kanji (text varchar_pattern_ops);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_sense_gloss_text_pattern_ops ON vocabulary_sense_gloss (text varchar_pattern_ops);
 
 -- ============================================
 -- PROPER NOUN INDEXES
@@ -515,6 +523,7 @@ CREATE INDEX IF NOT EXISTS idx_proper_noun_kanji_text ON proper_noun_kanji(text)
 CREATE INDEX IF NOT EXISTS idx_proper_noun_kanji_tag_noun_kanji ON proper_noun_kanji_tag(proper_noun_kanji_id);
 CREATE INDEX IF NOT EXISTS idx_proper_noun_kanji_tag_code ON proper_noun_kanji_tag(tag_code);
 CREATE INDEX IF NOT EXISTS idx_proper_noun_kana_noun ON proper_noun_kana(proper_noun_id);
+CREATE INDEX IF NOT EXISTS idx_proper_noun_translation_text_translation_id_lang ON proper_noun_translation_text(translation_id, lang);
 -- Primary form lookup optimization
 CREATE INDEX IF NOT EXISTS idx_proper_noun_kanji_primary ON proper_noun_kanji(proper_noun_id, is_primary) WHERE is_primary = true;
 CREATE INDEX IF NOT EXISTS idx_proper_noun_kana_primary ON proper_noun_kana(proper_noun_id, is_primary) WHERE is_primary = true;
@@ -530,6 +539,9 @@ CREATE INDEX IF NOT EXISTS idx_proper_noun_trans_text_trans ON proper_noun_trans
 CREATE INDEX IF NOT EXISTS idx_proper_noun_trans_text_lang ON proper_noun_translation_text(lang);
 CREATE INDEX IF NOT EXISTS idx_proper_noun_trans_text_lang_id ON proper_noun_translation_text(translation_id, lang);
 -- Proper noun text search
+CREATE INDEX IF NOT EXISTS idx_proper_noun_kanji_text_pattern_ops ON proper_noun_kanji (text varchar_pattern_ops);
+CREATE INDEX IF NOT EXISTS idx_proper_noun_kana_text_pattern_ops ON proper_noun_kana (text varchar_pattern_ops);
+CREATE INDEX IF NOT EXISTS idx_proper_noun_translation_text_pattern_ops ON proper_noun_translation_text (text varchar_pattern_ops);
 CREATE INDEX IF NOT EXISTS idx_proper_noun_kanji_text_trgm ON proper_noun_kanji USING gist (text gist_trgm_ops);
 CREATE INDEX IF NOT EXISTS idx_proper_noun_kanji_text_trgm_gin ON proper_noun_kanji USING gin (text gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS idx_proper_noun_kana_text_trgm ON proper_noun_kana USING gist (text gist_trgm_ops);
@@ -572,9 +584,35 @@ CREATE INDEX IF NOT EXISTS idx_proper_noun_uses_kanji_kanji ON proper_noun_uses_
 CREATE INDEX IF NOT EXISTS idx_tag_category_lookup ON tag(category, code);
 
 -- ============================================
+-- TAG FILTERING COMPOSITE INDEXES
+-- (Critical for filter_tags = ANY() queries)
+-- ============================================
+-- Proper noun tag filtering
+CREATE INDEX IF NOT EXISTS idx_pn_kanji_tag_code_fk 
+    ON proper_noun_kanji_tag(tag_code, proper_noun_kanji_id);
+CREATE INDEX IF NOT EXISTS idx_pn_kana_tag_code_fk 
+    ON proper_noun_kana_tag(tag_code, proper_noun_kana_id);
+CREATE INDEX IF NOT EXISTS idx_pn_trans_type_code_fk 
+    ON proper_noun_translation_type(tag_code, translation_id);
+
+-- Vocabulary tag filtering
+CREATE INDEX IF NOT EXISTS idx_vocab_kanji_tag_code_fk 
+    ON vocabulary_kanji_tag(tag_code, vocabulary_kanji_id);
+CREATE INDEX IF NOT EXISTS idx_vocab_kana_tag_code_fk 
+    ON vocabulary_kana_tag(tag_code, vocabulary_kana_id);
+CREATE INDEX IF NOT EXISTS idx_vocab_sense_tag_code_fk 
+    ON vocabulary_sense_tag(tag_code, sense_id);
+
+-- ============================================
 -- COMPOSITE INDEXES FOR COMPLEX QUERIES
 -- ============================================
 -- Kanji with readings and meanings (for detailed views)
 CREATE INDEX IF NOT EXISTS idx_kanji_detailed ON kanji(id, jlpt_level_new, stroke_count, frequency);
 -- Vocabulary with senses (for detailed views)
 CREATE INDEX IF NOT EXISTS idx_vocabulary_detailed ON vocabulary(id, jlpt_level_new);
+
+-- ============================================
+-- SLUG INDEXES
+-- ============================================
+CREATE INDEX IF NOT EXISTS idx_vocabulary_slug ON vocabulary(slug);
+CREATE INDEX IF NOT EXISTS idx_proper_noun_slug ON proper_noun(slug);

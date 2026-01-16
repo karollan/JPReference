@@ -355,7 +355,6 @@
     font-weight: 500;
     text-align: left;
     line-height: 1.2;
-    color: rgba(var(--v-theme-on-surface), 0.87);
 
     .primary-entry {
         display: flex;

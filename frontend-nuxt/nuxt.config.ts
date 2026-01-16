@@ -3,7 +3,7 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
 
-  modules: ['@pinia/nuxt'],
+  modules: ['@pinia/nuxt', '@nuxt/fonts'],
 
   // Components auto-import configuration
   components: {
@@ -19,9 +19,20 @@ export default defineNuxtConfig({
   css: [
     'vuetify/styles',
     '@mdi/font/css/materialdesignicons.css',
-    '~/styles/settings.scss',
-    '~/styles/fonts.css'
+    '~/styles/settings.scss'
   ],
+
+  // Font configuration
+  fonts: {
+    defaults: {
+      weights: [300, 400, 500, 600, 700, 800],
+      styles: ['normal', 'italic'],
+      families: [
+        { name: 'Noto Sans JP', provider: 'google' },
+        { name: 'Roboto', provider: 'google' }
+      ]
+    }
+  },
 
   // Build configuration
   build: {

@@ -3,6 +3,7 @@
     border="b-sm"
     color="background"
     elevation="0"
+    height="64"
   >
     <v-app-bar-title class="d-flex align-center">
       <div class="d-flex align-center">
@@ -117,7 +118,7 @@ a.v-btn--active > .v-btn__overlay {
 }
 .title-text {
     font-size: 1.3rem;
-    font-weight: 500;
+    font-weight: 600;
     margin-left: 0.5rem;
 }
 </style>

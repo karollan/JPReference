@@ -760,7 +760,7 @@
 
 .section-title {
   font-size: 1.25rem;
-  font-weight: 600;
+  font-weight: 500;
   color: rgba(var(--v-theme-on-surface), 0.87);
 }
 

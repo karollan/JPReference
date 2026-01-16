@@ -18,6 +18,8 @@ export default defineNuxtPlugin((nuxtApp) => {
                 jlptTheme: {
                     dark: false,
                     colors: {
+                        'on-surface': '#111111',
+                        'on-background': '#111111',
                         primary: '#607AFB',
                         secondary: '#37474F',
                         accent: '#FFB300',

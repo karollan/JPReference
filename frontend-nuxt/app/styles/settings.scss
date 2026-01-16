@@ -1,9 +1,20 @@
 // Vuetify SCSS configuration
 @use 'vuetify/settings' with ($body-font-family: ('Noto Sans JP', 'Roboto', sans-serif),
+  $heading-font-family: ('Noto Sans JP', 'Roboto', sans-serif),
   $field-border-radius: 0.5rem);
+
+:root {
+  --v-hight-emphasis-opacity: 1;
+}
 
 body {
   font-family: 'Noto Sans JP', sans-serif !important;
+}
+
+.v-application {
+  [class*='text-'] {
+    font-family: 'Noto Sans JP', sans-serif;
+  }
 }
 
 .v-alert__prepend {
