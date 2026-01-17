@@ -7,10 +7,11 @@ import { setFilterRegistry, type FilterRegistryEntry } from '@/utils/filters'
 
 export default defineNuxtPlugin(async () => {
     const config = useRuntimeConfig()
-    const baseUrl = config.public.apiBase || 'http://localhost:5000'
+    // Use the apiUrl from runtime config (relative /api for client, http://backend:5000/api for server)
+    const apiUrl = config.public.apiUrl || '/api'
 
     try {
-        const registry = await $fetch<FilterRegistryEntry[]>(`${baseUrl}/api/Filters/registry`)
+        const registry = await $fetch<FilterRegistryEntry[]>(`${apiUrl}/Filters/registry`)
         setFilterRegistry(registry)
         console.log(`[filterRegistry] Synced ${registry.length} filters from backend`)
     } catch (e) {

@@ -283,9 +283,9 @@ const executeRequest = async () => {
   const startTime = performance.now();
   
   try {
-    // 1. Construct URL
-    let apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-    apiUrl = apiUrl.replace(/\/api\/?$/, '');
+    // 1. Construct URL - use relative path (nginx proxies /api to backend)
+    let apiUrl = '';
+    
     
     // Replace Path Parameters
     let path = props.path;
