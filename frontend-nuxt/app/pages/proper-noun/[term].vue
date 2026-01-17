@@ -237,7 +237,7 @@
               </section>
 
               <!-- AdSense Widget -->
-              <AdSenseWidget class="mb-6" />
+              <AdSenseWidget />
 
               <!-- Contained Kanji -->
               <section

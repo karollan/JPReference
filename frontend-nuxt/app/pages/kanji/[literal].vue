@@ -322,7 +322,7 @@
               </section>
 
               <!-- AdSense Widget -->
-              <AdSenseWidget class="mb-6" />
+              <AdSenseWidget />
 
               <!-- Study Tools -->
               <section class="tools-section mb-6">
