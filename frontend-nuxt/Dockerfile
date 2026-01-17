@@ -24,5 +24,7 @@ FROM node:24-alpine AS final
 WORKDIR /app
 COPY --from=build /app/.output /app/.output
 ENV NODE_ENV=production
+# Limit Node.js heap to prevent OOM on small VPS (adjust as needed)
+ENV NODE_OPTIONS="--max-old-space-size=512"
 EXPOSE 3000
 CMD ["node", ".output/server/index.mjs"]
