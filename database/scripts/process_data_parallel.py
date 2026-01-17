@@ -238,7 +238,7 @@ class ParallelJLPTDataProcessor:
                     """, (kanji_id, LANGUAGE_MAP.get(meaning.get('lang', '')), meaning.get('value', '')))
         
         # Nanori
-        for nanori in character_data.get('nanori', []):
+        for nanori in reading_meaning.get('nanori', []):
             cursor.execute("""
                 INSERT INTO jlpt.kanji_nanori (kanji_id, value)
                 VALUES (%s, %s)
@@ -729,8 +729,16 @@ class ParallelJLPTDataProcessor:
         # 1. Load descriptions first
         if not hasattr(self, '_tag_descriptions'):
             self._load_tag_descriptions()
-            
-        all_tags = set() # Set of (tag_code, category)
+        
+        # Use dict to track categories and sources per tag
+        # {tag_code: {'categories': set(), 'sources': set()}}
+        all_tags = {}
+        
+        def add_tag(tag, category, source):
+            if tag not in all_tags:
+                all_tags[tag] = {'categories': set(), 'sources': set()}
+            all_tags[tag]['categories'].add(category)
+            all_tags[tag]['sources'].add(source)
         
         # 2. Scan vocabulary file
         vocab_source_path = self.source_dir / "vocabulary" / "source.json"
@@ -741,19 +749,19 @@ class ParallelJLPTDataProcessor:
                 for word_data in words:
                     for kanji in word_data.get('kanji', []):
                         for tag in kanji.get('tags', []):
-                            all_tags.add((tag, 'kanji'))
+                            add_tag(tag, 'kanji', 'vocabulary')
                     for kana in word_data.get('kana', []):
                         for tag in kana.get('tags', []):
-                            all_tags.add((tag, 'kana'))
+                            add_tag(tag, 'kana', 'vocabulary')
                     for sense in word_data.get('sense', []):
                         for tag in sense.get('partOfSpeech', []):
-                            all_tags.add((tag, 'part_of_speech'))
+                            add_tag(tag, 'part_of_speech', 'vocabulary')
                         for tag in sense.get('field', []):
-                            all_tags.add((tag, 'field'))
+                            add_tag(tag, 'field', 'vocabulary')
                         for tag in sense.get('dialect', []):
-                            all_tags.add((tag, 'dialect'))
+                            add_tag(tag, 'dialect', 'vocabulary')
                         for tag in sense.get('misc', []):
-                            all_tags.add((tag, 'misc'))
+                            add_tag(tag, 'misc', 'vocabulary')
         
         # 3. Scan names file (for proper_noun tags)
         names_source_path = self.source_dir / "names" / "source.json"
@@ -764,26 +772,27 @@ class ParallelJLPTDataProcessor:
                 for name_data in words:
                     for kanji in name_data.get('kanji', []):
                         for tag in kanji.get('tags', []):
-                            all_tags.add((tag, 'proper_noun'))
+                            add_tag(tag, 'proper_noun', 'proper-noun')
                     for kana in name_data.get('kana', []):
                         for tag in kana.get('tags', []):
-                            all_tags.add((tag, 'proper_noun'))
+                            add_tag(tag, 'proper_noun', 'proper-noun')
                     for trans in name_data.get('translation', []):
                         for tag in trans.get('type', []):
-                            all_tags.add((tag, 'translation_type'))
+                            add_tag(tag, 'translation_type', 'proper-noun')
                             
         print(f"Found {len(all_tags)} unique tags.", flush=True)
 
-        # 4. Insert all tags into the database
+        # 4. Insert all tags into the database with source array
         conn = None
         try:
             conn = self.get_db_connection()
             cursor = conn.cursor()
             
             tag_batch = []
-            for tag_code, category in all_tags:
-                description = self._tag_descriptions.get(tag_code, f'{category} tag')
-                tag_batch.append((tag_code, description, category))
+            for tag_code, data in all_tags.items():
+                description = self._tag_descriptions.get(tag_code, f'{list(data["categories"])[0]} tag')
+                sources = list(data['sources'])
+                tag_batch.append((tag_code, description, list(data['categories'])[0], sources))
                 
                 # Also populate the cache so workers don't need to check DB
                 self.tag_cache[tag_code] = True
@@ -791,9 +800,9 @@ class ParallelJLPTDataProcessor:
             if tag_batch:
                 print(f"Inserting {len(tag_batch)} tags into jlpt.tag...", flush=True)
                 cursor.executemany("""
-                    INSERT INTO jlpt.tag (code, description, category)
-                    VALUES (%s, %s, %s)
-                    ON CONFLICT (code) DO NOTHING
+                    INSERT INTO jlpt.tag (code, description, category, source)
+                    VALUES (%s, %s, %s, %s)
+                    ON CONFLICT (code) DO UPDATE SET source = EXCLUDED.source
                 """, tag_batch)
             
             conn.commit()
@@ -904,6 +913,7 @@ class ParallelJLPTDataProcessor:
                     continue
                 
                 for component in components:
+                    component = self._normalize_radical_char(component)
                     radical_id = self.radical_cache.get(component)
                     if radical_id:
                         relationship_batch.append((kanji_id, radical_id))
@@ -1128,8 +1138,13 @@ class ParallelJLPTDataProcessor:
                 norm_char = self._normalize_radical_char(char)
                 group_id = member_to_group.get(norm_char) or member_to_group.get(char)
                 
+                # Use normalized literal if available (reference.txt encoding is correct)
+                # This ensures radicals with look-alike chars (e.g., Katakana ノ vs CJK 丿)
+                # use the CJK Ideograph version from reference.txt
+                literal_to_use = norm_char if norm_char != char else char
+                
                 current_batch.append((
-                    char,
+                    literal_to_use,
                     data.get('strokeCount', 0),
                     data.get('code'),
                     group_id
@@ -1856,6 +1871,97 @@ class ParallelJLPTDataProcessor:
         print(f"Proper noun relationships resolved: {total_processed - total_unresolved} resolved, {total_unresolved} unresolved", flush=True)
         self.pending_proper_noun_relations.clear()
 
+    def _compute_slugs(self):
+        """
+        Post-process: Compute slug columns for vocabulary and proper nouns.
+        
+        Slug logic:
+        - If kanji exists and is unique across all entries: use kanji text
+        - If kanji exists but not unique: use kanji(kana)
+        - If only kana exists: use kana text
+        """
+        print("\n=== Step 10: Computing slugs ===" , flush=True)
+        
+        conn = self.get_db_connection()
+        cursor = conn.cursor()
+        
+        try:
+            # Compute vocabulary slugs
+            print("Computing vocabulary slugs...", flush=True)
+            cursor.execute("""
+                UPDATE jlpt.vocabulary v
+                SET slug = (
+                    SELECT
+                        CASE
+                            WHEN pk.text IS NOT NULL THEN
+                                CASE
+                                    WHEN (SELECT COUNT(*) FROM jlpt.vocabulary_kanji vk2 
+                                          WHERE vk2.text = pk.text AND vk2.is_primary = true) = 1
+                                    THEN pk.text
+                                    ELSE pk.text || '(' || COALESCE(pka.text, '') || ')'
+                                END
+                            WHEN pka.text IS NOT NULL THEN pka.text
+                            ELSE NULL
+                        END
+                    FROM (
+                        SELECT text FROM jlpt.vocabulary_kanji
+                        WHERE vocabulary_id = v.id AND is_primary = true
+                        LIMIT 1
+                    ) pk
+                    FULL OUTER JOIN (
+                        SELECT text FROM jlpt.vocabulary_kana
+                        WHERE vocabulary_id = v.id AND is_primary = true
+                        LIMIT 1
+                    ) pka ON true
+                )
+                WHERE v.slug IS NULL
+            """)
+            vocab_updated = cursor.rowcount
+            conn.commit()
+            print(f"  Updated {vocab_updated} vocabulary slugs", flush=True)
+            
+            # Compute proper noun slugs
+            print("Computing proper noun slugs...", flush=True)
+            cursor.execute("""
+                UPDATE jlpt.proper_noun p
+                SET slug = (
+                    SELECT
+                        CASE
+                            WHEN pk.text IS NOT NULL THEN
+                                CASE
+                                    WHEN (SELECT COUNT(*) FROM jlpt.proper_noun_kanji pnk2 
+                                          WHERE pnk2.text = pk.text AND pnk2.is_primary = true) = 1
+                                    THEN pk.text
+                                    ELSE pk.text || '(' || COALESCE(pka.text, '') || ')'
+                                END
+                            WHEN pka.text IS NOT NULL THEN pka.text
+                            ELSE NULL
+                        END
+                    FROM (
+                        SELECT text FROM jlpt.proper_noun_kanji
+                        WHERE proper_noun_id = p.id AND is_primary = true
+                        LIMIT 1
+                    ) pk
+                    FULL OUTER JOIN (
+                        SELECT text FROM jlpt.proper_noun_kana
+                        WHERE proper_noun_id = p.id AND is_primary = true
+                        LIMIT 1
+                    ) pka ON true
+                )
+                WHERE p.slug IS NULL
+            """)
+            pn_updated = cursor.rowcount
+            conn.commit()
+            print(f"  Updated {pn_updated} proper noun slugs", flush=True)
+            
+        except Exception as e:
+            print(f"Error computing slugs: {e}", flush=True)
+            conn.rollback()
+            raise
+        finally:
+            cursor.close()
+            conn.close()
+
     def process_all_data_parallel(self):
         """Process all data with parallelization where beneficial."""
         print("Starting parallel data processing...", flush=True)
@@ -1903,6 +2009,9 @@ class ParallelJLPTDataProcessor:
             
             print("\n=== Step 9: Resolving proper noun relationships ===", flush=True)
             self.resolve_proper_noun_relations_parallel()
+            
+            # Post-process: Compute slugs for vocabulary and proper nouns
+            self._compute_slugs()
             
             print("\n=== All data processing completed successfully! ===", flush=True)
                         

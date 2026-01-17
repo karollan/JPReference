@@ -1,0 +1,86 @@
+// Vuetify SCSS configuration
+@use 'vuetify/settings' with ($body-font-family: ('Noto Sans JP', 'Roboto', sans-serif),
+  $heading-font-family: ('Noto Sans JP', 'Roboto', sans-serif),
+  $field-border-radius: 0.5rem);
+
+:root {
+  --v-hight-emphasis-opacity: 1;
+}
+
+body {
+  font-family: 'Noto Sans JP', sans-serif !important;
+}
+
+.v-application {
+  [class*='text-'] {
+    font-family: 'Noto Sans JP', sans-serif;
+  }
+}
+
+.v-alert__prepend {
+  align-self: center !important;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-button {
+  display: none;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 3px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-track-piece {
+  background: transparent;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+::-webkit-resizer {
+  display: none;
+}
+
+.v-toolbar {
+  font-weight: 500;
+  border-bottom: 1px solid #000;
+
+  &__content>.v-btn:last-child {
+    margin-inline-end: 20px;
+  }
+}
+
+.v-field__outline {
+  --v-field-border-opacity: 0.1 !important;
+}
+
+.v-field:hover .v-field__outline {
+  --v-field-border-opacity: 0.3 !important;
+}
+
+.v-card--variant-outlined {
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)) !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 0 4px 0 rgba(0, 0, 0, 0.1);
+}
+
+@media screen and (max-width: 600px) {
+  .v-expansion-panel-text__wrapper {
+    padding: 8px 12px 16px !important;
+  }
+}

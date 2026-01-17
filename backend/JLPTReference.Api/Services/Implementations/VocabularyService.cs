@@ -9,7 +9,7 @@ public class VocabularyService : IVocabularyService {
         _vocabularyRepository = vocabularyRepository;
     }
 
-    public async Task<VocabularyDetailDto> GetVocabularyDetailByTermAsync(string term) {
+    public async Task<VocabularyDetailDto?> GetVocabularyDetailByTermAsync(string term) {
         return await _vocabularyRepository.GetVocabularyDetailByTermAsync(term);
     }
 }

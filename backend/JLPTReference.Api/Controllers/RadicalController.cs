@@ -27,11 +27,13 @@ public class RadicalController : ControllerBase
     /// <returns>Detailed radical information.</returns>
     [HttpGet("{literal}")]
     [ProducesResponseType(typeof(RadicalDetailDto), 200)]
-    [ProducesResponseType(404)]
+    [ProducesResponseType(typeof(object), 404)]
     public async Task<IActionResult> GetRadicalByLiteral(string literal)
     {
         var radical = await _radicalService.GetRadicalByLiteralAsync(literal);
-        if (radical == null) return NotFound();
+        if (radical == null) return NotFound(new {
+            message = $"Radical '{literal}' not found"
+        });
         return Ok(radical);
     }
 

@@ -24,10 +24,12 @@ public class ProperNounController : ControllerBase {
     /// <returns>Detailed information about the proper noun.</returns>
     [HttpGet("{term}")]
     [ProducesResponseType(typeof(ProperNounDetailDto), 200)]
-    [ProducesResponseType(404)]
+    [ProducesResponseType(typeof(object), 404)]
     public async Task<IActionResult> GetProperNounDetailByTermAsync(string term) {
         var properNoun = await _properNounService.GetProperNounDetailByTermAsync(term);
-        if (properNoun == null) return NotFound();
+        if (properNoun == null) return NotFound(new {
+            message = $"Proper noun '{term}' not found"
+        });
         return Ok(properNoun);
     }
 }

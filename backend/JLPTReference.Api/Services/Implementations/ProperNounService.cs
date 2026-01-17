@@ -10,7 +10,7 @@ public class ProperNounService : IProperNounService {
         _properNounRepository = properNounRepository;
     }
 
-    public async Task<ProperNounDetailDto> GetProperNounDetailByTermAsync(string term) {
+    public async Task<ProperNounDetailDto?> GetProperNounDetailByTermAsync(string term) {
         return await _properNounRepository.GetProperNounDetailByTermAsync(term);
     }
 }

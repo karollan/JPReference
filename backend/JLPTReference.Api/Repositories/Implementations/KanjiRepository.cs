@@ -2,27 +2,27 @@ using JLPTReference.Api.Data;
 using JLPTReference.Api.DTOs.Kanji;
 using JLPTReference.Api.DTOs.Radical;
 using JLPTReference.Api.DTOs.Search;
-using JLPTReference.Api.Services.Search.QueryBuilder;
+using JLPTReference.Api.Repositories.Search.QueryBuilder;
 using Microsoft.EntityFrameworkCore;
 using JLPTReference.Api.Repositories.Interfaces;
 namespace JLPTReference.Api.Repositories.Implementations;
 public class KanjiRepository : IKanjiRepository {
 
     private readonly ApplicationDBContext _context;
-    private readonly IVocabularySearchService _vocabularySearchService;
+    private readonly IVocabularySearchRepository _vocabularySearchRepository;
 
-    public KanjiRepository(ApplicationDBContext context, IVocabularySearchService vocabularySearchService) {
+    public KanjiRepository(ApplicationDBContext context, IVocabularySearchRepository vocabularySearchRepository) {
         _context = context;
-        _vocabularySearchService = vocabularySearchService;
+        _vocabularySearchRepository = vocabularySearchRepository;
     }
 
-    public async Task<KanjiDetailDto> GetKanjiDetailByLiteralAsync(string literal) {
+    public async Task<KanjiDetailDto?> GetKanjiDetailByLiteralAsync(string literal) {
         var kanji = await _context.Kanji
             .AsNoTracking()
             .FirstOrDefaultAsync(k => k.Literal == literal);
 
         if (kanji == null)
-            throw new Exception($"Kanji '{literal}' not found");
+            return null;
 
         // Load related collections separately
         var meanings = await _context.KanjiMeanings
@@ -95,7 +95,9 @@ public class KanjiRepository : IKanjiRepository {
             .Select(r => new RadicalSummaryDto
             {
                 Id = r.Radical.Id,
-                Literal = r.Radical.Literal
+                Literal = r.Radical.Literal,
+                HasDetails = _context.RadicalGroupMembers.Any(g => g.Literal == r.Radical.Literal)
+
             })
             .ToListAsync();
 
@@ -108,14 +110,14 @@ public class KanjiRepository : IKanjiRepository {
             .AsNoTracking()
             .ToListAsync();
         
-        var vocab = await _vocabularySearchService.SearchAsync(
+        var vocab = await _vocabularySearchRepository.SearchAsync(
             new SearchSpec{
                 Filters = new SearchFilters{
                     Languages = new List<string>{ "eng" },
                 },
                 Tokens = new List<SearchToken>{
                     new SearchToken{
-                        RawValue = literal + '%',
+                        RawValue = '%' + literal + '%',
                         Variants = new List<string>(),
                         HasWildcard = true,
                         TransliterationBlocked = true
@@ -148,10 +150,6 @@ public class KanjiRepository : IKanjiRepository {
             },
             UpdatedAt = kanji.UpdatedAt
         };
-
-        if (dto == null) {
-            throw new Exception("Kanji not found");
-        }
 
         return dto;
     }

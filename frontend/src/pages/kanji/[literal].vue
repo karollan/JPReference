@@ -420,6 +420,7 @@
   import { VueDmak } from 'vue-dmak'
   import { useTheme } from 'vuetify'
   import { playPronunciation } from '@/utils/audio'
+  import { useSmartNavigation } from '@/composables/useSmartNavigation'
 
   const route = useRoute()
   const router = useRouter()
@@ -618,9 +619,8 @@
     selectedLanguage.value = language
   }
 
-  function goBack () {
-    router.back()
-  }
+  // Smart navigation - falls back to /search if no in-app history
+  const { goBack } = useSmartNavigation()
 
   // Actions
   function searchForAllReferences () {

@@ -67,6 +67,7 @@ services:
       - "${BACKEND_PORT}:5000"
     volumes:
       - ./backend/JLPTReference.Api:/app
+      - ./backend/JLPTReference.Api/wwwroot/kanjivg:/app/wwwroot/kanjivg:ro
       - /app/bin
       - /app/obj
     networks:
@@ -76,25 +77,49 @@ services:
         condition: service_healthy
 
   # Vue.js Frontend
-  frontend:
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile
+  #   container_name: jlpt-reference-frontend
+  #   restart: unless-stopped
+  #   environment:
+  #     - VITE_API_URL=${API_URL}
+  #     - CHOKIDAR_USEPOLLING=true
+  #     - WATCHPACK_POLLING=true
+  #   ports:
+  #     - "${FRONTEND_PORT}:3000"
+  #   volumes:
+  #     - ./frontend:/app
+  #     - /app/node_modules
+  #     - /app/dist
+  #   networks:
+  #     - jlpt-network
+  #   depends_on:
+  #     - backend
+
+  # Nuxt.js Frontend (SSR) - runs alongside Vue frontend for comparison
+  frontend-nuxt:
     build:
-      context: ./frontend
+      context: ./frontend-nuxt
       dockerfile: Dockerfile
       target: development
-    container_name: jlpt-reference-frontend
+    container_name: jlpt-reference-frontend-nuxt
     restart: unless-stopped
     environment:
-      - VITE_API_URL=${API_URL}
+      - NUXT_PUBLIC_API_URL=${NUXT_PUBLIC_API_URL}
+      - API_URL=${API_URL}
       - VITE_ADSENSE_CLIENT_ID=${VITE_ADSENSE_CLIENT_ID}
       - VITE_ADSENSE_SLOT_ID=${VITE_ADSENSE_SLOT_ID}
       - CHOKIDAR_USEPOLLING=true
       - WATCHPACK_POLLING=true
     ports:
-      - "${FRONTEND_PORT}:3000"
+      - "${FRONTEND_NUXT_PORT}:3000"
     volumes:
-      - ./frontend:/app
+      - ./frontend-nuxt:/app
       - /app/node_modules
-      - /app/dist
+      - /app/.nuxt
+      - /app/.output
     networks:
       - jlpt-network
     depends_on:
@@ -190,12 +215,15 @@ services:
       LANG: C.UTF-8
       LC_ALL: C.UTF-8
       NUM_WORKERS: 8
-      KANJIVG_TARGET_DIR: /app/public/kanjivg
+      USE_ASYNC: 1
+      BATCH_SIZE: 3000
+      MAX_CONCURRENT: 8
+      KANJIVG_TARGET_DIR: /app/kanjivg
       KANJIVG_STATE_FILE: /app/state/.kanjivg_commit
     volumes:
       - ./database/scripts:/app/scripts
       - ./database/source:/app/source
-      - ./frontend/public/kanjivg:/app/public/kanjivg
+      - ./backend/JLPTReference.Api/wwwroot/kanjivg:/app/kanjivg
       - ./backend/JLPTReference.Api/wwwroot/sitemap:/app/sitemap
       - processor_state:/app/state
     working_dir: /app/scripts

@@ -264,6 +264,7 @@
   import KanjiSummary from '@/components/search/KanjiSummary.vue'
   import AdSenseWidget from '@/components/common/AdSenseWidget.vue'
   import StrokePlayer from '@/components/misc/StrokePlayer.vue'
+  import { useSmartNavigation } from '@/composables/useSmartNavigation'
 
   const route = useRoute()
   const router = useRouter()
@@ -301,9 +302,8 @@
   })
 
   // Actions
-  function goBack () {
-    router.back()
-  }
+  // Smart navigation - falls back to /search if no in-app history
+  const { goBack } = useSmartNavigation()
 
   function selectVariant (newLiteral: string) {
     if (radical.value?.variants?.some(v => v.literal === newLiteral)) {

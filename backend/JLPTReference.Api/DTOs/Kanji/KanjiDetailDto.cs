@@ -18,7 +18,7 @@ public class KanjiDetailDto
     public int? Grade { get; set; }
     public int? JlptLevel { get; set; }
     public List<RadicalSummaryDto> Radicals { get; set; } = new();
-    public KanjiVocabularyDto VocabularyReferences { get; set; }
+    public KanjiVocabularyDto VocabularyReferences { get; set; } = new();
     public DateTime UpdatedAt { get; set; }
 }
 

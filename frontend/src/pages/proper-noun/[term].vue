@@ -320,6 +320,7 @@
   import { DEFAULT_LANGUAGE, languageMatches } from '@/utils/language'
   import { playPronunciation } from '@/utils/audio'
   import { useResponsiveTooltip } from '@/composables/useResponsiveTooltip'
+  import { useSmartNavigation } from '@/composables/useSmartNavigation'
   import AdSenseWidget from '@/components/common/AdSenseWidget.vue'
 
   const route = useRoute()
@@ -509,9 +510,8 @@
     return translation.text.map(t => t.text).join('; ')
   }
 
-  function goBack () {
-    router.back()
-  }
+  // Smart navigation - falls back to /search if no in-app history
+  const { goBack } = useSmartNavigation()
 
   // SEO
   useHead({

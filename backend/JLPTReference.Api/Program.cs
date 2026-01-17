@@ -1,15 +1,16 @@
 using Npgsql;
 using Microsoft.OpenApi.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Mvc.ApplicationModels;
 using JLPTReference.Api.Data;
 using JLPTReference.Api.Services.Interfaces;
 using JLPTReference.Api.Services.Implementations;
 using JLPTReference.Api.Repositories.Interfaces;
 using JLPTReference.Api.Repositories.Implementations;
-using JLPTReference.Api.Services.Search.Parser;
-using JLPTReference.Api.Services.Search.Variants;
-using JLPTReference.Api.Services.Search.QueryBuilder;
-using JLPTReference.Api.Services.Search.Ranking;
+using JLPTReference.Api.Repositories.Search.Parser;
+using JLPTReference.Api.Repositories.Search.Variants;
+using JLPTReference.Api.Repositories.Search.QueryBuilder;
+using JLPTReference.Api.Repositories.Search.Ranking;
 using JLPTReference.Api.Entities.Kanji;
 using JLPTReference.Api.Entities.ProperNoun;
 using JLPTReference.Api.Entities.Vocabulary;
@@ -27,6 +28,20 @@ var dataSource = dataSourceBuilder.Build();
 // Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddMemoryCache();
+
+// Kebab case routes
+builder.Services.AddControllers(options => 
+{
+    options.Conventions.Add(
+        new RouteTokenTransformerConvention(
+            new KebabCaseTransformer()
+        )
+    );
+});
+builder.Services.AddRouting(options =>
+{
+    options.LowercaseUrls = true;
+});
 
 // Swagger/OpenAPI configuration
 builder.Services.AddEndpointsApiExplorer();
@@ -58,7 +73,7 @@ builder.Services.AddScoped<ApplicationDBContext>(sp =>
 // Add CORS
 builder.Services.AddCors(options => {
     options.AddPolicy("AllowVueApp", policy => {
-        var frontendUrl = builder.Configuration["FrontendUrl"] ?? "http://localhost:3000";
+        var frontendUrl = builder.Configuration["FrontendUrl"] ?? "http://localhost:3001";
         policy.WithOrigins(frontendUrl)
             .AllowAnyHeader()
             .AllowAnyMethod()
@@ -69,7 +84,6 @@ builder.Services.AddCors(options => {
 
 // Add services
 builder.Services.AddScoped<ISearchService, SearchService>();
-builder.Services.AddScoped<ISearchRepository, SearchRepository>();
 builder.Services.AddScoped<IKanjiService, KanjiService>();
 builder.Services.AddScoped<IKanjiRepository, KanjiRepository>();
 builder.Services.AddScoped<IVocabularyService, VocabularyService>();
@@ -78,6 +92,8 @@ builder.Services.AddScoped<IProperNounService, ProperNounService>();
 builder.Services.AddScoped<IProperNounRepository, ProperNounRepository>();
 builder.Services.AddScoped<IRadicalService, RadicalService>();
 builder.Services.AddScoped<IRadicalRepository, RadicalRepository>();
+builder.Services.AddScoped<ITagRepository, TagRepository>();
+builder.Services.AddScoped<ICachedTagRepository, CachedTagRepository>();
 
 builder.Services.AddScoped<IQueryParser, QueryParser>();
 builder.Services.AddScoped<IVariantGenerator, VariantGenerator>();
@@ -87,72 +103,33 @@ builder.Services.AddScoped<IVocabularyRanker, VocabularyRanker>();
 builder.Services.AddScoped<IKanjiRanker, KanjiRanker>();
 builder.Services.AddScoped<IProperNounRanker, ProperNounRanker>();
 
-// Query builders (basic)
-builder.Services.AddScoped<ISearchQueryBuilder<Kanji>, EfCoreKanjiQueryBuilder>();
-builder.Services.AddScoped<ISearchQueryBuilder<ProperNoun>, EfCoreProperNounQueryBuilder>();
-builder.Services.AddScoped<ISearchQueryBuilder<Vocabulary>, EfCoreVocabularyQueryBuilder>();
-
-// Ranked query builders
-builder.Services.AddScoped<IRankedQueryBuilder<Vocabulary, VocabularyRankingProfile>, EfCoreVocabularyQueryBuilder>();
-builder.Services.AddScoped<IRankedQueryBuilder<Kanji, KanjiRankingProfile>, EfCoreKanjiQueryBuilder>();
-builder.Services.AddScoped<IRankedQueryBuilder<ProperNoun, ProperNounRankingProfile>, EfCoreProperNounQueryBuilder>();
-
 // Ranking profiles
 builder.Services.AddSingleton(VocabularyRankingProfile.Default);
 builder.Services.AddSingleton(KanjiRankingProfile.Default);
 builder.Services.AddSingleton(ProperNounRankingProfile.Default);
 
-// Search services - switch between EF Core and SQL implementations
-// Set "Search:UseSqlSearch" to true in appsettings to use the optimized SQL functions
-var useSqlSearch = builder.Configuration.GetValue<bool>("Search:UseSqlSearch", false);
+// Search services - SQL implementations
 
-if (useSqlSearch)
-{
-    // Register the concrete SQL implementation
-    builder.Services.AddScoped<SqlVocabularySearchService>();
-    builder.Services.AddScoped<SqlKanjiSearchService>();
-    builder.Services.AddScoped<SqlProperNounSearchService>();
+// Register the concrete SQL implementation
+builder.Services.AddScoped<SqlVocabularySearchRepository>();
+builder.Services.AddScoped<SqlKanjiSearchRepository>();
+builder.Services.AddScoped<SqlProperNounSearchRepository>();
 
-    // Register the abstract interface to use the cached wrapper, injecting the SQL implementation
-    builder.Services.AddScoped<IVocabularySearchService>(sp =>
-        new CachedVocabularySearchService(
-            sp.GetRequiredService<SqlVocabularySearchService>(),
-            sp.GetRequiredService<IMemoryCache>()));
+// Register the abstract interface to use the cached wrapper, injecting the SQL implementation
+builder.Services.AddScoped<IVocabularySearchRepository>(sp =>
+    new CachedVocabularySearchRepository(
+        sp.GetRequiredService<SqlVocabularySearchRepository>(),
+        sp.GetRequiredService<IMemoryCache>()));
 
-    builder.Services.AddScoped<IKanjiSearchService>(sp =>
-        new CachedKanjiSearchService(
-            sp.GetRequiredService<SqlKanjiSearchService>(),
-            sp.GetRequiredService<IMemoryCache>()));
+builder.Services.AddScoped<IKanjiSearchRepository>(sp =>
+    new CachedKanjiSearchRepository(
+        sp.GetRequiredService<SqlKanjiSearchRepository>(),
+        sp.GetRequiredService<IMemoryCache>()));
 
-    builder.Services.AddScoped<IProperNounSearchService>(sp =>
-        new CachedProperNounSearchService(
-            sp.GetRequiredService<SqlProperNounSearchService>(),
-            sp.GetRequiredService<IMemoryCache>()));
-}
-else
-{
-    // Register the concrete EF Core implementation
-    builder.Services.AddScoped<EfCoreVocabularySearchService>();
-    builder.Services.AddScoped<EfCoreKanjiSearchService>();
-    builder.Services.AddScoped<EfCoreProperNounSearchService>();
-
-    // Register the abstract interface to use the cached wrapper, injecting the EF implementation
-    builder.Services.AddScoped<IVocabularySearchService>(sp =>
-        new CachedVocabularySearchService(
-            sp.GetRequiredService<EfCoreVocabularySearchService>(),
-            sp.GetRequiredService<IMemoryCache>()));
-
-    builder.Services.AddScoped<IKanjiSearchService>(sp =>
-        new CachedKanjiSearchService(
-            sp.GetRequiredService<EfCoreKanjiSearchService>(),
-            sp.GetRequiredService<IMemoryCache>()));
-
-    builder.Services.AddScoped<IProperNounSearchService>(sp =>
-        new CachedProperNounSearchService(
-            sp.GetRequiredService<EfCoreProperNounSearchService>(),
-            sp.GetRequiredService<IMemoryCache>()));
-}
-
+builder.Services.AddScoped<IProperNounSearchRepository>(sp =>
+    new CachedProperNounSearchRepository(
+        sp.GetRequiredService<SqlProperNounSearchRepository>(),
+        sp.GetRequiredService<IMemoryCache>()));
 
 // Rate Limiting
 builder.Services.AddRateLimiter(options =>
