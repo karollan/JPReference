@@ -75,28 +75,6 @@ services:
       postgres:
         condition: service_healthy
 
-  # Vue.js Frontend
-  # frontend:
-  #   build:
-  #     context: ./frontend
-  #     dockerfile: Dockerfile
-  #   container_name: jlpt-reference-frontend
-  #   restart: unless-stopped
-  #   environment:
-  #     - VITE_API_URL=${API_URL}
-  #     - CHOKIDAR_USEPOLLING=true
-  #     - WATCHPACK_POLLING=true
-  #   ports:
-  #     - "${FRONTEND_PORT}:3000"
-  #   volumes:
-  #     - ./frontend:/app
-  #     - /app/node_modules
-  #     - /app/dist
-  #   networks:
-  #     - jlpt-network
-  #   depends_on:
-  #     - backend
-
   # Nuxt.js Frontend (SSR) - runs alongside Vue frontend for comparison
   frontend-nuxt:
     build:
