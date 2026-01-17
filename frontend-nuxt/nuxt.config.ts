@@ -45,9 +45,7 @@ export default defineNuxtConfig({
     apiUrl: process.env.API_URL || 'http://backend:5000/api',
     public: {
       // Client-side: relative path, nginx proxies to backend
-      apiUrl: '/api',
-      adsenseClientId: process.env.NUXT_PUBLIC_ADSENSE_CLIENT_ID || '',
-      adsenseSlotId: process.env.NUXT_PUBLIC_ADSENSE_SLOT_ID || ''
+      apiUrl: process.env.API_URL || 'http://localhost:5000/api',
     }
   },
 

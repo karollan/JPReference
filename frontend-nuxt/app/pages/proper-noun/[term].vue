@@ -236,9 +236,6 @@
                 </v-card>
               </section>
 
-              <!-- AdSense Widget -->
-              <AdSenseWidget />
-
               <!-- Contained Kanji -->
               <section
                 v-if="properNoun.containedKanji && properNoun.containedKanji.length > 0"

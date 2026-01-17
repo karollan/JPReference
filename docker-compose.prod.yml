@@ -54,14 +54,9 @@ services:
       context: ./frontend-nuxt
       dockerfile: Dockerfile
       target: final
-      args:
-        - NUXT_PUBLIC_ADSENSE_CLIENT_ID=${NUXT_PUBLIC_ADSENSE_CLIENT_ID}
-        - NUXT_PUBLIC_ADSENSE_SLOT_ID=${NUXT_PUBLIC_ADSENSE_SLOT_ID}
     container_name: jlpt-reference-frontend-prod
     restart: unless-stopped
     environment:
-      - NUXT_PUBLIC_ADSENSE_CLIENT_ID=${NUXT_PUBLIC_ADSENSE_CLIENT_ID}
-      - NUXT_PUBLIC_ADSENSE_SLOT_ID=${NUXT_PUBLIC_ADSENSE_SLOT_ID}
       - API_URL=${API_URL}
       - NODE_ENV=production
     networks:
