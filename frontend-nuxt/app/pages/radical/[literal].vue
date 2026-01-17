@@ -160,6 +160,9 @@
                 </v-card>
               </section>
 
+              <!-- AdSense Widget -->
+              <AdSenseWidget class="mb-6" />
+
               <!-- Study Tools -->
               <section class="tools-section mb-6">
                 <v-card class="pa-4 rounded-lg border-thin" variant="outlined">

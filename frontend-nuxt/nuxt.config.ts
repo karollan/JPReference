@@ -43,7 +43,9 @@ export default defineNuxtConfig({
   runtimeConfig: {
     apiUrl: process.env.API_URL || 'http://backend:5000/api',
     public: {
-      apiUrl: process.env.NUXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+      apiUrl: process.env.NUXT_PUBLIC_API_URL || 'http://localhost:5000/api',
+      adsenseClientId: process.env.NUXT_PUBLIC_ADSENSE_CLIENT_ID || '',
+      adsenseSlotId: process.env.NUXT_PUBLIC_ADSENSE_SLOT_ID || ''
     }
   },
 

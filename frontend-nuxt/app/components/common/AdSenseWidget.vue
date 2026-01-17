@@ -36,11 +36,11 @@ import { onMounted, computed, ref } from 'vue'
 const props = defineProps({
   slotId: {
     type: String,
-    default: () => import.meta.env.VITE_ADSENSE_SLOT_ID || ''
+    default: ''
   },
   clientId: {
     type: String,
-    default: () => import.meta.env.VITE_ADSENSE_CLIENT_ID || ''
+    default: ''
   },
   format: {
     type: String,
@@ -52,11 +52,17 @@ const props = defineProps({
   }
 })
 
-const isDev = import.meta.env.DEV
+const config = useRuntimeConfig()
+
+// Use props if provided, otherwise fall back to runtime config
+const clientId = computed(() => props.clientId || config.public.adsenseClientId || '')
+const slotId = computed(() => props.slotId || config.public.adsenseSlotId || '')
+
+const isDev = import.meta.dev
 const error = ref(false)
 
 const showAd = computed(() => {
-  return (props.clientId && props.slotId) || isDev
+  return (clientId.value && slotId.value) || isDev
 })
 
 onMounted(() => {

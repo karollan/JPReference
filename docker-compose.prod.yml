@@ -39,8 +39,6 @@ services:
       - FrontendUrl=${FRONTEND_URL}
       - DOTNET_USE_POLLING_FILE_WATCHER=false
       - DOTNET_RUNNING_IN_CONTAINER=true
-    ports:
-      - "${BACKEND_PORT}:5000"
     networks:
       - jlpt-network
     depends_on:
@@ -48,34 +46,46 @@ services:
         condition: service_healthy
     volumes:
       - sitemaps_data:/app/wwwroot/sitemap
+      - kanjivg_data:/app/wwwroot/kanjivg
 
-  # Vue.js Frontend (Production with Nginx)
+  # Nuxt.js Frontend (Production with SSR)
   frontend:
     build:
-      context: ./frontend
+      context: ./frontend-nuxt
       dockerfile: Dockerfile
       target: final
       args:
-        - VITE_API_URL=${API_URL}
-        - VITE_ADSENSE_CLIENT_ID=${VITE_ADSENSE_CLIENT_ID}
-        - VITE_ADSENSE_SLOT_ID=${VITE_ADSENSE_SLOT_ID}
+        - NUXT_PUBLIC_API_URL=${NUXT_PUBLIC_API_URL}
+        - NUXT_PUBLIC_ADSENSE_CLIENT_ID=${NUXT_PUBLIC_ADSENSE_CLIENT_ID}
+        - NUXT_PUBLIC_ADSENSE_SLOT_ID=${NUXT_PUBLIC_ADSENSE_SLOT_ID}
     container_name: jlpt-reference-frontend-prod
     restart: unless-stopped
     environment:
-      - VITE_API_URL=${API_URL}
-      - VITE_ADSENSE_CLIENT_ID=${VITE_ADSENSE_CLIENT_ID}
-      - VITE_ADSENSE_SLOT_ID=${VITE_ADSENSE_SLOT_ID}
-      - CHOKIDAR_USEPOLLING=false
-      - WATCHPACK_POLLING=false
+      - NUXT_PUBLIC_API_URL=${NUXT_PUBLIC_API_URL}
+      - NUXT_PUBLIC_ADSENSE_CLIENT_ID=${NUXT_PUBLIC_ADSENSE_CLIENT_ID}
+      - NUXT_PUBLIC_ADSENSE_SLOT_ID=${NUXT_PUBLIC_ADSENSE_SLOT_ID}
+      - API_URL=${API_URL}
+      - NODE_ENV=production
+    networks:
+      - jlpt-network
+    depends_on:
+      - backend
+
+  # Nginx Reverse Proxy (SSL Termination)
+  nginx:
+    image: nginx:alpine
+    container_name: jlpt-reference-nginx-prod
+    restart: unless-stopped
     ports:
       - "${FRONTEND_PORT_PROD:-80}:80"
       - "443:443"
     volumes:
-      - kanjivg_data:/usr/share/nginx/html/kanjivg
+      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
       - /opt/certs:/opt/certs:ro
     networks:
       - jlpt-network
     depends_on:
+      - frontend
       - backend
 
   # JMDict Processor (Manual Trigger)

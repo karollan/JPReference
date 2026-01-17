@@ -320,6 +320,9 @@
                 </v-card>
               </section>
 
+              <!-- AdSense Widget -->
+              <AdSenseWidget class="mb-6" />
+
               <!-- Contained Kanji -->
               <section
                 v-if="vocabulary.containedKanji && vocabulary.containedKanji.length > 0"
