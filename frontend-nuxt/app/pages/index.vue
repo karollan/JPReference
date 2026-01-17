@@ -2,7 +2,13 @@
   <v-container
     class="text-center home"
   >
-    <v-row class="home__content" dense justify="center">
+    <v-row
+      class="home__content"
+      :style="{
+        marginTop: mdAndDown ? '0' : '-6rem'
+      }"
+      dense
+    >
       <v-col cols="12">
         <h1
           class="home__title"
@@ -89,7 +95,7 @@
 
   &__title {
     font-size:3.5rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
 
     &--mobile {
       font-size:2.5rem;
@@ -99,7 +105,7 @@
 
   &__subtitle {
     font-size:1.125rem;
-    margin-bottom: 2.5rem;
+    margin-bottom: 2rem;
     font-weight: normal;
 
     &--mobile {
