@@ -41,9 +41,11 @@ export default defineNuxtConfig({
 
   // Runtime config for API URL
   runtimeConfig: {
+    // Server-side: internal docker network
     apiUrl: process.env.API_URL || 'http://backend:5000/api',
     public: {
-      apiUrl: process.env.NUXT_PUBLIC_API_URL || 'http://localhost:5000/api',
+      // Client-side: relative path, nginx proxies to backend
+      apiUrl: '/api',
       adsenseClientId: process.env.NUXT_PUBLIC_ADSENSE_CLIENT_ID || '',
       adsenseSlotId: process.env.NUXT_PUBLIC_ADSENSE_SLOT_ID || ''
     }

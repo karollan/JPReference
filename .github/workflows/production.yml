@@ -52,7 +52,6 @@ jobs:
             ${{ steps.image_names.outputs.frontend_image }}:${{ github.sha }}
           target: final
           build-args: |
-            NUXT_PUBLIC_API_URL=${{ vars.NUXT_PUBLIC_API_URL || 'http://localhost:5000/api' }}
             NUXT_PUBLIC_ADSENSE_CLIENT_ID=${{ vars.NUXT_PUBLIC_ADSENSE_CLIENT_ID || '' }}
             NUXT_PUBLIC_ADSENSE_SLOT_ID=${{ vars.NUXT_PUBLIC_ADSENSE_SLOT_ID || '' }}
 
